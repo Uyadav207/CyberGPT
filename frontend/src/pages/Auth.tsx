@@ -13,7 +13,7 @@ import type {
 } from "../types/auth";
 import { createLoginResponseBody } from "../utils/auth-helper";
 
-import MiraLogo from "../assets/MiraLogo.svg";
+import aevix from "../../public/aevix.png";
 import { ModeToggle } from "../components/theme/mode-toggle";
 import { Button } from "../components/ui/button";
 import { HelpMenu } from "../components/chat/help-menu";
@@ -72,22 +72,17 @@ export default function Auth() {
 			</div>
 			<div className="grid min-h-screen grid-cols-1 md:grid-cols-2">
 				{/* Left Column */}
-				<div className="relative hidden bg-black p-10 text-white md:block">
+				<div className="relative hidden bg-blue-800 p-10 text-white md:block">
 					<div className="flex h-full flex-col justify-center">
 						<div className="flex flex-col items-center justify-center">
-							<img
-								src={MiraLogo}
-								alt="Logo"
-								className="w-7 h-7 mr-2 flex justify-center"
-							/>
-							<h1 className="mt-3 text-xl font-bold">
+							<h1 className="mt-3 text-8xl  font-extrabold">
 								{" "}
-								MIRA: Minds In Risk Assessment{" "}
+								AEVIX{" "}
 							</h1>
 						</div>
 						<div className="mt-10 flex justify-center space-y-4">
 							<p className="text-lg italic">
-								Powered by denkMinds
+								For your knowledge needs
 							</p>
 						</div>
 					</div>
@@ -98,9 +93,9 @@ export default function Auth() {
 					<div className="mx-auto w-full max-w-md space-y-8">
 						<div className="flex flex-col items-center justify-center">
 							<img
-								src={MiraLogo}
+								src={aevix}
 								alt="Logo"
-								className="w-7 h-7 mr-2 flex justify-center"
+								className="w-64  h-12 mr-2 flex justify-center"
 							/>
 							{/* <p className="text-small italic">denkMinds Product</p> */}
 						</div>
@@ -143,7 +138,7 @@ export default function Auth() {
 										</div>
 									</div>
 
-									<AuthByProviders type={formType} />
+
 
 									<p className="text-center text-sm text-muted-foreground">
 										By clicking continue, you agree to our{" "}
@@ -201,7 +196,7 @@ export default function Auth() {
 									<h2 className="text-3xl font-bold">
 										{isLoggedIn
 											? `Hey, ${user?.firstName}`
-											: "Welcome to MIRA"}
+											: "Welcome to AEVIX"}
 									</h2>
 									{!isLoggedIn && (
 										<p className="text-muted-foreground">
@@ -258,7 +253,6 @@ export default function Auth() {
 													</span>
 												</div>
 											</div>
-											<AuthByProviders type="login" />
 											<p className="text-center text-sm text-muted-foreground">
 												By continuing, you agree to our{" "}
 												<Link

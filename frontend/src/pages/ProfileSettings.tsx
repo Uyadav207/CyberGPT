@@ -2,6 +2,7 @@ import ProfileForm from "../components/profile/form";
 import { Separator } from "@components/ui/separator";
 import PassowrdForm from "../components/passsword/password-form";
 import useStore from "../store/store";
+import { ModeToggle } from "../components/theme/mode-toggle";
 
 const ProfileSettings = () => {
 	const user = useStore((state) => state.user);
@@ -17,10 +18,19 @@ const ProfileSettings = () => {
 							<div className="my-6">
 								<Separator />
 							</div>
+							
+							
 							<h1 className="text-2xl font-semibold mb-6">
 								Passwords
 							</h1>
 							<PassowrdForm />
+							<div className="my-6">
+								<Separator />
+							</div>
+							<h1 className="text-2xl font-semibold mb-6">
+								Theme
+							</h1>
+							<ModeToggle />
 						</>
 					)}
 				</main>

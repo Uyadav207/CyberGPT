@@ -61,22 +61,13 @@ export function Layout() {
 							</BreadcrumbList>
 						</Breadcrumb>
 					</div>
-					<div className="top-0 mr-3">
-						<ModeToggle />
-					</div>
 				</header>
 
-				{/* Our Component for mira will render here */}
 
 				<div className="flex flex-col min-h-[90vh] justify-between">
 					<Outlet />
-					<p className="text-center text-gray-500 text-wrap text-xs">
-						Copyright &copy; Mira, a product of denkMinds, Planspiel
-						Project {new Date().getFullYear()}
-					</p>
+					
 				</div>
-
-				{/* Add the help button here */}
 				<HelpMenu />
 			</SidebarInset>
 		</SidebarProvider>
