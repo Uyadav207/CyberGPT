@@ -1,0 +1,11 @@
+{
+	"[typescript]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"[typescriptreact]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
+	"diffEditor.ignoreTrimWhitespace": true,
+	"editor.formatOnSave": true,
+	"editor.defaultFormatter": "biomejs.biome"
+}
