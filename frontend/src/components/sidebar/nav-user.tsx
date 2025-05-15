@@ -1,11 +1,12 @@
 import { ChevronsUpDown } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 import {
 	Avatar,
 	AvatarFallback,
 	AvatarImage,
 } from "../../components/ui/avatar";
-
+import { LucideSettings2 } from "lucide-react";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -33,6 +34,7 @@ export function NavUser() {
 	const logout = useStore((state) => state.logout);
 	const user: User = userData.user as User;
 	const [isDialogOpen, setDialogOpen] = useState(false);
+	const navigate = useNavigate();
 
 	const handleLogout = () => {
 		logout();
@@ -54,7 +56,7 @@ export function NavUser() {
 										src={user?.avatar ?? undefined}
 										alt={user?.firstName}
 									/>
-									<AvatarFallback className="rounded-lg">
+									<AvatarFallback className="rounded-lg bg-blue-100">
 										{user?.firstName.substring(0, 1)}
 									</AvatarFallback>
 								</Avatar>
@@ -62,9 +64,7 @@ export function NavUser() {
 									<span className="truncate font-semibold">
 										{user?.firstName}
 									</span>
-									<span className="truncate text-xs">
-										@{user?.username}
-									</span>
+									<span className="truncate text-xs">@{user?.username}</span>
 								</div>
 								<ChevronsUpDown className="ml-auto size-4" />
 							</SidebarMenuButton>
@@ -90,9 +90,7 @@ export function NavUser() {
 										<span className="truncate font-semibold">
 											{user?.firstName}
 										</span>
-										<span className="truncate text-xs">
-											{user?.email}
-										</span>
+										<span className="truncate text-xs">{user?.email}</span>
 									</div>
 								</div>
 							</DropdownMenuLabel>
@@ -100,6 +98,15 @@ export function NavUser() {
 							<DropdownMenuLabel className="p-0 font-normal">
 								<div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
 									<Logout />
+								</div>
+								<div>
+									{/* biome-ignore lint/a11y/useValidAnchor: <explanation> */}
+									<a onClick={() => navigate("/accounts")}>
+										<SidebarMenuButton tooltip="Preferences">
+											<LucideSettings2 className="h-4 w-4" />
+											<span>Preferences</span>
+										</SidebarMenuButton>
+									</a>
 								</div>
 							</DropdownMenuLabel>
 						</DropdownMenuContent>

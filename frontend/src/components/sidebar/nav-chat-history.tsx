@@ -2,18 +2,15 @@ import { useState, useEffect } from "react";
 
 import {
 	ArrowRight,
-	BadgeEuroIcon,
-	BinocularsIcon,
 	ChevronRight,
-	Lightbulb,
-	LucideSettings2,
 	MessageSquareCode,
 	TrendingUpDown,
 } from "lucide-react";
 import {
 	Folder,
-	Home,
-	MessageCircle,
+	Box,
+	ChartNetwork,
+	BotMessageSquare,
 	MoreHorizontal,
 	Trash2,
 } from "lucide-react";
@@ -47,7 +44,6 @@ import {
 } from "../ui/collapsible";
 import { showSuccessToast } from "../toaster";
 import "./customScrollbar.css";
-import Tutorial from "../tutorial/Tutorial";
 
 const ChatSkeleton = () => {
 	return (
@@ -96,7 +92,7 @@ const renderCategory = (
 					onClick={() => navigate(`/chatbot/${chat._id}`)}
 				>
 					<div className="flex items-center">
-						<MessageCircle className="h-4 w-4" />
+						<BotMessageSquare className="h-6 w-6" />
 						<span className="flex-grow truncate">{chat.title}</span>
 						<DropdownMenu>
 							<DropdownMenuTrigger asChild>
@@ -191,19 +187,6 @@ export default function ChatHistory() {
 			!isWithinLast30Days(new Date(chat.createdAt)),
 	);
 
-	const [runTutorial, setRunTutorial] = useState(false);
-
-	// Handle the "Take a Tutorial" button click
-	const handleTakeTutorial = () => {
-		setRunTutorial(true);
-	};
-
-	// Handle tutorial exit (mark the tutorial as seen)
-	const handleExitTutorial = () => {
-		localStorage.setItem("hasSeenTutorial", "true"); // Store in localStorage that the user has seen the tutorial
-		setRunTutorial(false); // Hide the tutorial after exit
-	};
-
 	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 	const sub = (user as any)?.subscription;
 
@@ -239,103 +222,6 @@ export default function ChatHistory() {
 
 	return (
 		<>
-			<SidebarGroup className="sidebar-section">
-				<SidebarGroupLabel>Application</SidebarGroupLabel>
-				<SidebarMenu>
-					<Collapsible
-						defaultOpen={false}
-						className="group/collapsible"
-					>
-						<SidebarMenuItem className="dashboard-section">
-							<CollapsibleTrigger asChild>
-								<SidebarMenuButton tooltip="Dashboard">
-									<Home className="h-4 w-4" />
-									<span>Dashboard</span>
-									<ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
-								</SidebarMenuButton>
-							</CollapsibleTrigger>
-							<CollapsibleContent>
-								<SidebarMenuSub>
-									{/* biome-ignore lint/a11y/useValidAnchor: <explanation> */}
-									<a onClick={() => navigate("/recent-scan")}>
-										<SidebarMenuButton tooltip="Scans">
-											<TrendingUpDown className="h-4 w-4" />
-											<span>Dynamic Scans</span>
-										</SidebarMenuButton>
-									</a>
-
-									<a
-										// biome-ignore lint/a11y/useValidAnchor: <explanation>
-										onClick={() =>
-											navigate("/recent-static-scans")
-										}
-									>
-										<SidebarMenuButton tooltip="Scans">
-											<ArrowRight className="h-4 w-4" />
-											<span>Static Scans</span>
-										</SidebarMenuButton>
-									</a>
-								</SidebarMenuSub>
-							</CollapsibleContent>
-						</SidebarMenuItem>
-					</Collapsible>
-					<SidebarMenuItem className="reports-section">
-						{/* biome-ignore lint/a11y/useValidAnchor: <explanation> */}
-						<a onClick={() => navigate("/reports")}>
-							<SidebarMenuButton tooltip="Reports">
-								<Folder className="h-4 w-4" />
-								<span>Reports</span>
-							</SidebarMenuButton>
-
-							{/* Calculate Length of the no of reports array */}
-							<SidebarMenuBadge>{reportCount}</SidebarMenuBadge>
-						</a>
-					</SidebarMenuItem>
-					<SidebarMenuItem>
-						{/* biome-ignore lint/a11y/useValidAnchor: <explanation> */}
-						<a onClick={() => navigate("/accounts")}>
-							<SidebarMenuButton tooltip="Preferences">
-								<LucideSettings2 className="h-4 w-4" />
-								<span>Preferences</span>
-							</SidebarMenuButton>
-						</a>
-					</SidebarMenuItem>
-					<SidebarMenuItem>
-						{/* biome-ignore lint/a11y/useValidAnchor: <explanation> */}
-						<a onClick={() => navigate("/subscription")}>
-							<SidebarMenuButton tooltip="Preferences">
-								<BadgeEuroIcon className="h-4 w-4" />
-								<span>Subscription</span>
-								<SidebarMenuBadge>
-									<span
-										className={`text-xs px-2 py-0.5 rounded border ${colorClasses}`}
-									>
-										{label}
-									</span>
-								</SidebarMenuBadge>
-							</SidebarMenuButton>
-						</a>
-					</SidebarMenuItem>
-					<SidebarMenuItem>
-						{/* biome-ignore lint/a11y/useValidAnchor: <explanation> */}
-						<a onClick={() => navigate("/faqs")}>
-							<SidebarMenuButton tooltip="FAQs">
-								<Lightbulb className="h-5 w-5" />
-								<span>FAQs</span>
-							</SidebarMenuButton>
-						</a>
-					</SidebarMenuItem>
-					<SidebarMenuButton
-						tooltip="Tutorial"
-						onClick={handleTakeTutorial}
-					>
-						<BinocularsIcon />
-						<span>Tutorial</span>
-					</SidebarMenuButton>
-					<Tutorial run={runTutorial} onExit={handleExitTutorial} />
-				</SidebarMenu>
-			</SidebarGroup>
-			<SidebarSeparator />
 			<div className="chat-history-section max-h-[70vh] overflow-y-scroll scrollbar-grey">
 				<SidebarGroup>
 					{recentChats?.length > 0 && (
@@ -350,9 +236,7 @@ export default function ChatHistory() {
 									<SidebarMenuItem>
 										<div className="mt-10 flex flex-col items-center justify-center">
 											<MessageSquareCode />
-											{state === "expanded" && (
-												<p>No recent chats</p>
-											)}
+											{state === "expanded" && <p>No recent chats</p>}
 										</div>
 									</SidebarMenuItem>
 								) : (
@@ -392,6 +276,67 @@ export default function ChatHistory() {
 					</SidebarContent>
 				</SidebarGroup>
 			</div>
+			<SidebarSeparator />
+			<SidebarGroup className="sidebar-section mt-auto">
+				<SidebarMenu>
+					<Collapsible defaultOpen={false} className="group/collapsible">
+						<SidebarMenuItem>
+							<CollapsibleTrigger asChild>
+								<SidebarMenuButton tooltip="My Space">
+									<Box className="h-6 w-6 stroke-blue-600 " />
+
+									<span>My Space</span>
+									<ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
+								</SidebarMenuButton>
+							</CollapsibleTrigger>
+
+							<CollapsibleContent>
+								<SidebarMenuSub>
+									<Collapsible
+										defaultOpen={false}
+										className="group/collapsible"
+									>
+										<SidebarMenuItem>
+											<CollapsibleTrigger asChild>
+												<SidebarMenuButton tooltip="View Analytics">
+													<ChartNetwork className="h-4 w-4" />
+													<span> Analytics</span>
+													<ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
+												</SidebarMenuButton>
+											</CollapsibleTrigger>
+
+											<CollapsibleContent>
+												<SidebarMenuSub className="pl-4">
+													<a onClick={() => navigate("/recent-scan")}>
+														<SidebarMenuButton tooltip="Dynamic Scans">
+															<TrendingUpDown className="h-4 w-4" />
+															<span>Dynamic Scans</span>
+														</SidebarMenuButton>
+													</a>
+													<a onClick={() => navigate("/recent-static-scans")}>
+														<SidebarMenuButton tooltip="Static Scans">
+															<ArrowRight className="h-4 w-4" />
+															<span>Static Scans</span>
+														</SidebarMenuButton>
+													</a>
+												</SidebarMenuSub>
+											</CollapsibleContent>
+										</SidebarMenuItem>
+									</Collapsible>
+
+									<a onClick={() => navigate("/reports")}>
+										<SidebarMenuButton tooltip="Reports">
+											<Folder className="h-4 w-4" />
+											<span>Reports</span>
+										</SidebarMenuButton>
+										<SidebarMenuBadge>{reportCount}</SidebarMenuBadge>
+									</a>
+								</SidebarMenuSub>
+							</CollapsibleContent>
+						</SidebarMenuItem>
+					</Collapsible>
+				</SidebarMenu>
+			</SidebarGroup>
 		</>
 	);
 }
