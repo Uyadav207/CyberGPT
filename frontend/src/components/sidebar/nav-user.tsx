@@ -1,4 +1,4 @@
-import { ChevronsUpDown } from "lucide-react";
+import { ChevronsUpDown, Mail } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import {
@@ -56,7 +56,7 @@ export function NavUser() {
 										src={user?.avatar ?? undefined}
 										alt={user?.firstName}
 									/>
-									<AvatarFallback className="rounded-lg bg-blue-100">
+									<AvatarFallback className="rounded-lg bg-[#E5E7EB]">
 										{user?.firstName.substring(0, 1)}
 									</AvatarFallback>
 								</Avatar>
@@ -77,36 +77,25 @@ export function NavUser() {
 						>
 							<DropdownMenuLabel className="p-0 font-normal">
 								<div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-									<Avatar className="h-8 w-8 rounded-lg">
-										<AvatarImage
-											src={user?.avatar ?? undefined}
-											alt={user?.firstName ?? undefined}
-										/>
-										<AvatarFallback className="rounded-lg">
-											{/* {fullName.substring(0, 1)} */}
-										</AvatarFallback>
-									</Avatar>
-									<div className="grid flex-1 text-left text-sm leading-tight">
-										<span className="truncate font-semibold">
-											{user?.firstName}
-										</span>
+									<div className="flex gap-2 text-left text-sm leading-tight">
+										<Mail className="h-4 w-4 ml-1" />
 										<span className="truncate text-xs">{user?.email}</span>
 									</div>
 								</div>
 							</DropdownMenuLabel>
 							<SidebarSeparator />
 							<DropdownMenuLabel className="p-0 font-normal">
-								<div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-									<Logout />
-								</div>
 								<div>
 									{/* biome-ignore lint/a11y/useValidAnchor: <explanation> */}
 									<a onClick={() => navigate("/accounts")}>
 										<SidebarMenuButton tooltip="Preferences">
 											<LucideSettings2 className="h-4 w-4" />
-											<span>Preferences</span>
+											<span>Profile</span>
 										</SidebarMenuButton>
 									</a>
+								</div>
+								<div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
+									<Logout />
 								</div>
 							</DropdownMenuLabel>
 						</DropdownMenuContent>

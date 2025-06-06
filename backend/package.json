@@ -29,6 +29,7 @@
 		"ioredis": "^5.4.1",
 		"jsonwebtoken": "^9.0.2",
 		"langchain": "^0.3.11",
+		"neo4j-driver": "^5.28.1",
 		"node-fetch": "^3.3.2",
 		"nodemailer": "^6.9.16",
 		"ollama": "^0.5.11",

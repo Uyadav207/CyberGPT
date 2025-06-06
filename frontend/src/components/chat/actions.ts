@@ -1,11 +1,4 @@
-import {
-	AlertTriangleIcon,
-	CheckCircle,
-	Code2,
-	DockIcon,
-	Search,
-	Github,
-} from "lucide-react";
+import { DockIcon, Search, Github } from "lucide-react";
 
 export const actionCards = [
 	{
@@ -25,26 +18,5 @@ export const actionCards = [
 		icon: DockIcon,
 		useRAG: true,
 		color: "text-red-500",
-	},
-];
-
-export const moreCards = [
-	{
-		title: "Defend Against Attacks",
-		icon: AlertTriangleIcon,
-		useRAG: false,
-		color: "text-orange-500",
-	},
-	{
-		title: "Secure Code review",
-		icon: Code2,
-		useRAG: false,
-		color: "text-green-500",
-	},
-	{
-		title: "Secure services hardening",
-		icon: CheckCircle,
-		useRAG: false,
-		color: "text-blue-500",
 	},
 ];

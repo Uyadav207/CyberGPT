@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { MessageCirclePlusIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "../ui/sidebar";
 import useChatActionStore from "../../store/chatActions";
@@ -19,9 +19,9 @@ export function NewChat() {
 					<SidebarMenuButton
 						tooltip="New Chat"
 						onClick={handleNewChat}
-						className="w-fit flex items-center justify-center gap-2 rounded-xl bg-blue-100 text-blue-700 hover:bg-[#d9e7ff] py-2.5 px-4 font-medium transition-colors"
+						className="w-fit flex items-center justify-center gap-2 rounded-xl bg-[#E5E7EB] p-5 font-medium transition-colors"
 					>
-						<Plus className="h-4 w-4 stroke-blue-700" />
+						<MessageCirclePlusIcon className="h-4 w-4" />
 						<span className="text-sm font-medium">New chat</span>
 					</SidebarMenuButton>
 				</div>

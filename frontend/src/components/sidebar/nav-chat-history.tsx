@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import {
 	ArrowRight,
 	ChevronRight,
+	MessageCircleDashedIcon,
 	MessageSquareCode,
 	TrendingUpDown,
 } from "lucide-react";
@@ -234,9 +235,9 @@ export default function ChatHistory() {
 									<ChatSkeleton />
 								) : !sortedChat || sortedChat.length === 0 ? (
 									<SidebarMenuItem>
-										<div className="mt-10 flex flex-col items-center justify-center">
-											<MessageSquareCode />
-											{state === "expanded" && <p>No recent chats</p>}
+										<div className="mt-10 gap-y-5 flex flex-col items-center justify-center">
+											<MessageCircleDashedIcon />
+											{state === "expanded" && <p>Empty Chat History</p>}
 										</div>
 									</SidebarMenuItem>
 								) : (
@@ -276,14 +277,13 @@ export default function ChatHistory() {
 					</SidebarContent>
 				</SidebarGroup>
 			</div>
-			<SidebarSeparator />
 			<SidebarGroup className="sidebar-section mt-auto">
 				<SidebarMenu>
 					<Collapsible defaultOpen={false} className="group/collapsible">
 						<SidebarMenuItem>
 							<CollapsibleTrigger asChild>
 								<SidebarMenuButton tooltip="My Space">
-									<Box className="h-6 w-6 stroke-blue-600 " />
+									<Box className="h-6 w-6" />
 
 									<span>My Space</span>
 									<ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
@@ -307,12 +307,14 @@ export default function ChatHistory() {
 
 											<CollapsibleContent>
 												<SidebarMenuSub className="pl-4">
+													{/* biome-ignore lint/a11y/useValidAnchor: <explanation> */}
 													<a onClick={() => navigate("/recent-scan")}>
 														<SidebarMenuButton tooltip="Dynamic Scans">
 															<TrendingUpDown className="h-4 w-4" />
 															<span>Dynamic Scans</span>
 														</SidebarMenuButton>
 													</a>
+													{/* biome-ignore lint/a11y/useValidAnchor: <explanation> */}
 													<a onClick={() => navigate("/recent-static-scans")}>
 														<SidebarMenuButton tooltip="Static Scans">
 															<ArrowRight className="h-4 w-4" />
@@ -324,6 +326,7 @@ export default function ChatHistory() {
 										</SidebarMenuItem>
 									</Collapsible>
 
+									{/* biome-ignore lint/a11y/useValidAnchor: <explanation> */}
 									<a onClick={() => navigate("/reports")}>
 										<SidebarMenuButton tooltip="Reports">
 											<Folder className="h-4 w-4" />

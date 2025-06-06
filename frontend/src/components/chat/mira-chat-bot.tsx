@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { v4 as uuidv4 } from "uuid";
 
 //components
@@ -28,18 +28,6 @@ import useChatActionStore from "../../store/chatActions";
 
 // svgs
 import mira_logo from "../../assets/Mira_logo.png";
-import MiraAvatar from "../../assets/Mira.svg";
-import {
-	ArrowUp,
-	Brain,
-	GlassesIcon,
-	Globe,
-	HammerIcon,
-	MoreHorizontal,
-	Paperclip,
-	Search,
-	SendIcon,
-} from "lucide-react";
 
 // types
 import type { TriggerAgentData } from "../../types/agent";
@@ -67,22 +55,20 @@ import {
 	GITHUB_URL_PATTERN,
 	GITHUB_SCAN,
 } from "./constants";
-// import { isReportRequest } from "./helpers";
-import { actionCards, moreCards } from "./actions";
 import { CreateFolderDialog } from "../folder/CreateFolderDialog";
 import { HumanInTheLoopInput } from "./human-in-the-loop-input";
-import { getGreeting } from "./greetings";
+// import { getGreeting } from "./greetings";
 import { showErrorToast, showInfoToast, showSuccessToast } from "../toaster";
 
 import { agentApi } from "../../api/agent";
+import RoleButtonGroup from "./chatComponents/RoleButton/RoleButtonGroup";
 
 const MiraChatBot: React.FC = () => {
 	const navigate = useNavigate();
-	const [showMore, setShowMore] = useState(false);
 	const [scanType, setScanType] = useState<string | null>(null);
 	const [confirmType, setConfirmType] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
-	const [streaming, setStreaming] = useState(false);
+	const [, setStreaming] = useState(false);
 	const [chatsLoader, setChatsLoader] = useState(false);
 	const [info, setInfo] = useState<Info[]>([]);
 	const [isScanLoading, setIsScanLoading] = useState(false);
@@ -99,7 +85,7 @@ const MiraChatBot: React.FC = () => {
 	const { chatId: chatIdParam } = useParams<{ chatId: string }>();
 	const chatId = chatIdParam;
 
-	const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	// const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 	//store actions
 
@@ -132,7 +118,7 @@ const MiraChatBot: React.FC = () => {
 	} = useChatActionStore();
 
 	// Get greeting based on the detected time zone
-	const greeting = getGreeting(timeZone);
+	// const greeting = getGreeting(timeZone);
 	const saveChatMessage = useMutation(api.chats.saveChatMessage);
 	const saveChat = useMutation(api.chats.saveChat);
 	const saveFile = useMutation(api.reports.addReport);
@@ -1848,12 +1834,12 @@ const MiraChatBot: React.FC = () => {
 						</p>
 					</div>
 				)}
-				<div className="flex justify-center px-0">
+				<div className="flex justify-center w-full">
 					<motion.div
 						initial={{ width: "70%" }}
 						animate={{ width: "90%" }}
 						transition={{ duration: 0.3 }}
-						className="chat-input flex flex-col p-2 rounded-xl border border-gray-100 bg-gray-50 w-full max-w-3xl"
+						className="chat-input flex flex-col p-2 rounded-2xl border border-gray-100 bg-white w-full shadow-sm dark:bg-primary-900 dark:border-gray-700"
 					>
 						{/* Input Field */}
 						<textarea
@@ -1865,119 +1851,16 @@ const MiraChatBot: React.FC = () => {
 									handleSend();
 								}
 							}}
-							className="w-full text-sm bg-transparent rounded-md h-15 px-3 py-2 text-gray-700 focus:outline-none resize-none"
+							className="w-full text-sm bg-transparent rounded-md h-10 px-3 py-2 text-gray-700 focus:outline-none resize-none"
 							placeholder="Type your message here..."
 							disabled={isLoading || !!pendingAction}
 						/>
 
 						{/* Buttons Section */}
-						<div className="flex justify-between items-center mt-3 flex-wrap">
-							<div className="flex space-x-2">
-								{/* biome-ignore lint/a11y/useButtonType: <explanation> */}
-								<button className="flex items-center space-x-1 px-3 py-1 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-200">
-									<GlassesIcon size={16} className="mr-1" />
-									<span>Tutor</span>
-								</button>
-								{/* biome-ignore lint/a11y/useButtonType: <explanation> */}
-								<button className="flex items-center space-x-1 px-3 py-1 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-200">
-									<HammerIcon size={16} className="mr-1" />
-									<span>Fixer</span>
-								</button>
-								{/* biome-ignore lint/a11y/useButtonType: <explanation> */}
-								<button className="flex items-center space-x-1 px-3 py-1 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-200">
-									<Search size={16} className="mr-1" />
-									<span>Investigator</span>
-								</button>
-								{/* biome-ignore lint/a11y/useButtonType: <explanation> */}
-								<button className="flex items-center space-x-1 px-3 py-1 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-200">
-									<Globe size={16} className="mr-1" />
-									<span>Analyst</span>
-								</button>
-							</div>
 
-							{/* Right-side Icons */}
-							<div className="flex items-center space-x-2 mt-2 sm:mt-0">
-								{/* biome-ignore lint/a11y/useButtonType: <explanation> */}
-								<button className="text-gray-500 hover:text-gray-700">
-									<Paperclip size={20} />
-								</button>
-								{/* biome-ignore lint/a11y/useButtonType: <explanation> */}
-								<button className="text-gray-500 hover:text-gray-700 bg-gray-200 p-2 rounded-full">
-									<ArrowUp size={18} />
-								</button>
-							</div>
-						</div>
+						<RoleButtonGroup handleActionClick={handleActionSend} />
 					</motion.div>
 				</div>
-
-				{/* {messages.length === 0 ? (
-					<div className="flex flex-col items-center gap-4 px-4">
-						<motion.div
-							className="flex flex-wrap justify-center items-center gap-4"
-							layout
-						>
-							{actionCards.map((actionCard, index) => (
-								<motion.div
-									// biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
-									key={index}
-									className="flex items-center space-x-2 bg-sidebar border p-3 rounded-full shadow-sm cursor-pointer hover:shadow-md transition-all"
-									whileHover={{ scale: 1.05 }} // Hover animation
-									whileTap={{ scale: 0.95 }} // Tap animation
-									onClick={() => {
-										handleActionSend(actionCard.title, actionCard.useRAG);
-									}}
-								>
-									<actionCard.icon className={`h-5 w-5 ${actionCard.color}`} />
-									<span className="text-sm font-medium">
-										{actionCard.title}
-									</span>
-								</motion.div>
-							))}
-						</motion.div>
-
-
-						{!showMore && (
-							<motion.div
-								className="flex items-center space-x-2 bg-sidebar border p-3 rounded-full shadow-sm cursor-pointer hover:shadow-md transition-all"
-								onClick={() => {
-									setShowMore(true);
-								}} // Toggle showMore state
-								whileHover={{ scale: 1.05 }}
-								whileTap={{ scale: 0.95 }}
-							>
-								<MoreHorizontal className="h-5 w-5 text-[#7156DB]" />
-								<span className="text-sm font-medium">More</span>
-							</motion.div>
-						)}
-					
-						<AnimatePresence>
-							{showMore && (
-								<motion.div
-									className="flex flex-wrap justify-center items-center gap-4"
-									initial={{ opacity: 0, y: -10 }}
-									animate={{ opacity: 1, y: 0 }}
-									exit={{ opacity: 0, y: -10 }}
-								>
-									{moreCards.map((moreCard, index) => (
-										<motion.div
-											// biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
-											key={index}
-											className="flex items-center space-x-2 bg-sidebar border p-3 rounded-full shadow-sm cursor-pointer hover:shadow-md transition-all"
-											whileHover={{ scale: 1.05 }}
-											whileTap={{ scale: 0.95 }}
-											onClick={() => handleActionSend(moreCard.title)}
-										>
-											<moreCard.icon className={`h-5 w-5 ${moreCard.color}`} />
-											<span className="text-sm font-medium">
-												{moreCard.title}
-											</span>
-										</motion.div>
-									))}
-								</motion.div>
-							)}
-						</AnimatePresence>
-					</div>
-				) : null} */}
 
 				<Dialog open={showInfo} onOpenChange={setShowInfo}>
 					<DialogContent className="dialog-content">
@@ -1993,16 +1876,7 @@ const MiraChatBot: React.FC = () => {
 								scrollbarColor: "#888 #f0f0f0",
 							}}
 						>
-							<div
-								className="dialog-body"
-								// style={{
-								// 	maxHeight: "400px",
-								// 	overflowY: "auto",
-								// 	padding: "10px",
-								// 	scrollbarWidth: "auto",
-								// 	scrollbarColor: "#888 #f0f0f0",
-								// }}
-							>
+							<div className="dialog-body">
 								{info.map((item) => (
 									<div key={item.id} className="info-item">
 										<h2 className="text-lg font-semibold">{item.name}</h2>

@@ -14,7 +14,7 @@ import {
 	SidebarTrigger,
 } from "../../components/ui/sidebar";
 import { Outlet } from "react-router-dom";
-import { ModeToggle } from "../theme/mode-toggle";
+// import { ModeToggle } from "../theme/mode-toggle";
 
 export function Layout() {
 	const location = useLocation();
@@ -22,8 +22,8 @@ export function Layout() {
 	// Get path segments for breadcrumbs
 	const pathSegments = location.pathname.split("/").filter(Boolean);
 	return (
-		<SidebarProvider>
-			<AppSidebar />
+		<SidebarProvider className="bg-white">
+			<AppSidebar className="bg-gray-100" />
 			<SidebarInset>
 				<header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 justify-between">
 					<div className="flex items-center gap-2 px-4">
@@ -52,7 +52,6 @@ export function Layout() {
 						</Breadcrumb>
 					</div>
 				</header>
-
 
 				<div className="flex flex-col min-h-[90vh] justify-between">
 					<Outlet />
