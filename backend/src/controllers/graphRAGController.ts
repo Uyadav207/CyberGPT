@@ -3,21 +3,7 @@ import { GraphCypherQAChain } from "langchain/chains/graph_qa/cypher";
 import { Neo4jGraph } from "langchain/graphs/neo4j_graph";
 import { ChatOpenAI } from "langchain/chat_models/openai";
 import { PromptTemplate } from "langchain/prompts";
-
-
-const prompt = PromptTemplate.fromTemplate(`
-You are a Neo4j Cypher expert working on a security graph.
-
-The graph contains:
-- (Vulnerability {cve_id: string})
-- (Severity {level: string})
-- Relationship: (Vulnerability)-[:HAS_BASE_SEVERITY]->(Severity)
-
-When the user asks for the severity of a vulnerability, match by 'cve_id'.
-
-Question: {query}
-Return only the severity level.
-`);
+import driver from "../config/neo4j"; // make sure this exports neo4j-driver instance
 
 export class GraphRAGController {
   async query(c: Context) {
@@ -25,14 +11,10 @@ export class GraphRAGController {
       const { question } = await c.req.json();
 
       if (!question || typeof question !== "string") {
-        return c.json(
-          { status: "error", message: "Invalid question format" },
-          400
-        );
+        return c.json({ status: "error", message: "Invalid question format" }, 400);
       }
 
-      console.log("🧠 Incoming question:", question);
-
+      // Connect to Neo4j with schema override
       const graph = await Neo4jGraph.initialize({
         url: process.env.NEO4J_URI!,
         username: process.env.NEO4J_USERNAME!,
@@ -49,49 +31,61 @@ export class GraphRAGController {
         RELATIONSHIP HAS_BASE_SEVERITY FROM Vulnerability TO Severity
       `;
 
-      console.log("📊 Schema being used:\n", await graph.getSchema());
-      
-
+      // Setup LLM
       const llm = new ChatOpenAI({
         modelName: "gpt-4",
         openAIApiKey: process.env.OPENAI_API_KEY!,
-        temperature: 0.3,
+        temperature: 0.2,
       });
 
-      const prompt = PromptTemplate.fromTemplate(`
-You are a Neo4j Cypher expert working on a security graph.
-The graph contains:
-- Vulnerability nodes with a 'cve_id' property, e.g., "CVE-2025-6089"
-- Severity nodes with a 'level' property, e.g., "HIGH", "LOW", etc.
-- Relationship: (Vulnerability)-[:HAS_BASE_SEVERITY]->(Severity)
+      // ✅ SAFE PROMPT — only uses {input}
+      const prompt = new PromptTemplate({
+        inputVariables: ["input"],
+        template: `
+You are a Cypher expert working with a Neo4j graph.
 
-Translate the user query into an accurate Cypher query using the correct property names and relationships.
+The graph includes:
+- (Vulnerability {cve_id})
+- (Severity {level})
+- A relationship: (Vulnerability)-[:HAS_BASE_SEVERITY]->(Severity)
 
-User question: {query}
-`);
+Generate a Cypher query to answer the user's question below.
 
-     const chain = await GraphCypherQAChain.fromLLM({
-  llm,
-  graph,
-  qaPrompt: prompt,
-});
+Question: {input}
 
+Only return the Cypher query.
+        `,
+      });
 
-      console.log("🧠 Calling LLM via GraphCypherQAChain with:", question);
-      const result = await chain.call({ query: question });
+      const chain = await GraphCypherQAChain.fromLLM({
+        llm,
+        graph,
+        qaPrompt: prompt,
+      });
 
-      console.log("📤 LLM Response:", JSON.stringify(result, null, 2));
-      console.log("📜 Cypher Generated:", result.intermediateSteps?.[0]?.query ?? "❌ No Cypher generated");
+      // Use only { input } — not cve_id or anything else
+      const result = await chain.call({ input: question });
 
-      const answer = result.answer ?? result.text ?? "❌ No answer could be generated.";
+      const cypher = result.intermediateSteps?.[0]?.query;
+
+      if (!cypher) {
+        return c.json({
+          status: "error",
+          message: "❌ No Cypher query could be generated.",
+          debug: result,
+        });
+      }
+
+      // ✅ Execute Cypher manually using Neo4j driver
+      const session = driver.session();
+      const queryResult = await session.run(cypher);
+      const records = queryResult.records.map(r => r.toObject());
+      await session.close();
 
       return c.json({
         status: "success",
-        answer,
-        debug: {
-          cypher: result.intermediateSteps?.[0]?.query ?? "❌ No Cypher generated",
-          intermediateSteps: result.intermediateSteps ?? [],
-        },
+        answer: records,
+        cypher,
         metadata: {
           source: "Neo4j AuraDB",
           timestamp: new Date().toISOString(),
@@ -100,10 +94,10 @@ User question: {query}
 
     } catch (err) {
       console.error("❌ GraphRAG error:", err);
-      return c.json(
-        { status: "error", message: (err as Error).message },
-        500
-      );
+      return c.json({
+        status: "error",
+        message: (err as Error).message,
+      }, 500);
     }
   }
 }
