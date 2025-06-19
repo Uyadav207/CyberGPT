@@ -63,9 +63,9 @@ Only return the Cypher query.
       await session.close();
 
       // Step 4: Ask LLM for Explanation, Graph, Sources
-     const explanationPrompt = new PromptTemplate({
-  inputVariables: ["input", "data"],
-  template: `
+      const explanationPrompt = new PromptTemplate({
+        inputVariables: ["input", "data"],
+        template: `
 You're an AI assistant. Based on the following question and its database result, return:
 
 1. 🔍 Reasoning: Explain why this answer is relevant.
@@ -83,9 +83,8 @@ Format JSON like:
 
 Question: {input}
 Data: {data}
-  `
-});
-
+        `
+      });
 
       const explanationText = await explanationPrompt.format({
         input: question,
@@ -93,10 +92,47 @@ Data: {data}
       });
 
       const finalResponse = await llm.invoke(explanationText);
-      const parsed = JSON.parse(finalResponse.content);
 
+      let parsed;
+      try {
+        parsed = JSON.parse(finalResponse.content);
+      } catch (err) {
+        return c.json({
+          status: "error",
+          message: "❌ Failed to parse explanation JSON.",
+          raw: finalResponse.content,
+        }, 500);
+      }
+
+      // Step 5: Generate exactly ONE unique tag
+      const tagPrompt = new PromptTemplate({
+        inputVariables: ["input"],
+        template: `
+You are a chatbot assistant. For the following cybersecurity-related question, generate exactly one unique and specific tag.
+
+- The tag should summarize the main topic (e.g., #severityLevel, #cveInsight, #mitigationStep).
+- Use kebab-case or camelCase.
+- Prefix with '#'.
+- Return as plain JSON string (like: "#cveInsight").
+
+Question: {input}
+        `,
+      });
+
+      const tagQuery = await tagPrompt.format({ input: question });
+      const tagResponse = await llm.invoke(tagQuery);
+
+      let tag: string = "#generalQuery";
+      try {
+        tag = JSON.parse(tagResponse.content);
+      } catch (err) {
+        console.warn("⚠️ Failed to parse tag. Using fallback.");
+      }
+
+      // Final return
       return c.json({
         status: "success",
+        tag, // 👈 Only one tag
         answer: {
           title: parsed.title,
           reasoning: parsed.reasoning,
