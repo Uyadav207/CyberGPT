@@ -3,6 +3,23 @@ import { ChatOpenAI } from "langchain/chat_models/openai";
 import { PromptTemplate } from "langchain/prompts";
 import driver from "../config/neo4j";
 
+// ✅ Move outside to avoid strict-mode issue
+function parseGraphTraversalToGraphData(cveId: string, risk: string, mitigation: string | null) {
+  return {
+    nodes: [
+      { id: "Vulnerability", label: "Vulnerability" },
+      { id: cveId, label: cveId },
+      { id: "Risk", label: `Risk: ${risk || "Unknown"}` },
+      { id: "Mitigation", label: `Mitigation: ${mitigation || "Not Provided"}` }
+    ],
+    links: [
+      { source: "Vulnerability", target: cveId, label: "has_identifier" },
+      { source: cveId, target: "Risk", label: "has_severity" },
+      { source: cveId, target: "Mitigation", label: "has_mitigation" }
+    ]
+  };
+}
+
 export class GraphRAGController {
   async query(c: Context) {
     try {
@@ -104,7 +121,7 @@ Data: {data}
         }, 500);
       }
 
-      // Step 5: Generate exactly ONE unique tag
+      // Step 5: Generate ONE tag
       const tagPrompt = new PromptTemplate({
         inputVariables: ["input"],
         template: `
@@ -116,7 +133,7 @@ You are a chatbot assistant. For the following cybersecurity-related question, g
 - Return as plain JSON string (like: "#cveInsight").
 
 Question: {input}
-        `,
+        `
       });
 
       const tagQuery = await tagPrompt.format({ input: question });
@@ -129,22 +146,30 @@ Question: {input}
         console.warn("⚠️ Failed to parse tag. Using fallback.");
       }
 
-      // Final return
+      // Step 6: Prepare graphData for D3.js
+      const cveId = "CVE-2025-6089"; // or extract from question
+      const riskLevel = parsed.answer.includes("MEDIUM") ? "MEDIUM" : "Unknown";
+      const mitigationInfo = parsed.answer.includes("Mitigation") ? "Mitigation Provided" : null;
+
+      const graphData = parseGraphTraversalToGraphData(cveId, riskLevel, mitigationInfo);
+
+      // ✅ Final response
       return c.json({
         status: "success",
-        tag, // 👈 Only one tag
+        tag,
         answer: {
           title: parsed.title,
           reasoning: parsed.reasoning,
           content: parsed.answer,
           sources: parsed.sources,
-          graph: parsed.graphTraversal,
+          graphExplanation: parsed.graphTraversal
         },
+        graphData, // 🎯 For D3.js frontend
         metadata: {
           timestamp: new Date().toISOString(),
           cypher,
           raw: records,
-        },
+        }
       });
 
     } catch (err) {
