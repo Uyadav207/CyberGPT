@@ -62,6 +62,25 @@ import { showErrorToast, showInfoToast, showSuccessToast } from "../toaster";
 
 import { agentApi } from "../../api/agent";
 import RoleButtonGroup from "./chatComponents/RoleButton/RoleButtonGroup";
+import ReasoningCollapsible from "./ReasoningCollapsible";
+import AnswerCard from "./AnswerCard";
+import ActionButtons from "./ActionButtons";
+import SourcesDrawer from "./SourcesDrawer";
+import VisualiseDialog from "./VisualiseDialog";
+import KGGraph from "../graph/KGGraph";
+import MiraModularResponse from "./MiraModularResponse";
+
+// MiraChatBot: Main chat UI for Mira. Handles chat flow, message state, and modular UI for latest AI response.
+// Modular UI (MiraModularResponse) is shown only for the latest AI message, with reasoning, AI message, and action buttons.
+// All state for reasoning, sources, graph, etc. is managed here and passed as props to the modular component.
+
+const MOCK_SOURCES = [
+	{ label: "Common Vulnerabilities and Exposures (CVE) database", url: "https://cve.mitre.org/" },
+	{ label: "National Vulnerability Database (NVD)", url: "https://nvd.nist.gov/" },
+	{ label: "OWASP Top 10", url: "https://owasp.org/www-project-top-ten/" }
+];
+const MOCK_REASONING =
+	"This is a mock reasoning. The AI analyzes the context and provides a step-by-step explanation of how the answer was derived, referencing the most relevant sources and knowledge graph relationships.";
 
 const MiraChatBot: React.FC = () => {
 	const navigate = useNavigate();
@@ -80,6 +99,17 @@ const MiraChatBot: React.FC = () => {
 	const [foldersList, setFoldersList] = useState(CREATE_FOLDER_ACTION);
 	const [requestHumanInLoop, setRequestHumanInLoop] =
 		useState<RequestHumanInLoop | null>();
+	const [reasoning, setReasoning] = useState("");
+	const [reasoningLoading, setReasoningLoading] = useState(false);
+	const [answer, setAnswer] = useState("");
+	const [answerTitle, setAnswerTitle] = useState("");
+	const [sources, setSources] = useState<any[]>([]);
+	const [graphData, setGraphData] = useState<any>(null);
+	const [graphExplanation, setGraphExplanation] = useState("");
+	const [showSourcesDrawer, setShowSourcesDrawer] = useState(false);
+	const [showVisualiseDialog, setShowVisualiseDialog] = useState(false);
+	const [thinkingStartTime, setThinkingStartTime] = useState<number | null>(null);
+	const [thinkingDuration, setThinkingDuration] = useState<number | null>(null);
 
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
 	const { chatId: chatIdParam } = useParams<{ chatId: string }>();
@@ -1689,6 +1719,22 @@ const MiraChatBot: React.FC = () => {
 		}
 	};
 
+	// Find the latest AI message
+	const latestAIMessage = messages.filter(m => m.sender === "ai").slice(-1)[0];
+	const isLastMessageAI = messages.length > 0 && messages[messages.length - 1].id === (latestAIMessage?.id ?? "");
+	// Only set mock data if the modular UI is about to be shown (latest AI message exists)
+	useEffect(() => {
+		if (latestAIMessage) {
+			if (!reasoning || reasoning.trim() === "") {
+				setReasoning(MOCK_REASONING);
+			}
+			if (!sources || sources.length === 0) {
+				setSources(MOCK_SOURCES);
+			}
+		}
+		// Optionally, you can do the same for answer, answerTitle, etc. if you want mock defaults for those too
+	}, [messages]);
+
 	return (
 		<div className="flex justify-center">
 			<div className="flex flex-col space-y-3 sm:w-3/4 md:w-4/5 lg:w-3/5 h-[89vh] rounded-lg">
@@ -1710,11 +1756,12 @@ const MiraChatBot: React.FC = () => {
 						ref={scrollAreaRef}
 						className="flex-1 p-4 w-full overflow-y-hidden"
 					>
-						{messages.map((message) => {
+						{messages.map((message, idx) => {
 							const isPendingAction =
 								pendingAction === message.id ||
 								pendingAction === message.humanInTheLoopId;
 							const isAISender = message.sender === "ai";
+							const isLatestAI = latestAIMessage && message.id === latestAIMessage.id;
 
 							if (isPendingAction && isAISender) {
 								return actionType === "approval" ? (
@@ -1771,6 +1818,9 @@ const MiraChatBot: React.FC = () => {
 								);
 							}
 
+							// Only render the modular UI for the latest AI message, skip the default bubble
+							if (isLatestAI) return null;
+
 							const isUser = message.sender === "user";
 							const messageClasses = `inline-block px-3 pt-3 rounded-xl max-w-[80%] sm:max-w-[100%] ${
 								isUser
@@ -1808,6 +1858,25 @@ const MiraChatBot: React.FC = () => {
 								</motion.div>
 							);
 						})}
+
+						{/* After all messages, show modular UI if the last message is AI */}
+						{isLastMessageAI && (
+							<MiraModularResponse
+								reasoning={reasoning}
+								reasoningLoading={reasoningLoading}
+								thinkingDuration={thinkingDuration}
+								latestAIMessage={latestAIMessage}
+								graphData={graphData}
+								graphExplanation={graphExplanation}
+								sources={sources}
+								showSourcesDrawer={showSourcesDrawer}
+								setShowSourcesDrawer={setShowSourcesDrawer}
+								showVisualiseDialog={showVisualiseDialog}
+								setShowVisualiseDialog={setShowVisualiseDialog}
+								onVisualise={() => setShowVisualiseDialog(true)}
+								onSources={() => setShowSourcesDrawer(true)}
+							/>
+						)}
 
 						{isLoading && (
 							<motion.div
