@@ -257,22 +257,48 @@ ${
 		message: string,
 		useRAG: boolean,
 		previousMessages: ChatMessage[] = [],
+		reasoning: boolean = false
 	) {
-		if (!useRAG) {
-			const messages: ChatCompletionMessageParam[] = [
-				{ role: "system", content: chatStreamSystemPrompt },
-				...previousMessages,
-				{ role: "user", content: message },
+		if (!reasoning) {
+			if (!useRAG) {
+				const messages: ChatCompletionMessageParam[] = [
+					{ role: "system", content: chatStreamSystemPrompt },
+					...previousMessages,
+					{ role: "user", content: message },
+				];
+				return this.openai.chatStream(messages);
+			}
+			const docs: Document[] = await this.pinecone.similaritySearch(message);
+			return this.openai.generateRagAnswer(docs);
+		} else {
+			// Reasoning enabled: generate both reasoning and answer
+			// 1. Generate main answer
+			let answer: string;
+			if (!useRAG) {
+				const messages: ChatCompletionMessageParam[] = [
+					{ role: "system", content: chatStreamSystemPrompt },
+					...previousMessages,
+					{ role: "user", content: message },
+				];
+				answer = await this.openai.chat(messages);
+			} else {
+				const docs: Document[] = await this.pinecone.similaritySearch(message);
+				answer = await this.openai.generateRagQueryAnswer(docs);
+			}
+			// 2. Generate reasoning
+			const reasoningPrompt = `Act as a cybersecurity expert. Analyze the user's question deeply. 
+First, break down what the question is asking. Then, explore several possible tools, techniques, or solutions, with pros and cons for each. 
+Think step-by-step and structure your thoughts clearly in markdown with paragraph formatting. 
+Finally, conclude with a recommended answer.\nQuestion: ${message}`;
+			const reasoningMessages: ChatCompletionMessageParam[] = [
+				{ role: "system", content: reasoningPrompt },
 			];
-
-			return this.openai.chatStream(messages);
+			const reasoningText = await this.openai.chat(reasoningMessages);
+			// 3. Return both
+			return { answer, reasoning: reasoningText };
 		}
-
-		const docs: Document[] = await this.pinecone.similaritySearch(message);
-		console.log(docs);
-
-		return this.openai.generateRagAnswer(docs);
 	}
+
 	async generateDetailedSummary(scanResult: ScanResults): Promise<string> {
 		const prompt = this.createSummaryPrompt(scanResult, "detailed");
 		const messages: ChatCompletionMessageParam[] = [

@@ -61,27 +61,14 @@ const MiraModularResponse = ({
   return (
     <div className="w-full flex flex-col items-start mt-6 p-0 bg-transparent rounded-2xl border-none relative">
       {/* AI Avatar at the top-left */}
-      <img
+      {/* <img
         src={mira_logo}
         alt="Avatar"
         className="w-12 h-12 object-cover rounded-full absolute -top-6 left-6 bg-background border-2 border-primary shadow-md"
         style={{ zIndex: 2 }}
-      />
+      /> */}
       <div className="flex flex-col w-full mt-8 gap-6">
         {/* Reasoning Section */}
-        <div className="w-full bg-gradient-to-br from-primary/5 to-muted rounded-xl shadow-sm border border-primary/10 p-5 pb-3 mb-0">
-          <ReasoningCollapsible
-            reasoning={reasoning}
-            loading={reasoningLoading && !latestAIMessage?.message}
-            title={
-              reasoningLoading && !latestAIMessage?.message
-                ? "Mira is thinking..."
-                : thinkingDuration
-                  ? `Reasoning (${thinkingDuration.toFixed(1)}s)`
-                  : "Reasoning"
-            }
-          />
-        </div>
         {/* AI Message Section */}
         {latestAIMessage && (
           <motion.div

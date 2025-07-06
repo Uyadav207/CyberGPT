@@ -110,6 +110,7 @@ const MiraChatBot: React.FC = () => {
 	const [showVisualiseDialog, setShowVisualiseDialog] = useState(false);
 	const [thinkingStartTime, setThinkingStartTime] = useState<number | null>(null);
 	const [thinkingDuration, setThinkingDuration] = useState<number | null>(null);
+	const [enableReasoning, setEnableReasoning] = useState(false);
 
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
 	const { chatId: chatIdParam } = useParams<{ chatId: string }>();
@@ -389,13 +390,30 @@ const MiraChatBot: React.FC = () => {
 					content: msg.message,
 				}));
 				setIsLoading(true);
-				const responseStream = (await chatApis.chat({
+				if (enableReasoning) {
+					const response: Response = await chatApis.chat({
+						message: userMessage.message,
+						useRAG: useRag,
+						previousMessages,
+						reasoning: enableReasoning,
+					});
+					const data = await response.json();
+					setReasoning(data.reasoning);
+					setAnswer(data.answer);
+					setIsLoading(false);
+					setMessages((prev) => [
+						...prev,
+						{ id: uuidv4(), message: data.answer, sender: "ai" },
+					]);
+					return;
+				}
+				const responseStream: StreamResponse = (await chatApis.chat({
 					message: userMessage.message,
 					useRAG: useRag,
 					previousMessages,
 				})) as StreamResponse;
-
-				streamChatResponse(userMessage, responseStream as StreamResponse);
+				streamChatResponse(userMessage, responseStream);
+				return;
 			} catch (error) {
 				return error;
 			}
@@ -1861,21 +1879,26 @@ const MiraChatBot: React.FC = () => {
 
 						{/* After all messages, show modular UI if the last message is AI */}
 						{isLastMessageAI && (
-							<MiraModularResponse
-								reasoning={reasoning}
-								reasoningLoading={reasoningLoading}
-								thinkingDuration={thinkingDuration}
-								latestAIMessage={latestAIMessage}
-								graphData={graphData}
-								graphExplanation={graphExplanation}
-								sources={sources}
-								showSourcesDrawer={showSourcesDrawer}
-								setShowSourcesDrawer={setShowSourcesDrawer}
-								showVisualiseDialog={showVisualiseDialog}
-								setShowVisualiseDialog={setShowVisualiseDialog}
-								onVisualise={() => setShowVisualiseDialog(true)}
-								onSources={() => setShowSourcesDrawer(true)}
-							/>
+							<>
+								{reasoning && (
+									<ReasoningCollapsible reasoning={reasoning} loading={reasoningLoading} />
+								)}
+								<MiraModularResponse
+									reasoning={reasoning}
+									reasoningLoading={reasoningLoading}
+									thinkingDuration={thinkingDuration}
+									latestAIMessage={latestAIMessage}
+									graphData={graphData}
+									graphExplanation={graphExplanation}
+									sources={sources}
+									showSourcesDrawer={showSourcesDrawer}
+									setShowSourcesDrawer={setShowSourcesDrawer}
+									showVisualiseDialog={showVisualiseDialog}
+									setShowVisualiseDialog={setShowVisualiseDialog}
+									onVisualise={() => setShowVisualiseDialog(true)}
+									onSources={() => setShowSourcesDrawer(true)}
+								/>
+							</>
 						)}
 
 						{isLoading && (
@@ -1924,9 +1947,20 @@ const MiraChatBot: React.FC = () => {
 							placeholder="Type your message here..."
 							disabled={isLoading || !!pendingAction}
 						/>
-
+						{/* Reasoning Toggle */}
+						<div className="flex items-center mt-2">
+							<input
+								type="checkbox"
+								id="reasoning-toggle"
+								checked={enableReasoning}
+								onChange={() => setEnableReasoning((prev) => !prev)}
+								className="mr-2"
+							/>
+							<label htmlFor="reasoning-toggle" className="text-sm text-gray-700 dark:text-gray-200">
+								Enable Reasoning
+							</label>
+						</div>
 						{/* Buttons Section */}
-
 						<RoleButtonGroup handleActionClick={handleActionSend} />
 					</motion.div>
 				</div>

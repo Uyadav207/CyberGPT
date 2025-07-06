@@ -26,13 +26,21 @@ export class ChatController {
 
 	async chatStream(c: Context) {
 		try {
-			const { message, useRAG, previousMessages = [] } = await c.req.json();
-			const stream = await this.chatService.processMessageStream(
+			const { message, useRAG, previousMessages = [], reasoning = false } = await c.req.json();
+			const result = await this.chatService.processMessageStream(
 				message,
 				useRAG,
 				previousMessages,
+				reasoning
 			);
 
+			if (reasoning && typeof result === 'object' && 'reasoning' in result && 'answer' in result) {
+				// Return both answer and reasoning as JSON
+				return c.json(result);
+			}
+
+			// Otherwise, result is a stream
+			const stream = result as AsyncIterable<any>;
 			return new Response(
 				new ReadableStream({
 					async start(controller) {

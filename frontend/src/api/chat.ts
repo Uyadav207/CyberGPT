@@ -4,6 +4,7 @@ interface ChatPayload {
 	message: string;
 	useRAG?: boolean;
 	previousMessages?: ChatMessage[];
+	reasoning?: boolean;
 }
 
 interface ChatMessage {
