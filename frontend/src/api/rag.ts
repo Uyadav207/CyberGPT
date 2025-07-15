@@ -6,7 +6,11 @@ const sendRagQuery = (question: string) =>
 		question,
 	});
 
+const sendGraphRagQuery = (question: string) =>
+  axiosInstance.post("/api/graphrag/query", { question });
+
 export const ragApis = {
 	getLatestCVEs,
 	sendRagQuery,
+  sendGraphRagQuery,
 };

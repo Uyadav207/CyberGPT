@@ -5,8 +5,9 @@ const graphRagRoutes = new Hono();
 const controller = new GraphRAGController();
 
 graphRagRoutes.post("/query", (c) => controller.query(c));
+graphRagRoutes.post("/explain", (c) => controller.explain(c));
 
-export { graphRagRoutes };
+export default graphRagRoutes;
      
 
 

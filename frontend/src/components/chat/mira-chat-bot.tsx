@@ -15,6 +15,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@components/ui/dialog";
+import { useSidebar } from "@components/ui/sidebar";
 
 //apis
 import { useMutation, useQuery } from "convex/react";
@@ -67,8 +68,9 @@ import AnswerCard from "./AnswerCard";
 import ActionButtons from "./ActionButtons";
 import SourcesDrawer from "./SourcesDrawer";
 import VisualiseDialog from "./VisualiseDialog";
-import KGGraph from "../graph/KGGraph";
+import KGGraph, { colorMap as KGColorMap } from "../graph/KGGraph";
 import MiraModularResponse from "./MiraModularResponse";
+import axios from "../../api/axios";
 
 // MiraChatBot: Main chat UI for Mira. Handles chat flow, message state, and modular UI for latest AI response.
 // Modular UI (MiraModularResponse) is shown only for the latest AI message, with reasoning, AI message, and action buttons.
@@ -111,6 +113,64 @@ const MiraChatBot: React.FC = () => {
 	const [thinkingStartTime, setThinkingStartTime] = useState<number | null>(null);
 	const [thinkingDuration, setThinkingDuration] = useState<number | null>(null);
 	const [enableReasoning, setEnableReasoning] = useState(false);
+	const [rightPanel, setRightPanel] = useState<null | 'visualise' | 'references'>(null);
+	const [showMoreOptions, setShowMoreOptions] = useState(false);
+
+	// Get sidebar context to control sidebar state
+	const { setOpen: setSidebarOpen, open: sidebarOpen } = useSidebar();
+
+	// Action cards for More button
+	const moreActionCards = [
+		{
+			title: "Scan a URL",
+			prompt: "Please enter the URL to scan for vulnerabilities.",
+			icon: "🔍",
+			color: "text-purple-500",
+			useRAG: false,
+		},
+		{
+			title: "Scan Github Repository",
+			prompt: "Please enter the GitHub repository URL to scan.",
+			icon: "🐙",
+			color: "text-yellow-500",
+			useRAG: false,
+		},
+		{
+			title: "Latest CVE Updates",
+			prompt: "Get the latest CVE updates and vulnerability information.",
+			icon: "⚠️",
+			color: "text-red-500",
+			useRAG: true,
+		},
+		{
+			title: "Generate Report",
+			prompt: "Select the type of report you want to generate.",
+			icon: "📊",
+			color: "text-blue-500",
+			useRAG: false,
+		},
+		{
+			title: "Security Assessment",
+			prompt: "Let me help you assess your security posture.",
+			icon: "🛡️",
+			color: "text-green-500",
+			useRAG: false,
+		},
+		{
+			title: "Compliance Check",
+			prompt: "Check compliance with security standards and regulations.",
+			icon: "✅",
+			color: "text-indigo-500",
+			useRAG: false,
+		},
+	];
+
+	// When right panel opens, close sidebar
+	useEffect(() => {
+		if (rightPanel) {
+			setSidebarOpen(false);
+		}
+	}, [rightPanel, setSidebarOpen]);
 
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
 	const { chatId: chatIdParam } = useParams<{ chatId: string }>();
@@ -384,6 +444,76 @@ const MiraChatBot: React.FC = () => {
 			requestHumanApproval("github-scan", manualMessage, "none", botMessage.id);
 		} else {
 			try {
+				// Always use GraphRAG for RAG queries
+				if (useRag) {
+					setIsLoading(true);
+					try {
+						const response = await ragApis.sendGraphRagQuery(userMessage.message);
+						const answerContent = response.data?.answer || response.data?.message || "No answer available";
+						
+						// Store additional data for visualization
+						if (response.data?.sources) {
+							setSources(response.data.sources);
+						}
+						if (response.data?.graph_traversal) {
+							setGraphData(response.data.graph_traversal);
+						}
+						if (response.data?.reasoning) {
+							setReasoning(response.data.reasoning);
+						}
+						
+						setIsLoading(false);
+						setMessages((prev) => [
+							...prev,
+							{ id: uuidv4(), message: answerContent, sender: "ai" },
+						]);
+						return;
+					} catch (graphRagError: any) {
+						setIsLoading(false);
+						
+						// Handle specific database errors
+						if (graphRagError.response?.status === 507) {
+							// Database limit exceeded
+							const errorMessage = `Database capacity limit reached. ${graphRagError.response.data?.details || 'Please upgrade your Neo4j tier or clean up existing data.'}`;
+							showErrorToast(errorMessage);
+							setMessages((prev) => [
+								...prev,
+								{ 
+									id: uuidv4(), 
+									message: `I'm unable to process your request because the database has reached its capacity limit. ${graphRagError.response.data?.details || 'Please contact support to upgrade your Neo4j tier or clean up existing data.'}`, 
+									sender: "ai" 
+								},
+							]);
+							return;
+						} else if (graphRagError.response?.status === 503) {
+							// Database connection error
+							const errorMessage = "Database connection issue. Please try again later.";
+							showErrorToast(errorMessage);
+							setMessages((prev) => [
+								...prev,
+								{ 
+									id: uuidv4(), 
+									message: "I'm experiencing database connection issues. Please try again in a few moments.", 
+									sender: "ai" 
+								},
+							]);
+							return;
+						} else {
+							// Generic error
+							const errorMessage = graphRagError.response?.data?.message || graphRagError.message || "An error occurred while processing your request.";
+							showErrorToast(errorMessage);
+							setMessages((prev) => [
+								...prev,
+								{ 
+									id: uuidv4(), 
+									message: `I encountered an error while processing your request: ${errorMessage}`, 
+									sender: "ai" 
+								},
+							]);
+							return;
+						}
+					}
+				}
 				const previousMessages = messages.map((msg) => ({
 					role:
 						msg.sender === "user" ? "user" : ("system" as "user" | "system"),
@@ -1236,8 +1366,11 @@ const MiraChatBot: React.FC = () => {
 					if (humanAction === "sendRagQuery") {
 						try {
 							setIsLoading(true);
-							const response = await ragApis.sendRagQuery(question);
-							addBotMessage(response.data.answer);
+							// Use GraphRAG (Neo4j) instead of normal RAG
+							const response = await ragApis.sendGraphRagQuery(question);
+							// The answer may be nested in response.data.answer.content or similar, adjust as needed
+							const answerContent = response.data?.answer?.content || response.data?.answer || response.data;
+							addBotMessage(answerContent);
 						} catch (error) {
 							return error;
 						} finally {
@@ -1753,252 +1886,440 @@ const MiraChatBot: React.FC = () => {
 		// Optionally, you can do the same for answer, answerTitle, etc. if you want mock defaults for those too
 	}, [messages]);
 
+	// Helper to fetch graph data if not present
+	const fetchGraphData = async (message: string) => {
+		try {
+			console.log("🔍 Fetching graph data for message:", message);
+			const res = await axios.post("/api/graphrag/explain", { input: message });
+			console.log("📊 Graph API response:", res.data);
+			console.log("📊 Full response object:", JSON.stringify(res.data, null, 2));
+			console.log("📊 Response keys:", Object.keys(res.data));
+			
+			// The backend returns traversal as { nodes, relationships }
+			if (res.data?.traversal) {
+				console.log("🕸️  Traversal data:", res.data.traversal);
+				
+				// Map relationships to links for KGGraph
+				const nodes = res.data.traversal.nodes.map((n: any) => ({
+					...n.properties,
+					id: n.elementId,
+					label: n.labels[0],
+					...n
+				}));
+				const links = res.data.traversal.relationships.map((r: any) => ({
+					source: r.startNodeElementId,
+					target: r.endNodeElementId,
+					label: r.type
+				}));
+				
+				console.log("🎯 Transformed nodes:", nodes);
+				console.log("🔗 Transformed links:", links);
+				
+				const graphDataObj = { nodes, links };
+				console.log("📈 Final graph data object:", graphDataObj);
+				setGraphData(graphDataObj);
+			} else if (res.data?.graph_traversal) {
+				console.log("🕸️  Graph traversal data (alternative key):", res.data.graph_traversal);
+				
+				// Handle alternative key name
+				const traversal = res.data.graph_traversal;
+				const nodes = traversal.nodes.map((n: any) => {
+					// Handle different node formats from backend
+					const nodeData = {
+						id: n.elementId || n.id,
+						label: n.labels?.[0] || n.label || 'Unknown',
+						...n.properties, // Spread properties first
+						...n // Then spread the full node object to override with any additional fields
+					};
+					
+					// Ensure we have meaningful display text
+					if (!nodeData.name && !nodeData.text && !nodeData.description) {
+						if (nodeData.label === 'Query') {
+							nodeData.text = nodeData.properties?.text || 'User Query';
+						} else if (nodeData.label === 'CybersecurityConcept') {
+							nodeData.name = nodeData.properties?.name || 'Security Concept';
+						} else if (nodeData.label === 'CybersecurityTopic') {
+							nodeData.name = nodeData.properties?.name || 'Security Topic';
+						} else if (nodeData.label === 'ExampleVulnerability') {
+							nodeData.name = nodeData.properties?.name || 'Example Vulnerability';
+						}
+					}
+					
+					return nodeData;
+				});
+				
+				const links = traversal.relationships.map((r: any) => ({
+					source: r.startNodeElementId || r.source,
+					target: r.endNodeElementId || r.target,
+					label: r.type || r.label
+				}));
+				
+				console.log("🎯 Transformed nodes:", nodes);
+				console.log("🔗 Transformed links:", links);
+				
+				const graphDataObj = { nodes, links };
+				console.log("📈 Final graph data object:", graphDataObj);
+				setGraphData(graphDataObj);
+			} else {
+				console.warn("⚠️  No traversal data in response");
+				console.warn("⚠️  Available keys:", Object.keys(res.data));
+				
+				// Create fallback graph data
+				const fallbackGraphData = {
+					nodes: [
+						{
+							id: 'query_node',
+							label: 'Query',
+							text: message.substring(0, 50) + '...',
+							type: 'query'
+						},
+						{
+							id: 'concept_sql_injection',
+							label: 'CybersecurityConcept',
+							name: 'sql injection',
+							category: 'Attack',
+							type: 'concept'
+						}
+					],
+					links: [
+						{
+							source: 'query_node',
+							target: 'concept_sql_injection',
+							label: 'TRIGGERED_BY'
+						}
+					]
+				};
+				
+				console.log("🔄 Using fallback graph data:", fallbackGraphData);
+				setGraphData(fallbackGraphData);
+			}
+		} catch (e: any) {
+			console.error("❌ Graph data fetch error:", e);
+			
+			// Handle specific database errors
+			if (e.response?.status === 507) {
+				// Database limit exceeded
+				const errorMessage = `Database capacity limit reached. ${e.response.data?.details || 'Please upgrade your Neo4j tier or clean up existing data.'}`;
+				showErrorToast(errorMessage);
+			} else if (e.response?.status === 503) {
+				// Database connection error
+				showErrorToast("Database connection issue. Please try again later.");
+			} else if (e.response?.data?.message) {
+				showErrorToast(`Graph visualization error: ${e.response.data.message}`);
+			} else {
+				showErrorToast("Unable to load graph data. The database may be experiencing issues.");
+			}
+		}
+	};
+
+	// --- Legend data for the graph modal ---
+	const legendTypes: string[] = graphData && graphData.nodes
+		? Array.from(new Set(graphData.nodes.map((n: any) => String(n.label))))
+		: [];
+	const legendData = legendTypes.map(type => ({ type, color: KGColorMap[type] || '#95a5a6' }));
+
+	// --- Visualise handler: open modal ---
+	const handleVisualise = async () => {
+		if (latestAIMessage?.message) {
+			await fetchGraphData(latestAIMessage.message);
+		}
+		setShowVisualiseDialog(true);
+	};
+
+	// --- Close modal handler ---
+	const handleCloseVisualise = () => {
+		setShowVisualiseDialog(false);
+	};
+
+	// Handler for References button
+	const handleReferences = () => {
+		setRightPanel('references');
+		setShowSourcesDrawer(false); // Don't use drawer, use side panel
+	};
+
+	// Handler to close right panel
+	const handleClosePanel = () => {
+		setRightPanel(null);
+		setSidebarOpen(true); // Reopen sidebar when panel is closed
+	};
+
+	// Handler for More button
+	const handleMoreClick = () => {
+		setShowMoreOptions(!showMoreOptions);
+	};
+
+	// Handler for action card selection
+	const handleActionCardClick = (card: any) => {
+		setShowMoreOptions(false);
+		handleSend(card.prompt, card.useRAG);
+	};
+
 	return (
-		<div className="flex justify-center">
-			<div className="flex flex-col space-y-3 sm:w-3/4 md:w-4/5 lg:w-3/5 h-[89vh] rounded-lg">
-				{messages?.length === 0 ? (
-					<div className="flex flex-col items-center justify-end w-full lg:h-1/3 md:h-1 sm:h-full p-4 sm:p-8">
-						<motion.div
-							className="flex flex-col items-center text-center text-xl sm:text-2xl font-semibold mt-4 sm:mt-6 space-y-1 sm:space-y-1"
-							initial={{ opacity: 0, y: 10 }}
-							animate={{ opacity: 1, y: 0 }}
-							transition={{ delay: 0.3 }}
-						/>
-					</div>
-				) : chatsLoader ? (
-					<div className="flex items-center justify-center w-full h-full">
-						<Spinner />
-					</div>
-				) : (
-					<ScrollArea
-						ref={scrollAreaRef}
-						className="flex-1 p-4 w-full overflow-y-hidden"
-					>
-						{messages.map((message, idx) => {
-							const isPendingAction =
-								pendingAction === message.id ||
-								pendingAction === message.humanInTheLoopId;
-							const isAISender = message.sender === "ai";
-							const isLatestAI = latestAIMessage && message.id === latestAIMessage.id;
+		<div className="flex w-full h-full" style={{ minHeight: '100vh' }}>
+			{/* Main Chat Area */}
+			<motion.div
+				animate={{ width: '100%' }}
+				transition={{ duration: 0.4, type: 'spring' }}
+				className="h-full flex flex-col"
+				style={{ minWidth: 0 }}
+			>
+				<ScrollArea
+					ref={scrollAreaRef}
+					className="flex-1 p-4 w-full overflow-y-auto"
+				>
+					{messages.map((message, idx) => {
+						const isPendingAction =
+							pendingAction === message.id ||
+							pendingAction === message.humanInTheLoopId;
+						const isAISender = message.sender === "ai";
+						const isLatestAI = latestAIMessage && message.id === latestAIMessage.id;
 
-							if (isPendingAction && isAISender) {
-								return actionType === "approval" ? (
-									<motion.div
-										key={message.id}
-										initial={{ opacity: 0, y: 50 }}
-										animate={{ opacity: 1, y: 0 }}
-										exit={{ opacity: 0, y: -50 }}
-										transition={{ duration: 0.3 }}
-									>
-										<HumanInTheLoopApproval
-											addBotMessage={addBotMessage}
-											key={message.id}
-											message={humanInTheLoopMessage || ""}
-											onCancel={cancelAction}
-											confirmType={confirmType || ""}
-											onConfirm={yesClicked}
-										/>
-									</motion.div>
-								) : actionType === "input" || actionType === "sast-input" ? (
-									<motion.div
-										key={message.id}
-										initial={{ opacity: 0, y: 50 }}
-										animate={{ opacity: 1, y: 0 }}
-										exit={{ opacity: 0, y: -50 }}
-										transition={{ duration: 0.3 }}
-									>
-										<HumanInTheLoopInput
-											addBotMessage={addBotMessage}
-											key={message.id}
-											message={humanInTheLoopMessage || ""}
-											onConfirm={handleFileCreation}
-											setShowInfo={setShowInfo}
-											requestHumanInLoop={requestHumanInLoop ?? null}
-										/>
-									</motion.div>
-								) : (
-									<motion.div
-										key={message.id}
-										initial={{ opacity: 0, y: 50 }}
-										animate={{ opacity: 1, y: 0 }}
-										exit={{ opacity: 0, y: -50 }}
-										transition={{ duration: 0.3 }}
-									>
-										<HumanInTheLoopOptions
-											addBotMessage={addBotMessage}
-											key={message.id}
-											setShowInfo={setShowInfo}
-											question={humanInTheLoopMessage || ""}
-											actionPrompts={actionPrompts || []}
-											onConfirm={confirmAction}
-										/>
-									</motion.div>
-								);
-							}
-
-							// Only render the modular UI for the latest AI message, skip the default bubble
-							if (isLatestAI) return null;
-
-							const isUser = message.sender === "user";
-							const messageClasses = `inline-block px-3 pt-3 rounded-xl max-w-[80%] sm:max-w-[100%] ${
-								isUser
-									? "bg-secondary dark:bg-primary-900 p-4 text-sm"
-									: "text-foreground pr-4 overflow-y-auto text-pretty break-normal text-sm"
-							}`;
-							const containerClasses = `mb-4  ${isUser ? "text-right" : "text-left"}`;
-
-							return (
+						if (isPendingAction && isAISender) {
+							return actionType === "approval" ? (
 								<motion.div
 									key={message.id}
-									className={containerClasses}
-									initial={{ opacity: 0 }}
+									initial={{ opacity: 0, y: 50 }}
 									animate={{ opacity: 1, y: 0 }}
+									exit={{ opacity: 0, y: -50 }}
+									transition={{ duration: 0.3 }}
 								>
-									<div
-										className={`items-center ${message.sender === "ai" ? "flex space-x-3" : ""}`}
-									>
-										{message.sender === "ai" && (
-											<img
-												src={mira_logo}
-												alt="Avatar"
-												className="w-5 h-5 mt-3 object-cover rounded-full justify-self-center mb-auto"
-											/>
-										)}
-
-										<span className={`${messageClasses}`}>
-											{isUser ? (
-												message.message
-											) : (
-												<MarkdownViewer content={message.message} />
-											)}
-										</span>
-									</div>
+									<HumanInTheLoopApproval
+										addBotMessage={addBotMessage}
+										key={message.id}
+										message={humanInTheLoopMessage || ""}
+										onCancel={cancelAction}
+										confirmType={confirmType || ""}
+										onConfirm={yesClicked}
+									/>
+								</motion.div>
+							) : actionType === "input" || actionType === "sast-input" ? (
+								<motion.div
+									key={message.id}
+									initial={{ opacity: 0, y: 50 }}
+									animate={{ opacity: 1, y: 0 }}
+									exit={{ opacity: 0, y: -50 }}
+									transition={{ duration: 0.3 }}
+								>
+									<HumanInTheLoopInput
+										addBotMessage={addBotMessage}
+										key={message.id}
+										message={humanInTheLoopMessage || ""}
+										onConfirm={handleFileCreation}
+										setShowInfo={setShowInfo}
+										requestHumanInLoop={requestHumanInLoop ?? null}
+									/>
+								</motion.div>
+							) : (
+								<motion.div
+									key={message.id}
+									initial={{ opacity: 0, y: 50 }}
+									animate={{ opacity: 1, y: 0 }}
+									exit={{ opacity: 0, y: -50 }}
+									transition={{ duration: 0.3 }}
+								>
+									<HumanInTheLoopOptions
+										addBotMessage={addBotMessage}
+										key={message.id}
+										setShowInfo={setShowInfo}
+										question={humanInTheLoopMessage || ""}
+										actionPrompts={actionPrompts || []}
+										onConfirm={confirmAction}
+									/>
 								</motion.div>
 							);
-						})}
+						}
 
-						{/* After all messages, show modular UI if the last message is AI */}
-						{isLastMessageAI && (
-							<>
-								{reasoning && (
-									<ReasoningCollapsible reasoning={reasoning} loading={reasoningLoading} />
-								)}
-								<MiraModularResponse
-									reasoning={reasoning}
-									reasoningLoading={reasoningLoading}
-									thinkingDuration={thinkingDuration}
-									latestAIMessage={latestAIMessage}
-									graphData={graphData}
-									graphExplanation={graphExplanation}
-									sources={sources}
-									showSourcesDrawer={showSourcesDrawer}
-									setShowSourcesDrawer={setShowSourcesDrawer}
-									showVisualiseDialog={showVisualiseDialog}
-									setShowVisualiseDialog={setShowVisualiseDialog}
-									onVisualise={() => setShowVisualiseDialog(true)}
-									onSources={() => setShowSourcesDrawer(true)}
-								/>
-							</>
-						)}
+						// Only render the modular UI for the latest AI message, skip the default bubble
+						if (isLatestAI) return null;
 
-						{isLoading && (
+						const isUser = message.sender === "user";
+						const messageClasses = `inline-block px-3 pt-3 rounded-xl max-w-[80%] sm:max-w-[100%] ${
+							isUser
+								? "bg-secondary dark:bg-primary-900 p-4 text-sm"
+								: "text-foreground pr-4 overflow-y-auto text-pretty break-normal text-sm"
+						}`;
+						const containerClasses = `mb-4  ${isUser ? "text-right" : "text-left"}`;
+
+						return (
 							<motion.div
-								initial={{ opacity: 0, y: 50 }}
+								key={message.id}
+								className={containerClasses}
+								initial={{ opacity: 0 }}
 								animate={{ opacity: 1, y: 0 }}
-								exit={{ opacity: 0, y: -50 }}
-								transition={{ duration: 0.3 }}
-								className="flex items-center space-x-2 text-gray-500"
 							>
-								<Spinner />
-								<span>Mira is thinking...</span>
+								<div
+									className={`items-center ${message.sender === "ai" ? "flex space-x-3" : ""}`}
+								>
+									{message.sender === "ai" && (
+										<img
+											src={mira_logo}
+											alt="Avatar"
+											className="w-5 h-5 mt-3 object-cover rounded-full justify-self-center mb-auto"
+										/>
+									)}
+
+									<span className={`${messageClasses}`}>
+										{isUser ? (
+											message.message
+										) : (
+											<MarkdownViewer content={message.message} />
+										)}
+									</span>
+								</div>
 							</motion.div>
-						)}
-					</ScrollArea>
-				)}
-				{isScanLoading && (
-					<div className="space-y-2">
-						<Progress value={progress} className="w-full" />
+						);
+					})}
 
-						<p className="text-sm text-center text-gray-500">
-							{progress === 95
-								? "Almost done..."
-								: `${progressLoaderMessage}: ${progress.toFixed(0)}%`}
-						</p>
-					</div>
-				)}
-				<div className="flex justify-center w-full">
-					<motion.div
-						initial={{ width: "70%" }}
-						animate={{ width: "90%" }}
-						transition={{ duration: 0.3 }}
-						className="chat-input flex flex-col p-2 rounded-2xl border border-gray-100 bg-white w-full shadow-sm dark:bg-primary-900 dark:border-gray-700"
-					>
-						{/* Input Field */}
-						<textarea
-							value={input}
-							onChange={(e) => setInput(e.target.value)}
-							onKeyDown={(e) => {
-								if (e.key === "Enter" && !e.shiftKey) {
-									e.preventDefault();
-									handleSend();
-								}
-							}}
-							className="w-full text-sm bg-transparent rounded-md h-10 px-3 py-2 text-gray-700 focus:outline-none resize-none"
-							placeholder="Type your message here..."
-							disabled={isLoading || !!pendingAction}
-						/>
-						{/* Reasoning Toggle */}
-						<div className="flex items-center mt-2">
-							<input
-								type="checkbox"
-								id="reasoning-toggle"
-								checked={enableReasoning}
-								onChange={() => setEnableReasoning((prev) => !prev)}
-								className="mr-2"
+					{/* After all messages, show modular UI if the last message is AI */}
+					{isLastMessageAI && (
+						<>
+							{reasoning && (
+								<ReasoningCollapsible reasoning={reasoning} loading={reasoningLoading} />
+							)}
+							<MiraModularResponse
+								reasoning={reasoning}
+								reasoningLoading={reasoningLoading}
+								thinkingDuration={thinkingDuration}
+								latestAIMessage={latestAIMessage}
+								graphData={graphData}
+								graphExplanation={graphExplanation}
+								sources={sources}
+								showSourcesDrawer={showSourcesDrawer}
+								setShowSourcesDrawer={setShowSourcesDrawer}
+								showVisualiseDialog={showVisualiseDialog}
+								setShowVisualiseDialog={setShowVisualiseDialog}
+								onVisualise={handleVisualise}
+								onSources={handleReferences}
 							/>
-							<label htmlFor="reasoning-toggle" className="text-sm text-gray-700 dark:text-gray-200">
-								Enable Reasoning
-							</label>
-						</div>
-						{/* Buttons Section */}
-						<RoleButtonGroup handleActionClick={handleActionSend} />
-					</motion.div>
-				</div>
+						</>
+					)}
 
-				<Dialog open={showInfo} onOpenChange={setShowInfo}>
-					<DialogContent className="dialog-content">
-						<DialogHeader>
-							<DialogTitle className="dialog-title">Information</DialogTitle>
-						</DialogHeader>
-						<ScrollArea
-							style={{
-								maxHeight: "400px",
-								width: "100%",
-								overflowY: "auto",
-								scrollbarWidth: "thick",
-								scrollbarColor: "#888 #f0f0f0",
-							}}
+					{isLoading && (
+						<motion.div
+							initial={{ opacity: 0, y: 50 }}
+							animate={{ opacity: 1, y: 0 }}
+							exit={{ opacity: 0, y: -50 }}
+							transition={{ duration: 0.3 }}
+							className="flex items-center space-x-2 text-gray-500"
 						>
-							<div className="dialog-body">
-								{info.map((item) => (
-									<div key={item.id} className="info-item">
-										<h2 className="text-lg font-semibold">{item.name}</h2>
-										<p className="info-description">
-											{item.description || "No description available."}
+							<Spinner />
+							<span>Mira is thinking...</span>
+						</motion.div>
+					)}
+					
+					{/* Bottom spacing for sticky input */}
+					<div className="h-20"></div>
+				</ScrollArea>
+				
+				{/* Chat Input Area - Sticky at bottom */}
+				<div className="border-t border-gray-200 p-4 bg-white dark:bg-gray-900 sticky bottom-0 z-10">
+					{/* Role Buttons */}
+					<div className="flex items-center space-x-2 mb-3">
+						<button
+							onClick={() => handleActionSend("Tutor")}
+							className="px-3 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 text-sm font-medium flex items-center space-x-2 shadow-md transition-all duration-200"
+						>
+							<span className="text-lg">🎓</span>
+							<span>Tutor</span>
+						</button>
+						<button
+							onClick={() => handleActionSend("Investigator")}
+							className="px-3 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 text-sm font-medium flex items-center space-x-2 shadow-md transition-all duration-200"
+						>
+							<span className="text-lg">🔍</span>
+							<span>Investigator</span>
+						</button>
+						<button
+							onClick={() => handleActionSend("Analyser")}
+							className="px-3 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 text-sm font-medium flex items-center space-x-2 shadow-md transition-all duration-200"
+						>
+							<span className="text-lg">📊</span>
+							<span>Analyser</span>
+						</button>
+						<button
+							onClick={handleMoreClick}
+							className="px-3 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 text-sm font-medium flex items-center space-x-2 shadow-md transition-all duration-200"
+						>
+							<span className="text-lg">⚙️</span>
+							<span>More</span>
+						</button>
+					</div>
+
+					{/* Action Cards for More Button */}
+					{showMoreOptions && (
+						<motion.div
+							initial={{ opacity: 0, y: -10 }}
+							animate={{ opacity: 1, y: 0 }}
+							exit={{ opacity: 0, y: -10 }}
+							transition={{ duration: 0.2 }}
+							className="mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+						>
+							<div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+								{moreActionCards.map((card, index) => (
+									<button
+										key={index}
+										onClick={() => handleActionCardClick(card)}
+										className="p-3 bg-white dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 hover:shadow-md transition-all duration-200 text-left"
+									>
+										<div className="flex items-center space-x-2 mb-2">
+											<span className="text-2xl">{card.icon}</span>
+											<span className={`text-sm font-medium ${card.color}`}>
+												{card.title}
+											</span>
+										</div>
+										<p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
+											{card.prompt}
 										</p>
-									</div>
+										{card.useRAG && (
+											<span className="inline-block mt-2 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded-full">
+												RAG
+											</span>
+										)}
+									</button>
 								))}
 							</div>
-						</ScrollArea>
-					</DialogContent>
-				</Dialog>
-			</div>
-			<CreateFolderDialog
-				open={isCreateDialogOpen}
-				humanInTheLoopAction={requestHumanInLoop}
-				onOpenChange={setIsCreateDialogOpen}
-				onCreateFolder={handleCreateFolder}
-			/>
+						</motion.div>
+					)}
+					
+					<div className="flex items-end space-x-2">
+						<div className="flex-1">
+							<textarea
+								value={input}
+								onChange={(e) => setInput(e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === 'Enter' && !e.shiftKey) {
+										e.preventDefault();
+										handleSend();
+									}
+								}}
+								placeholder="Type your message here..."
+								className="w-full min-h-[60px] max-h-[120px] p-3 border border-input bg-background text-foreground rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
+								rows={1}
+							/>
+						</div>
+						<button
+							onClick={() => handleSend()}
+							disabled={!input.trim() || isLoading}
+							className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+						>
+							<span>Send</span>
+							<svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+							</svg>
+						</button>
+					</div>
+				</div>
+
+				{/* Visualise Dialog Modal */}
+				<VisualiseDialog
+					open={showVisualiseDialog}
+					onOpenChange={handleCloseVisualise}
+					graphData={graphData}
+					legendData={legendData}
+				>
+					{graphData && <KGGraph data={graphData} />}
+				</VisualiseDialog>
+			</motion.div>
 		</div>
 	);
 };

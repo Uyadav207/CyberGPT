@@ -18,6 +18,8 @@ function extractVendorFromCpe(cpe: string): string {
   return parts.length > 4 ? parts[4] : '';
 }
 
+export { extractVendorFromCpe };
+
 export async function fetchNVDModified() {
   const now = new Date();
   const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -89,6 +91,46 @@ export async function fetchNVDModified() {
   }
 
   console.log('Finished ingesting CVEs.');
+}
+
+/**
+ * Fetch CVEs from NVD by keyword (e.g., 'sql injection') and ingest them into the graph.
+ */
+export async function fetchNVDByKeyword(keyword: string) {
+  const url = `${BASE_URL_NVD}?keywordSearch=${encodeURIComponent(keyword)}&resultsPerPage=20`;
+  const res = await fetch(url);
+  const json = await res.json();
+  const vulns = json.vulnerabilities ?? [];
+  console.log(`Fetched ${vulns.length} vulnerabilities for keyword '${keyword}'.`);
+  const session = driver.session();
+  for (const item of vulns) {
+    const cve = item.cve;
+    const id = cve.id;
+    const description: string = cve.descriptions?.find((d: Description) => d.lang === 'en')?.value || '';
+    const cvssMetricV31 = cve.metrics?.cvssMetricV31?.[0];
+    const cvssMetricV2 = cve.metrics?.cvssMetricV2?.[0];
+    const cvssScore = cvssMetricV31?.cvssData?.baseScore ?? cvssMetricV2?.cvssData?.baseScore ?? null;
+    const baseSeverity = cvssMetricV31?.baseSeverity ?? cvssMetricV2?.baseSeverity ?? null;
+    const vectorString = cvssMetricV31?.cvssData?.vectorString ?? cvssMetricV2?.cvssData?.vectorString ?? null;
+    const version = cvssMetricV31 ? '3.1' : (cvssMetricV2 ? '2.0' : null);
+    const references: string[] = cve.references?.map((ref: { url: string }) => ref.url).filter(Boolean) ?? [];
+    interface Weakness { description?: Description[]; }
+    const mitigations: string[] = cve.weaknesses?.flatMap((w: Weakness) => w.description?.filter((d: Description) => d.lang === 'en').map((d: Description) => d.value)).filter(Boolean) ?? [];
+    interface Configuration { nodes?: Node[]; }
+    interface Node { cpeMatch?: CpeMatch[]; }
+    interface CpeMatch { criteria: string; }
+    const cpes: string[] = cve.configurations?.flatMap((cfg: Configuration) => cfg.nodes?.flatMap((n: Node) => n.cpeMatch?.map((c: CpeMatch) => c.criteria)) ?? []).filter(Boolean) ?? [];
+    await saveToGraph({ id, description, cvssScore, baseSeverity, vectorString, version, references, mitigations, cpes });
+    // Link CybersecurityConcept to Vulnerability
+    await session.run(`
+      MERGE (c:CybersecurityConcept {name: $keyword, category: 'Attack'})
+      ON CREATE SET c.description = $desc, c.created_at = datetime()
+      MERGE (v:Vulnerability {cve_id: $id})
+      MERGE (c)-[:RELATED_TO]->(v)
+    `, { keyword, desc: `${keyword} attack`, id });
+  }
+  await session.close();
+  console.log(`Finished ingesting CVEs for keyword '${keyword}'.`);
 }
 
 async function saveToGraph({
