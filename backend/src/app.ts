@@ -25,7 +25,7 @@ app.use("*", errorHandler);
 app.route("/auth", authRoutes);
 app.route("/users", userRoutes);
 app.route("/chat", chatRoutes);
-app.route("/rag", ragRoutes);
+app.route('/api', ragRoutes);
 app.route("/reports", reportRoutes);
 app.route("/zap", zapRoutes);
 app.route("/reports", reportRoutes);

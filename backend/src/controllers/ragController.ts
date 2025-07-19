@@ -3,6 +3,7 @@ import { PineconeService } from "../services/pineconeStore";
 import { OpenAIService } from "../services/openai";
 import { Document } from "langchain/document";
 import type { CVEDocument } from "../types/cve";
+import { graphRAGAnswer } from '../utils/neo4j-cve-fetch-ingest';
 
 interface QueryResponse {
 	answer: string;
@@ -106,3 +107,16 @@ export class RAGController {
 		}
 	}
 }
+
+export const graphRAGAnswerHandler = async (c: Context) => {
+  const { question } = await c.req.json();
+  if (!question || typeof question !== 'string') {
+    return c.json({ error: 'Missing or invalid question' }, 400);
+  }
+  try {
+    const answer = await graphRAGAnswer(question);
+    return c.json({ answer });
+  } catch (err) {
+    return c.json({ error: 'Failed to generate answer', details: err?.toString() }, 500);
+  }
+};
