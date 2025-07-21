@@ -9,9 +9,9 @@
  */
 
 import type {
-	ApiFromModules,
-	FilterApi,
-	FunctionReference,
+  ApiFromModules,
+  FilterApi,
+  FunctionReference,
 } from "convex/server";
 import type * as chats from "../chats.js";
 import type * as reports from "../reports.js";
@@ -30,19 +30,19 @@ import type * as vulnerabilityInfo from "../vulnerabilityInfo.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
-	chats: typeof chats;
-	reports: typeof reports;
-	sastScans: typeof sastScans;
-	scans: typeof scans;
-	summaries: typeof summaries;
-	vulnerabilities: typeof vulnerabilities;
-	vulnerabilityInfo: typeof vulnerabilityInfo;
+  chats: typeof chats;
+  reports: typeof reports;
+  sastScans: typeof sastScans;
+  scans: typeof scans;
+  summaries: typeof summaries;
+  vulnerabilities: typeof vulnerabilities;
+  vulnerabilityInfo: typeof vulnerabilityInfo;
 }>;
 export declare const api: FilterApi<
-	typeof fullApi,
-	FunctionReference<any, "public">
+  typeof fullApi,
+  FunctionReference<any, "public">
 >;
 export declare const internal: FilterApi<
-	typeof fullApi,
-	FunctionReference<any, "internal">
+  typeof fullApi,
+  FunctionReference<any, "internal">
 >;
