@@ -1,5 +1,6 @@
 import axiosInstance from "./axios";
 import { BASE_URL } from "./config.backend";
+
 interface ChatPayload {
 	message: string;
 	useRAG?: boolean;
@@ -19,6 +20,58 @@ interface ScanPayload {
 	website: string;
 	selectedStandard: string;
 }
+
+// New GraphRAG response interface
+interface GraphRAGResponse {
+	answer: string;
+	reasoningTrace: Array<{
+		step: string;
+		message: string;
+	}>;
+}
+
+// New GraphRAG chat function
+const chatGraphRAG = async (payload: { question: string }): Promise<GraphRAGResponse> => {
+	const response = await fetch(`${BASE_URL}/chat/message/stream`, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify(payload),
+	});
+
+	if (!response.ok) {
+		const error = await response.json();
+		throw new Error(error.error || 'Failed to get answer');
+	}
+
+	const data = await response.json();
+	
+	// Handle case where response might be a stringified JSON
+	if (typeof data === 'string') {
+		try {
+			const parsed = JSON.parse(data);
+			return parsed;
+		} catch (e) {
+			throw new Error('Invalid JSON response from server');
+		}
+	}
+	
+	// Validate the response structure
+	if (!data || typeof data !== 'object') {
+		throw new Error('Invalid response format from server');
+	}
+	
+	if (!data.answer || typeof data.answer !== 'string') {
+		throw new Error('Missing or invalid answer in response');
+	}
+	
+	if (!Array.isArray(data.reasoningTrace)) {
+		throw new Error('Missing or invalid reasoning trace in response');
+	}
+	
+	return data;
+};
 
 const chat = async (payload: ChatPayload) => {
 	const response = await fetch(`${BASE_URL}/chat/message/stream`, {
@@ -94,6 +147,7 @@ const chatSummaryOpenAI = async (payload: { messages: string[] }) => {
 export const chatApis = {
 	chatOllama,
 	chat,
+	chatGraphRAG, // Add the new GraphRAG function
 	scan,
 	generateTitle,
 	chatSummaryOllama,

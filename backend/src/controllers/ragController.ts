@@ -109,14 +109,57 @@ export class RAGController {
 }
 
 export const graphRAGAnswerHandler = async (c: Context) => {
-  const { question } = await c.req.json();
-  if (!question || typeof question !== 'string') {
-    return c.json({ error: 'Missing or invalid question' }, 400);
-  }
   try {
-    const answer = await graphRAGAnswer(question);
-    return c.json({ answer });
+    const body = await c.req.json();
+    
+    // Handle both 'question' (GraphRAG) and 'message' (regular chat) formats
+    const question = body.question || body.message;
+    
+    if (!question || typeof question !== 'string') {
+      return c.json({ error: 'Missing or invalid question/message' }, 400);
+    }
+    
+    const result = await graphRAGAnswer(question);
+    
+    if (typeof result === 'string' || result == null) {
+      return c.json({ answer: result ?? '', reasoningTrace: [] });
+    }
+    
+    const { answer, reasoningTrace } = result;
+    
+    return c.json({ 
+      answer: answer || '', 
+      reasoningTrace: reasoningTrace || [] 
+    });
   } catch (err) {
+    console.error('GraphRAG Error:', err);
     return c.json({ error: 'Failed to generate answer', details: err?.toString() }, 500);
+  }
+};
+
+export const chatMessageStreamHandler = graphRAGAnswerHandler;
+
+// Add a health check endpoint for debugging
+export const healthCheckHandler = async (c: Context) => {
+  try {
+    // Test Neo4j connection
+    const { driver } = await import('../config/neo4j');
+    const session = driver.session();
+    await session.run('RETURN 1 as test');
+    await session.close();
+    
+    return c.json({ 
+      status: 'healthy', 
+      neo4j: 'connected',
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error('Health check failed:', err);
+    return c.json({ 
+      status: 'unhealthy', 
+      neo4j: 'disconnected',
+      error: err?.toString(),
+      timestamp: new Date().toISOString()
+    }, 500);
   }
 };

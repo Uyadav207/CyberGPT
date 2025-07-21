@@ -62,6 +62,7 @@ import { showErrorToast, showInfoToast, showSuccessToast } from "../toaster";
 
 import { agentApi } from "../../api/agent";
 import RoleButtonGroup from "./chatComponents/RoleButton/RoleButtonGroup";
+import { ReasoningTrace } from "./ReasoningTrace";
 
 const MiraChatBot: React.FC = () => {
 	const navigate = useNavigate();
@@ -304,21 +305,85 @@ const MiraChatBot: React.FC = () => {
 		// const reportRequest = isReportRequest(lowerPrompt);
 
 		if (hasNegation) {
-			const responseStream = (await chatApis.chat({
-				message: userMessage.message,
-				useRAG: false,
-			})) as StreamResponse;
+			// Use GraphRAG for all questions, including negations
+			const graphRAGResponse = await chatApis.chatGraphRAG({
+				question: userMessage.message,
+			});
+
+			const botMessage: Message = {
+				id: uuidv4(),
+				message: graphRAGResponse.answer,
+				sender: "ai",
+				reasoningTrace: graphRAGResponse.reasoningTrace,
+			};
+
+			// Add messages to UI
+			setMessages((prev) => [...prev, userMessage, botMessage]);
+
+			// Save messages to database
+			if (!chatId && !createdChatId) {
+				await processManualMessages(userMessage, botMessage);
+			} else {
+				await saveChatMessage({
+					chatId: chatId
+						? (chatId as Id<"chats">)
+						: (createdChatId as Id<"chats">),
+					humanInTheLoopId: userMessage.id,
+					sender: userMessage.sender,
+					message: userMessage.message,
+				});
+
+				await saveChatMessage({
+					chatId: chatId
+						? (chatId as Id<"chats">)
+						: (createdChatId as Id<"chats">),
+					humanInTheLoopId: botMessage.id,
+					sender: botMessage.sender,
+					message: botMessage.message,
+				});
+			}
 
 			setIsLoading(false);
-			streamChatResponse(userMessage, responseStream as StreamResponse);
 		} else if (isClarification) {
-			//handled properly
-			const responseStream = (await chatApis.chat({
-				message: userMessage.message,
-				useRAG: false,
-			})) as StreamResponse;
+			// Use GraphRAG for all questions, including clarifications
+			const graphRAGResponse = await chatApis.chatGraphRAG({
+				question: userMessage.message,
+			});
+
+			const botMessage: Message = {
+				id: uuidv4(),
+				message: graphRAGResponse.answer,
+				sender: "ai",
+				reasoningTrace: graphRAGResponse.reasoningTrace,
+			};
+
+			// Add messages to UI
+			setMessages((prev) => [...prev, userMessage, botMessage]);
+
+			// Save messages to database
+			if (!chatId && !createdChatId) {
+				await processManualMessages(userMessage, botMessage);
+			} else {
+				await saveChatMessage({
+					chatId: chatId
+						? (chatId as Id<"chats">)
+						: (createdChatId as Id<"chats">),
+					humanInTheLoopId: userMessage.id,
+					sender: userMessage.sender,
+					message: userMessage.message,
+				});
+
+				await saveChatMessage({
+					chatId: chatId
+						? (chatId as Id<"chats">)
+						: (createdChatId as Id<"chats">),
+					humanInTheLoopId: botMessage.id,
+					sender: botMessage.sender,
+					message: botMessage.message,
+				});
+			}
+
 			setIsLoading(false);
-			streamChatResponse(userMessage, responseStream);
 		} else if (isGitHubURL) {
 			setIsLoading(false);
 			const urls = extractURLs(userMessage.message);
@@ -353,21 +418,57 @@ const MiraChatBot: React.FC = () => {
 			requestHumanApproval("github-scan", manualMessage, "none", botMessage.id);
 		} else {
 			try {
-				const previousMessages = messages.map((msg) => ({
-					role:
-						msg.sender === "user" ? "user" : ("system" as "user" | "system"),
-					content: msg.message,
-				}));
 				setIsLoading(true);
-				const responseStream = (await chatApis.chat({
-					message: userMessage.message,
-					useRAG: useRag,
-					previousMessages,
-				})) as StreamResponse;
+				
+				// Use the new GraphRAG functionality
+				const graphRAGResponse = await chatApis.chatGraphRAG({
+					question: userMessage.message,
+				});
 
-				streamChatResponse(userMessage, responseStream as StreamResponse);
+				// Create bot message with answer and reasoning trace
+				const botMessage: Message = {
+					id: uuidv4(),
+					message: graphRAGResponse.answer,
+					sender: "ai",
+					reasoningTrace: graphRAGResponse.reasoningTrace,
+				};
+
+				// Add messages to UI
+				setMessages((prev) => [...prev, userMessage, botMessage]);
+
+				// Save messages to database
+				if (!chatId && !createdChatId) {
+					await processManualMessages(userMessage, botMessage);
+				} else {
+					await saveChatMessage({
+						chatId: chatId
+							? (chatId as Id<"chats">)
+							: (createdChatId as Id<"chats">),
+						humanInTheLoopId: userMessage.id,
+						sender: userMessage.sender,
+						message: userMessage.message,
+					});
+
+					await saveChatMessage({
+						chatId: chatId
+							? (chatId as Id<"chats">)
+							: (createdChatId as Id<"chats">),
+						humanInTheLoopId: botMessage.id,
+						sender: botMessage.sender,
+						message: botMessage.message,
+					});
+				}
+
+				setIsLoading(false);
 			} catch (error) {
-				return error;
+				console.error("GraphRAG error:", error);
+				const errorMessage: Message = {
+					id: uuidv4(),
+					message: "Sorry, I encountered an error while processing your question. Please try again.",
+					sender: "ai",
+				};
+				setMessages((prev) => [...prev, userMessage, errorMessage]);
+				setIsLoading(false);
 			}
 		}
 	};
@@ -1599,12 +1700,14 @@ const MiraChatBot: React.FC = () => {
 						sender: userMessage.sender,
 						message: userMessage.message,
 					});
-					processPrompt(userMessage, useRAG);
+					// Always use GraphRAG for cybersecurity questions
+					processPrompt(userMessage, true);
 				} catch (error) {
 					return error;
 				}
 			} else {
-				processPrompt(userMessage, useRAG);
+				// Always use GraphRAG for cybersecurity questions
+				processPrompt(userMessage, true);
 			}
 		}
 	};
@@ -1797,13 +1900,18 @@ const MiraChatBot: React.FC = () => {
 											/>
 										)}
 
-										<span className={`${messageClasses}`}>
+										<div className={`${messageClasses}`}>
 											{isUser ? (
 												message.message
 											) : (
-												<MarkdownViewer content={message.message} />
+												<>
+													<MarkdownViewer content={message.message} />
+													{message.reasoningTrace && message.reasoningTrace.length > 0 && (
+														<ReasoningTrace trace={message.reasoningTrace} />
+													)}
+												</>
 											)}
-										</span>
+										</div>
 									</div>
 								</motion.div>
 							);
@@ -1818,7 +1926,7 @@ const MiraChatBot: React.FC = () => {
 								className="flex items-center space-x-2 text-gray-500"
 							>
 								<Spinner />
-								<span>Mira is thinking...</span>
+								<span>Thinking...</span>
 							</motion.div>
 						)}
 					</ScrollArea>

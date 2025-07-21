@@ -20,6 +20,11 @@ export interface ChatHistory {
 	createdAt: string;
 }
 
+export interface ReasoningStep {
+	step: string;
+	message: string;
+}
+
 export interface Message {
 	id?: string;
 	humanInTheLoopId?: string;
@@ -32,6 +37,7 @@ export interface Message {
 	actionType?: string;
 	confirmType?: string;
 	isStreaming?: boolean;
+	reasoningTrace?: ReasoningStep[];
 }
 
 export interface RequestHumanInLoop {
