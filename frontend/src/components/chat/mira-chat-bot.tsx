@@ -64,6 +64,61 @@ import { agentApi } from "../../api/agent";
 import RoleButtonGroup from "./chatComponents/RoleButton/RoleButtonGroup";
 import { ReasoningTrace } from "./ReasoningTrace";
 
+function getRelatedQuestions(userQuestion: string, aiAnswer: string, kgContext: string, chatHistory: Message[]) {
+	const context = (userQuestion + ' ' + aiAnswer + ' ' + (kgContext || '')).toLowerCase();
+	const previousQuestions = new Set(
+		(chatHistory || [])
+			.filter((msg) => msg.sender === 'user' || msg.isRelatedQuestion)
+			.map((msg) => (msg.message || '').toLowerCase())
+	);
+	let candidates = [];
+	if (context.includes('wordpress')) {
+		candidates = [
+			'How do I secure my WordPress site?',
+			'What are the most common WordPress vulnerabilities?',
+			'Are there plugins to improve WordPress security?'
+		];
+	} else if (context.includes('sql injection')) {
+		candidates = [
+			'What are the risks of SQL injection?',
+			'How can I prevent SQL injection?',
+			'What tools detect SQL injection vulnerabilities?'
+		];
+	} else if (context.includes('xss') || context.includes('cross-site scripting')) {
+		candidates = [
+			'What is cross-site scripting (XSS)?',
+			'How do I protect my app from XSS?',
+			'What are common XSS attack vectors?'
+		];
+	} else if (context.includes('csrf')) {
+		candidates = [
+			'What is CSRF?',
+			'How can I prevent CSRF attacks?',
+			'What are signs of CSRF vulnerabilities?'
+		];
+	} else if (context.includes('authentication')) {
+		candidates = [
+			'What are best practices for authentication?',
+			'How do I implement secure authentication?',
+			'What are common authentication flaws?'
+		];
+	} else if (context.includes('authorization')) {
+		candidates = [
+			'What is the difference between authentication and authorization?',
+			'How do I enforce proper authorization?',
+			'What are common authorization issues?'
+		];
+	} else {
+		candidates = [
+			'What are common risks?',
+			'How can I prevent this?',
+			'Can you give an example?'
+		];
+	}
+	const unique = candidates.filter(q => !previousQuestions.has(q.toLowerCase()));
+	return unique.slice(0, 3);
+}
+
 const MiraChatBot: React.FC = () => {
 	const navigate = useNavigate();
 	const [scanType, setScanType] = useState<string | null>(null);
@@ -117,6 +172,14 @@ const MiraChatBot: React.FC = () => {
 		chatSummaryContent,
 		setChatSummaryContent,
 	} = useChatActionStore();
+
+	// Add state to track shown related questions
+	const [shownRelatedQuestions, setShownRelatedQuestions] = useState<string[]>([]);
+	// Collector for all related questions shown in this render
+	let allRelatedQuestionsThisRender: string[] = [];
+
+	// Track shown related questions per context
+	const [contextToShownQuestions, setContextToShownQuestions] = useState<{ [context: string]: string[] }>({});
 
 	// Get greeting based on the detected time zone
 	// const greeting = getGreeting(timeZone);
@@ -318,7 +381,7 @@ const MiraChatBot: React.FC = () => {
 			};
 
 			// Add messages to UI
-			setMessages((prev) => [...prev, userMessage, botMessage]);
+			setMessages((prev) => [...prev, botMessage]);
 
 			// Save messages to database
 			if (!chatId && !createdChatId) {
@@ -358,7 +421,7 @@ const MiraChatBot: React.FC = () => {
 			};
 
 			// Add messages to UI
-			setMessages((prev) => [...prev, userMessage, botMessage]);
+			setMessages((prev) => [...prev, botMessage]);
 
 			// Save messages to database
 			if (!chatId && !createdChatId) {
@@ -434,7 +497,7 @@ const MiraChatBot: React.FC = () => {
 				};
 
 				// Add messages to UI
-				setMessages((prev) => [...prev, userMessage, botMessage]);
+				setMessages((prev) => [...prev, botMessage]);
 
 				// Save messages to database
 				if (!chatId && !createdChatId) {
@@ -467,7 +530,7 @@ const MiraChatBot: React.FC = () => {
 					message: "Sorry, I encountered an error while processing your question. Please try again.",
 					sender: "ai",
 				};
-				setMessages((prev) => [...prev, userMessage, errorMessage]);
+				setMessages((prev) => [...prev, errorMessage]);
 				setIsLoading(false);
 			}
 		}
@@ -1679,13 +1742,14 @@ const MiraChatBot: React.FC = () => {
 		handleSend(action, useRAG);
 	};
 
-	const handleSend = async (message?: string, useRAG?: boolean) => {
+	const handleSend = async (message?: string, useRAG?: boolean, isRelatedQuestion = false) => {
 		const finalMessage = message || input.trim();
 		if (finalMessage) {
 			const userMessage: Message = {
 				id: uuidv4(),
 				message: finalMessage,
 				sender: "user",
+				isRelatedQuestion: isRelatedQuestion,
 			};
 			setMessages((prev) => [...prev, userMessage]);
 			setInput("");
@@ -1792,6 +1856,13 @@ const MiraChatBot: React.FC = () => {
 		}
 	};
 
+	useEffect(() => {
+		if (allRelatedQuestionsThisRender.length > 0) {
+			setShownRelatedQuestions(prev => Array.from(new Set([...prev, ...allRelatedQuestionsThisRender])));
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [messages]);
+
 	return (
 		<div className="flex justify-center">
 			<div className="flex flex-col space-y-3 sm:w-3/4 md:w-4/5 lg:w-3/5 h-[89vh] rounded-lg">
@@ -1813,7 +1884,7 @@ const MiraChatBot: React.FC = () => {
 						ref={scrollAreaRef}
 						className="flex-1 p-4 w-full overflow-y-hidden"
 					>
-						{messages.map((message) => {
+						{messages.map((message, idx) => {
 							const isPendingAction =
 								pendingAction === message.id ||
 								pendingAction === message.humanInTheLoopId;
@@ -1882,6 +1953,43 @@ const MiraChatBot: React.FC = () => {
 							}`;
 							const containerClasses = `mb-4  ${isUser ? "text-right" : "text-left"}`;
 
+							// Before rendering related questions:
+							const lastUserMsg = messages.slice(0, idx).reverse().find(m => m.sender === 'user');
+							const userQuestion = lastUserMsg ? lastUserMsg.message : '';
+							const contextKey = (userQuestion + ' ' + message.message).toLowerCase();
+							let relatedQuestions = getRelatedQuestions(
+								userQuestion,
+								message.message,
+								message.reasoningTrace ? JSON.stringify(message.reasoningTrace) : '',
+								messages
+							);
+							const shownForThisContext = contextToShownQuestions[contextKey] || [];
+							relatedQuestions = relatedQuestions.filter(q => !shownForThisContext.includes(q));
+							allRelatedQuestionsThisRender.push(...relatedQuestions);
+
+							// If fewer than 3, fill with least recently shown for this context (but not currently visible)
+							if (relatedQuestions.length < 3) {
+								const fillQuestions = shownForThisContext.filter(q => !relatedQuestions.includes(q));
+								relatedQuestions = [...relatedQuestions, ...fillQuestions.slice(0, 3 - relatedQuestions.length)];
+							}
+							// After filling with least recently shown, if still less than 3, fill with generic fallbacks (ensuring no duplicates)
+							const fallbackQuestions = [
+								'What are common risks?',
+								'How can I prevent this?',
+								'Can you give an example?'
+							];
+							if (relatedQuestions.length < 3) {
+								const alreadyUsed = new Set(relatedQuestions);
+								for (const q of fallbackQuestions) {
+									if (relatedQuestions.length >= 3) break;
+									if (!alreadyUsed.has(q)) {
+										relatedQuestions.push(q);
+										alreadyUsed.add(q);
+									}
+								}
+							}
+							relatedQuestions = relatedQuestions.slice(0, 3);
+
 							return (
 								<motion.div
 									key={message.id}
@@ -1908,6 +2016,22 @@ const MiraChatBot: React.FC = () => {
 													<MarkdownViewer content={message.message} />
 													{message.reasoningTrace && message.reasoningTrace.length > 0 && (
 														<ReasoningTrace trace={message.reasoningTrace} />
+													)}
+													{!isUser && (
+														<div className="mt-2 text-xs text-gray-500 bg-gray-50 rounded px-3 py-2 flex flex-col sm:flex-row sm:items-center gap-2">
+															<span className="font-medium">Related questions:</span>
+															<div className="flex gap-2 mt-1 sm:mt-0">
+																{relatedQuestions.map((q) => (
+																	<button
+																		key={q}
+																		onClick={() => handleSend(q, false, true)}
+																		className="bg-white border border-gray-300 rounded px-2 py-1 text-xs hover:bg-gray-100 transition"
+																	>
+																		{q}
+																	</button>
+																))}
+															</div>
+														</div>
 													)}
 												</>
 											)}

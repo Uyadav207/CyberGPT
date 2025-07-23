@@ -38,6 +38,7 @@ export interface Message {
 	confirmType?: string;
 	isStreaming?: boolean;
 	reasoningTrace?: ReasoningStep[];
+	isRelatedQuestion?: boolean;
 }
 
 export interface RequestHumanInLoop {

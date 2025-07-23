@@ -290,4 +290,20 @@ export class OpenAIService {
 		});
 		return stream;
 	}
+
+	// Extract canonical vulnerability/concept name from user question
+	async getCanonicalConcept(question: string): Promise<string> {
+		const prompt = `User asked: "${question}"
+What is the canonical vulnerability or security concept the user is referring to? Respond with the canonical name only.`;
+		const response = await this.client.chat.completions.create({
+			model: "gpt-3.5-turbo",
+			messages: [
+				{ role: "system", content: "You are a cybersecurity assistant. Map user questions to the canonical vulnerability or security concept name only." },
+				{ role: "user", content: prompt },
+			],
+			max_tokens: 32,
+			temperature: 0,
+		});
+		return response.choices[0].message.content?.trim() || "";
+	}
 }

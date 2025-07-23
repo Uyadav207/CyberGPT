@@ -4,6 +4,7 @@ import { OpenAIService } from "../services/openai";
 import { Document } from "langchain/document";
 import type { CVEDocument } from "../types/cve";
 import { graphRAGAnswer } from '../utils/neo4j-cve-fetch-ingest';
+import { normalizeVulnName } from '../utils/vulnNameNormalizer';
 
 interface QueryResponse {
 	answer: string;
@@ -63,6 +64,7 @@ export class RAGController {
 
 	async query(c: Context) {
 		try {
+			console.log("[RAGController] --- Query method called ---");
 			const { question } = await c.req.json();
 
 			// Input validation
@@ -76,11 +78,39 @@ export class RAGController {
 				);
 			}
 
-			const docs: Document[] =
-				await this.pinecone.similaritySearchBasedQuery(question);
+			// Use LLM to extract canonical concept
+			const canonicalConcept = await this.openai.getCanonicalConcept(question);
+			console.log("[RAGController] User question:", question);
+			console.log("[RAGController] Canonical concept from LLM:", canonicalConcept);
+
+			let docs: Document[] = await this.pinecone.similaritySearchBasedQuery(canonicalConcept);
+
+			// Log available node names in the KG (if possible)
+			let nodeNames: string[] = [];
+			if (this.pinecone && typeof this.pinecone.listNodeNames === 'function') {
+				nodeNames = await this.pinecone.listNodeNames();
+				console.log("[RAGController] nodeNames fetched:", nodeNames);
+			}
+
+			// Fallback check logging
+			console.log("[RAGController] Fallback check: canonicalConcept =", canonicalConcept, "| nodeNames =", nodeNames);
+			nodeNames.forEach((name, idx) => {
+				console.log(`[RAGController] Node ${idx + 1}: '${name}'`);
+			});
+
+			// Fallback: robust exact match on node names (case-insensitive, trimmed)
+			if (
+				docs.length === 0 &&
+				nodeNames.some(name => name.trim().toLowerCase() === canonicalConcept.trim().toLowerCase())
+			) {
+				console.log("[RAGController] Using robust exact match fallback for:", canonicalConcept);
+				const doc = await this.pinecone.getDocumentByConceptName(canonicalConcept);
+				if (doc) docs = [doc];
+			}
 
 			// Handle no results case
 			if (docs.length === 0) {
+				console.log("[RAGController] No relevant data found for canonical concept:", canonicalConcept);
 				return c.json({
 					answer: "No information found for the given query.",
 					context: [],
@@ -111,22 +141,21 @@ export class RAGController {
 export const graphRAGAnswerHandler = async (c: Context) => {
   try {
     const body = await c.req.json();
-    
     // Handle both 'question' (GraphRAG) and 'message' (regular chat) formats
-    const question = body.question || body.message;
-    
-    if (!question || typeof question !== 'string') {
+    const userQuestion = body.question || body.message;
+    if (!userQuestion || typeof userQuestion !== 'string') {
       return c.json({ error: 'Missing or invalid question/message' }, 400);
     }
-    
-    const result = await graphRAGAnswer(question);
-    
+    // Normalize and canonicalize the user question before querying Neo4j
+    const normalizedQuestion = normalizeVulnName(userQuestion);
+    const openai = await OpenAIService.getInstance();
+    const canonicalConcept = await openai.getCanonicalConcept(normalizedQuestion);
+    // Always use canonicalConcept for both enrichment and context query
+    const result = await graphRAGAnswer(canonicalConcept);
     if (typeof result === 'string' || result == null) {
       return c.json({ answer: result ?? '', reasoningTrace: [] });
     }
-    
     const { answer, reasoningTrace } = result;
-    
     return c.json({ 
       answer: answer || '', 
       reasoningTrace: reasoningTrace || [] 
