@@ -20,6 +20,7 @@ import {
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { chatApis } from "../../api/chat";
+import { chatWithJargon } from '../../api/chat';
 import type { Id } from "../../convex/_generated/dataModel";
 
 //store
@@ -63,6 +64,119 @@ import { showErrorToast, showInfoToast, showSuccessToast } from "../toaster";
 import { agentApi } from "../../api/agent";
 import RoleButtonGroup from "./chatComponents/RoleButton/RoleButtonGroup";
 import { ReasoningTrace } from "./ReasoningTrace";
+
+// Add helper for highlighting jargon terms
+function highlightJargon(answer: string, jargons: { term: string; description: string }[] = [], cveDescriptionsMap: Record<string, string> = {}) {
+	console.log('Highlighting jargons:', jargons); // Debug log
+	
+	const cveRegex = /CVE-\d{4}-\d{4,7}/gi;
+	const foundCVEs = (answer.match(cveRegex) || []).map(id => id.toUpperCase());
+	
+	// Build a map of all jargons (preserve original case for display, use lowercase for matching)
+	const jargonMap = new Map<string, { originalTerm: string; description: string }>();
+	
+	// Add LLM-identified jargons
+	jargons.forEach(j => {
+		jargonMap.set(j.term.toLowerCase(), { originalTerm: j.term, description: j.description });
+	});
+	
+	// Add CVE IDs with their specific descriptions from the backend
+	foundCVEs.forEach(id => {
+		const lowerCaseId = id.toLowerCase();
+		if (!jargonMap.has(lowerCaseId)) {
+			// Try to find the specific CVE description from the backend mapping
+			const description = cveDescriptionsMap[id] || 
+							   cveDescriptionsMap[lowerCaseId] || 
+							   'A unique identifier for a publicly known cybersecurity vulnerability.';
+			jargonMap.set(lowerCaseId, { originalTerm: id, description });
+		}
+	});
+	
+	const allJargons = Array.from(jargonMap, ([, { originalTerm, description }]) => ({ term: originalTerm, description }));
+	if (!allJargons || allJargons.length === 0) {
+		console.log('No jargons to highlight');
+		return answer;
+	}
+	
+	console.log('Will highlight these jargons:', allJargons.map(j => j.term));
+	
+	// Sort by term length descending to avoid partial matches (longer terms first)
+	const sortedJargons = [...allJargons].sort((a, b) => b.term.length - a.term.length);
+	let parts: (string | JSX.Element)[] = [answer];
+	
+	sortedJargons.forEach(({ term, description }) => {
+		console.log(`Highlighting term: "${term}"`);
+		
+		// Improved regex with word boundary consideration for multi-word terms
+		const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+		// Use word boundaries for single words, but allow partial matches for multi-word terms and technical terms
+		const isMultiWord = term.includes(' ') || term.includes('-') || /^[A-Z]{2,}/.test(term);
+		const regex = isMultiWord 
+			? new RegExp(`(${escapedTerm})`, 'gi')
+			: new RegExp(`\\b(${escapedTerm})\\b`, 'gi');
+		
+		console.log(`Creating regex for "${term}": ${regex.toString()}, isMultiWord: ${isMultiWord}`);
+		
+		parts = parts.flatMap(part => {
+			if (typeof part !== 'string') return [part];
+			
+			const splitParts = part.split(regex);
+			return splitParts.map((p, i) => {
+				// In split with capturing groups, odd indices (1, 3, 5...) contain the matched text
+				const isMatch = splitParts.length > 1 && i % 2 === 1 && p.toLowerCase() === term.toLowerCase();
+				
+				return isMatch ? (
+					<span
+						key={`${term}-${i}-${Math.random()}`}
+						className="jargon-highlight"
+						style={{
+							background: 'rgba(255, 230, 150, 0.7)',
+							borderRadius: '6px',
+							padding: '0 4px',
+							borderBottom: '2px dotted #eab308',
+							cursor: 'pointer',
+							position: 'relative',
+						}}
+						onMouseEnter={e => {
+							// Remove any existing tooltips first
+							document.querySelectorAll('.jargon-tooltip').forEach(t => t.remove());
+							
+							const tooltip = document.createElement('div');
+							tooltip.className = 'jargon-tooltip';
+							tooltip.innerText = description;
+							Object.assign(tooltip.style, {
+								position: 'absolute',
+								left: '0',
+								top: '100%',
+								background: '#222',
+								color: '#fff',
+								padding: '6px 10px',
+								borderRadius: '6px',
+								fontSize: '0.95em',
+								zIndex: 1000,
+								whiteSpace: 'normal',
+								maxWidth: '320px',
+								marginTop: '4px',
+								boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+								wordBreak: 'break-word',
+							});
+							(e.target as HTMLElement).appendChild(tooltip);
+						}}
+						onMouseLeave={e => {
+							const tooltips = (e.target as HTMLElement).querySelectorAll('.jargon-tooltip');
+							tooltips.forEach(t => t.remove());
+						}}
+					>
+						{p}
+					</span>
+				) : p;
+			});
+		});
+	});
+	
+	console.log('Highlighting complete, returning parts:', parts.length);
+	return parts;
+}
 
 function getRelatedQuestions(userQuestion: string, aiAnswer: string, kgContext: string, chatHistory: Message[]) {
 	const context = (userQuestion + ' ' + aiAnswer + ' ' + (kgContext || '')).toLowerCase();
@@ -482,56 +596,26 @@ const MiraChatBot: React.FC = () => {
 		} else {
 			try {
 				setIsLoading(true);
-				
-				// Use the new GraphRAG functionality
-				const graphRAGResponse = await chatApis.chatGraphRAG({
-					question: userMessage.message,
+				// Use chatWithJargon for the main chat flow
+				const response = await chatWithJargon({ message: userMessage.message });
+				console.log('Backend response:', {
+					jargons: response.jargons,
+					cveDescriptionsMap: response.cveDescriptionsMap,
+					answerLength: response.answer?.length
 				});
-
-				// Create bot message with answer and reasoning trace
 				const botMessage: Message = {
 					id: uuidv4(),
-					message: graphRAGResponse.answer,
-					sender: "ai",
-					reasoningTrace: graphRAGResponse.reasoningTrace,
+					message: response.answer,
+					sender: 'ai',
+					reasoningTrace: response.reasoningTrace,
+					jargons: response.jargons,
+					cveDescriptionsMap: response.cveDescriptionsMap,
 				};
-
-				// Add messages to UI
 				setMessages((prev) => [...prev, botMessage]);
-
-				// Save messages to database
-				if (!chatId && !createdChatId) {
-					await processManualMessages(userMessage, botMessage);
-				} else {
-					await saveChatMessage({
-						chatId: chatId
-							? (chatId as Id<"chats">)
-							: (createdChatId as Id<"chats">),
-						humanInTheLoopId: userMessage.id,
-						sender: userMessage.sender,
-						message: userMessage.message,
-					});
-
-					await saveChatMessage({
-						chatId: chatId
-							? (chatId as Id<"chats">)
-							: (createdChatId as Id<"chats">),
-						humanInTheLoopId: botMessage.id,
-						sender: botMessage.sender,
-						message: botMessage.message,
-					});
-				}
-
 				setIsLoading(false);
 			} catch (error) {
-				console.error("GraphRAG error:", error);
-				const errorMessage: Message = {
-					id: uuidv4(),
-					message: "Sorry, I encountered an error while processing your question. Please try again.",
-					sender: "ai",
-				};
-				setMessages((prev) => [...prev, errorMessage]);
 				setIsLoading(false);
+				showErrorToast('Failed to get answer.');
 			}
 		}
 	};
@@ -2013,7 +2097,7 @@ const MiraChatBot: React.FC = () => {
 												message.message
 											) : (
 												<>
-													<MarkdownViewer content={message.message} />
+													{message.jargons ? <div>{highlightJargon(message.message, message.jargons, message.cveDescriptionsMap)}</div> : <MarkdownViewer content={message.message} />}
 													{message.reasoningTrace && message.reasoningTrace.length > 0 && (
 														<ReasoningTrace trace={message.reasoningTrace} />
 													)}
