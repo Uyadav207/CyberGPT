@@ -15,6 +15,18 @@ export default defineSchema({
 		sender: v.union(v.literal("user"), v.literal("ai")),
 		message: v.string(),
 		createdAt: v.number(),
+		// New fields for extended chat history schema
+		Answer: v.optional(v.string()),
+		Reasoning: v.optional(v.object({})),
+		Sources: v.optional(v.array(v.string())),
+		Jargons: v.optional(v.object({})),
+		Info: v.optional(v.object({
+			cve_id: v.optional(v.string()),
+			cve_desc: v.optional(v.string()),
+			mitigation: v.optional(v.string()),
+		})),
+		Severity: v.optional(v.string()),
+		tags: v.array(v.string()), // Mandatory field for tags
 	}).index("by_chatId", ["chatId"]),
 
 	summaries: defineTable({
