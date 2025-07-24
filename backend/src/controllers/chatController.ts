@@ -38,6 +38,7 @@ export class ChatController {
         contextData,
         sourceLinks,
       } = await graphRAGAnswer(message);
+      console.log("REASONING TRACE (narrative or array):", reasoningTrace);
       console.log("DEBUG: Returning chat answer with jargons:", {
         answer,
         reasoningTrace,
@@ -47,9 +48,15 @@ export class ChatController {
         contextData,
         sourceLinks,
       });
+      // Ensure trace is always an array with a narrative field if reasoningTrace is a string
+      let trace = Array.isArray(reasoningTrace)
+        ? reasoningTrace
+        : reasoningTrace
+          ? [{ narrative: reasoningTrace }]
+          : [];
       return c.json({
         answer,
-        reasoningTrace,
+        trace,
         jargons,
         cveDescriptionsMap,
         dynamicTag,
@@ -108,9 +115,16 @@ export class ChatController {
         contextData,
         sourceLinks,
       } = await graphRAGAnswer(message, agentPersonality);
+      console.log("REASONING TRACE (narrative or array):", reasoningTrace);
+      // Ensure trace is always an array with a narrative field if reasoningTrace is a string
+      let trace = Array.isArray(reasoningTrace)
+        ? reasoningTrace
+        : reasoningTrace
+          ? [{ narrative: reasoningTrace }]
+          : [];
       return c.json({
         answer,
-        reasoningTrace,
+        trace,
         jargons,
         cveDescriptionsMap,
         dynamicTag,

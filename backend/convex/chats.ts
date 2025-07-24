@@ -74,7 +74,6 @@ export const saveEnhancedChatMessage = mutation({
     }
   ) => {
     console.log("saveEnhancedChatMessage called with:", {
-      chatId,
       sender,
       hasAnswer: !!Answer,
       hasJargons: !!Jargons,
@@ -83,6 +82,15 @@ export const saveEnhancedChatMessage = mutation({
       jargonsKeys: Jargons ? Object.keys(Jargons) : [],
     });
     const now = Date.now();
+    // Ensure Reasoning is always a string (narrative)
+    let reasoningString =
+      typeof Reasoning === "string"
+        ? Reasoning
+        : Array.isArray(Reasoning) && Reasoning[0]?.narrative
+          ? Reasoning[0].narrative
+          : Reasoning && typeof Reasoning.narrative === "string"
+            ? Reasoning.narrative
+            : undefined;
     const result = await ctx.db.insert("chatHistory", {
       chatId,
       humanInTheLoopId,
@@ -90,7 +98,7 @@ export const saveEnhancedChatMessage = mutation({
       message,
       createdAt: now,
       Answer,
-      Reasoning,
+      Reasoning: reasoningString,
       Sources,
       SourceLinks,
       Jargons,
