@@ -36,6 +36,7 @@ export class ChatController {
         cveDescriptionsMap,
         dynamicTag,
         contextData,
+        sourceLinks,
       } = await graphRAGAnswer(message);
       console.log("DEBUG: Returning chat answer with jargons:", {
         answer,
@@ -44,6 +45,7 @@ export class ChatController {
         cveDescriptionsMap,
         dynamicTag,
         contextData,
+        sourceLinks,
       });
       return c.json({
         answer,
@@ -52,6 +54,7 @@ export class ChatController {
         cveDescriptionsMap,
         dynamicTag,
         contextData,
+        sourceLinks,
       });
     } catch (error) {
       console.error("Controller error:", error);
@@ -103,6 +106,7 @@ export class ChatController {
         cveDescriptionsMap,
         dynamicTag,
         contextData,
+        sourceLinks,
       } = await graphRAGAnswer(message, agentPersonality);
       return c.json({
         answer,
@@ -111,6 +115,7 @@ export class ChatController {
         cveDescriptionsMap,
         dynamicTag,
         contextData,
+        sourceLinks,
       });
     } catch (error) {
       const errorMessage =

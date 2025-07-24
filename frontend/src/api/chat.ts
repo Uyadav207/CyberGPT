@@ -38,68 +38,16 @@ interface GraphRAGResponse {
     mitigations: string[];
     concept: string;
   };
+  sourceLinks?: Array<{
+    title: string;
+    url: string;
+    type: "official" | "reference" | "framework";
+  }>;
 }
 
-// New GraphRAG chat function
-const chatGraphRAG = async (payload: {
-  question: string;
-}): Promise<GraphRAGResponse> => {
-  const response = await fetch(`${BASE_URL}/chat/message/stream`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
+// Old chatGraphRAG function removed - now using chatWithJargon instead
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "Failed to get answer");
-  }
-
-  const data = await response.json();
-
-  // Handle case where response might be a stringified JSON
-  if (typeof data === "string") {
-    try {
-      const parsed = JSON.parse(data);
-      return parsed;
-    } catch (e) {
-      throw new Error("Invalid JSON response from server");
-    }
-  }
-
-  // Validate the response structure
-  if (!data || typeof data !== "object") {
-    throw new Error("Invalid response format from server");
-  }
-
-  if (!data.answer || typeof data.answer !== "string") {
-    throw new Error("Missing or invalid answer in response");
-  }
-
-  if (!Array.isArray(data.reasoningTrace)) {
-    throw new Error("Missing or invalid reasoning trace in response");
-  }
-
-  return data;
-};
-
-const chat = async (payload: ChatPayload) => {
-  const response = await fetch(`${BASE_URL}/chat/message/stream`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!response.body) {
-    throw new Error("No response body");
-  }
-
-  return response; // Return the readable stream for processing
-};
+// Old chat function removed - now using chatWithJargon instead
 
 const chatOllama = async (payload: ChatOllamaPayload) => {
   const response = await fetch(`${BASE_URL}/api/chat`, {
@@ -161,6 +109,11 @@ export const chatWithJargon = async (payload: {
   message: string;
   agentPersonality?: string;
 }) => {
+  console.log(
+    "DEBUG: Calling chatWithJargon endpoint:",
+    `${BASE_URL}/chat/with-jargon`
+  );
+  console.log("DEBUG: Payload:", payload);
   const response = await fetch(`${BASE_URL}/chat/with-jargon`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -170,13 +123,13 @@ export const chatWithJargon = async (payload: {
     const error = await response.json();
     throw new Error(error.error || "Failed to get answer");
   }
-  return response.json();
+  const result = await response.json();
+  console.log("DEBUG: chatWithJargon response:", result);
+  return result;
 };
 
 export const chatApis = {
   chatOllama,
-  chat,
-  chatGraphRAG, // Add the new GraphRAG function
   scan,
   generateTitle,
   chatSummaryOllama,

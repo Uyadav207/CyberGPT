@@ -138,35 +138,7 @@ export class RAGController {
 	}
 }
 
-export const graphRAGAnswerHandler = async (c: Context) => {
-  try {
-    const body = await c.req.json();
-    // Handle both 'question' (GraphRAG) and 'message' (regular chat) formats
-    const userQuestion = body.question || body.message;
-    if (!userQuestion || typeof userQuestion !== 'string') {
-      return c.json({ error: 'Missing or invalid question/message' }, 400);
-    }
-    // Normalize and canonicalize the user question before querying Neo4j
-    const normalizedQuestion = normalizeVulnName(userQuestion);
-    const openai = await OpenAIService.getInstance();
-    const canonicalConcept = await openai.getCanonicalConcept(normalizedQuestion);
-    // Always use canonicalConcept for both enrichment and context query
-    const result = await graphRAGAnswer(canonicalConcept);
-    if (typeof result === 'string' || result == null) {
-      return c.json({ answer: result ?? '', reasoningTrace: [] });
-    }
-    const { answer, reasoningTrace } = result;
-    return c.json({ 
-      answer: answer || '', 
-      reasoningTrace: reasoningTrace || [] 
-    });
-  } catch (err) {
-    console.error('GraphRAG Error:', err);
-    return c.json({ error: 'Failed to generate answer', details: err?.toString() }, 500);
-  }
-};
-
-export const chatMessageStreamHandler = graphRAGAnswerHandler;
+// Old graphRAGAnswerHandler and chatMessageStreamHandler removed - now using chatWithJargon endpoint instead
 
 // Add a health check endpoint for debugging
 export const healthCheckHandler = async (c: Context) => {

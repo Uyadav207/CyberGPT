@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { chatApis } from '../../api/chat';
+import { chatWithJargon } from '../../api/chat';
 import { ReasoningTrace } from './ReasoningTrace';
 
 export const GraphRAGTest: React.FC = () => {
@@ -18,7 +18,7 @@ export const GraphRAGTest: React.FC = () => {
     setReasoningTrace([]);
 
     try {
-      const response = await chatApis.chatGraphRAG({ question });
+      const response = await chatWithJargon({ message: question, agentPersonality: 'tutor' });
       setAnswer(response.answer);
       setReasoningTrace(response.reasoningTrace);
     } catch (err: any) {

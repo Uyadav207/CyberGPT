@@ -19,6 +19,15 @@ export default defineSchema({
     Answer: v.optional(v.string()),
     Reasoning: v.optional(v.any()),
     Sources: v.optional(v.array(v.string())),
+    SourceLinks: v.optional(
+      v.array(
+        v.object({
+          title: v.string(),
+          url: v.string(),
+          type: v.string(),
+        })
+      )
+    ),
     Jargons: v.optional(v.any()),
     Info: v.optional(
       v.object({

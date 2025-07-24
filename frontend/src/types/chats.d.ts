@@ -22,6 +22,11 @@ export interface ChatHistory {
   Answer?: string;
   Reasoning?: any;
   Sources?: string[];
+  SourceLinks?: Array<{
+    title: string;
+    url: string;
+    type: string;
+  }>;
   Jargons?: Record<string, string>;
   Info?: {
     cve_id?: string;
@@ -53,6 +58,11 @@ export interface Message {
   isRelatedQuestion?: boolean;
   jargons?: { term: string; description: string }[];
   cveDescriptionsMap?: Record<string, string>;
+  sourceLinks?: Array<{
+    title: string;
+    url: string;
+    type: "official" | "reference" | "framework";
+  }>;
 }
 
 export interface RequestHumanInLoop {
