@@ -26,6 +26,7 @@ import {
 
 import tooltipData from "../data/tooltipData.json";
 import { actionCards } from "../../actions.ts";
+import React from "react"; // Added missing import for React
 
 const iconMap = {
 	GlassesIcon: <GlassesIcon size={16} className="mr-1 text-[#5E5E5D]" />,
@@ -37,8 +38,8 @@ const iconMap = {
 
 interface RoleButtonGroupProps {
 	handleActionClick: (action: string, useRAG?: boolean) => void;
-	selectedAgentMode: 'tutor' | 'investigator' | 'analyst';
-	onAgentModeChange: (mode: 'tutor' | 'investigator' | 'analyst') => void;
+	selectedAgentMode: 'tutor' | 'investigator' | 'analyst' | undefined;
+	onAgentModeChange: (mode: 'tutor' | 'investigator' | 'analyst' | undefined) => void;
 	agentButtonsDisabled: boolean;
 }
 
@@ -48,15 +49,15 @@ export default function RoleButtonGroup({
 	onAgentModeChange,
 	agentButtonsDisabled,
 }: RoleButtonGroupProps): JSX.Element {
-	const leftButtons = tooltipData.slice(0, 3); // Tutor, Investigator, Analyst
-	const rightButtons = tooltipData.slice(3); // More, Submit
-
 	interface TooltipDataItem {
 		label: string;
 		icon: keyof typeof iconMap;
 		tooltip: string;
 		iconOnly?: boolean;
 	}
+
+	const leftButtons: TooltipDataItem[] = tooltipData.slice(0, 3) as TooltipDataItem[];
+	const rightButtons: TooltipDataItem[] = tooltipData.slice(3) as TooltipDataItem[];
 
 	return (
 		<TooltipProvider>
@@ -66,24 +67,24 @@ export default function RoleButtonGroup({
 					{leftButtons.map(({ label, icon, tooltip }) => {
 						const agentMode = label.toLowerCase() as 'tutor' | 'investigator' | 'analyst';
 						const isSelected = selectedAgentMode === agentMode;
-						
+						// Icon color logic
+						const iconElement = React.cloneElement(iconMap[icon], {
+							className: isSelected ? 'mr-1 text-white' : 'mr-1 text-[#5E5E5D]'
+						});
 						return (
 							<Tooltip key={label}>
 								<TooltipTrigger asChild>
-									<button 
-										onClick={() => !agentButtonsDisabled && onAgentModeChange(agentMode)}
+									<button
+										onClick={() => !agentButtonsDisabled && onAgentModeChange(isSelected ? undefined : agentMode)}
 										disabled={agentButtonsDisabled}
-										className={`flex items-center space-x-1 px-3 py-1 rounded-full border transition-all duration-200 ${
-											isSelected 
-												? 'border-[#7156DB] bg-[#7156DB] text-white' 
-												: 'border-gray-300 text-gray-700 hover:bg-gray-200'
-										} ${
-											agentButtonsDisabled 
-												? 'opacity-50 cursor-not-allowed' 
-												: 'cursor-pointer'
-										}`}
+										className={`flex items-center space-x-1 px-3 py-1 rounded-full border transition-all duration-200 font-medium focus:outline-none focus:ring-2 focus:ring-black/30 focus:z-10
+  ${isSelected
+    ? 'border-black bg-black text-white font-bold'
+    : 'border-gray-300 text-gray-700 hover:bg-gray-200'}
+  ${agentButtonsDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+`}
 									>
-										{iconMap[icon as keyof typeof iconMap]}
+										{iconElement}
 										<span className="text-sm">{label}</span>
 									</button>
 								</TooltipTrigger>

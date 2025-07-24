@@ -15,6 +15,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@components/ui/dialog";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@components/ui/tooltip";
 
 //apis
 import { useMutation, useQuery } from "convex/react";
@@ -123,54 +124,27 @@ function highlightJargon(answer: string, jargons: { term: string; description: s
 			
 			const splitParts = part.split(regex);
 			return splitParts.map((p, i) => {
-				// In split with capturing groups, odd indices (1, 3, 5...) contain the matched text
 				const isMatch = splitParts.length > 1 && i % 2 === 1 && p.toLowerCase() === term.toLowerCase();
-				
-				return isMatch ? (
-					<span
-						key={`${term}-${i}-${Math.random()}`}
-						className="jargon-highlight"
-						style={{
-							background: 'rgba(255, 230, 150, 0.7)',
-							borderRadius: '6px',
-							padding: '0 4px',
-							borderBottom: '2px dotted #eab308',
-							cursor: 'pointer',
-							position: 'relative',
-						}}
-						onMouseEnter={e => {
-							// Remove any existing tooltips first
-							document.querySelectorAll('.jargon-tooltip').forEach(t => t.remove());
-							
-							const tooltip = document.createElement('div');
-							tooltip.className = 'jargon-tooltip';
-							tooltip.innerText = description;
-							Object.assign(tooltip.style, {
-								position: 'absolute',
-								left: '0',
-								top: '100%',
-								background: '#222',
-								color: '#fff',
-								padding: '6px 10px',
-								borderRadius: '6px',
-								fontSize: '0.95em',
-								zIndex: 1000,
-								whiteSpace: 'normal',
-								maxWidth: '320px',
-								marginTop: '4px',
-								boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-								wordBreak: 'break-word',
-							});
-							(e.target as HTMLElement).appendChild(tooltip);
-						}}
-						onMouseLeave={e => {
-							const tooltips = (e.target as HTMLElement).querySelectorAll('.jargon-tooltip');
-							tooltips.forEach(t => t.remove());
-						}}
-					>
-						{p}
-					</span>
-				) : p;
+				if (isMatch) {
+					// Use a stateful tooltip for accessibility
+					return (
+						<Tooltip key={`${term}-${i}-${Math.random()}`}>
+							<TooltipTrigger asChild>
+								<span
+									className="jargon-highlight inline-block focus-within:z-50 cursor-pointer bg-yellow-100 border-b-2 border-dotted border-yellow-400 rounded px-1"
+									tabIndex={0}
+									style={{ background: 'rgba(255, 230, 150, 0.7)' }}
+								>
+									{p}
+								</span>
+							</TooltipTrigger>
+							<TooltipContent side="top" className="max-w-xs whitespace-pre-line break-words box-border">
+								{description}
+							</TooltipContent>
+						</Tooltip>
+					);
+				}
+				return p;
 			});
 		});
 	});
@@ -336,7 +310,7 @@ const MiraChatBot: React.FC = () => {
 		useState<RequestHumanInLoop | null>();
 
 	// Agent Personality State
-	const [selectedAgentMode, setSelectedAgentMode] = useState<'tutor' | 'investigator' | 'analyst'>('tutor');
+	const [selectedAgentMode, setSelectedAgentMode] = useState<'tutor' | 'investigator' | 'analyst' | undefined>('tutor');
 	const [agentButtonsDisabled, setAgentButtonsDisabled] = useState(false);
 
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -2742,7 +2716,8 @@ const MiraChatBot: React.FC = () => {
 																	<button
 																		key={q}
 																		onClick={() => handleSend(q, false, true)}
-																		className="bg-white border border-gray-300 rounded px-2 py-1 text-xs hover:bg-gray-100 transition"
+																		className="rounded-full px-3 py-1 bg-white text-gray-800 text-xs font-medium border border-gray-200 hover:bg-gray-100 hover:shadow-sm transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-200"
+																		style={{ boxShadow: '0 1px 4px 0 rgba(0,0,0,0.03)' }}
 																	>
 																		{q}
 																	</button>
