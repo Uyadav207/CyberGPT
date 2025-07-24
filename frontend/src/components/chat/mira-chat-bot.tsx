@@ -823,9 +823,11 @@ const MiraChatBot: React.FC = () => {
 					// Try to create a new chat if none exists
 					try {
 						console.log('Creating new chat with default title...');
+						const titleResponse = await generateTitle(userMessage.message || response.answer);
+						const chatTitle = (titleResponse as { title: string })?.title || "Chat";
 						const newChatResult = await saveChat({
 							userId: String(user?.id || "anonymous"),
-							title: "DDoS Prevention Chat",
+							title: chatTitle,
 						});
 						setCreatedChatId(newChatResult);
 						console.log('New chat created with ID:', newChatResult);
@@ -1130,17 +1132,19 @@ const MiraChatBot: React.FC = () => {
 					// Try to create a new chat if none exists
 					try {
 						console.log('Creating new chat with default title...');
-						const newChatResult = await saveChat({
+						const titleResponse2 = await generateTitle(userMessage.message || response.answer);
+						const chatTitle2 = (titleResponse2 as { title: string })?.title || "Chat";
+						const newChatResult2 = await saveChat({
 							userId: String(user?.id || "anonymous"),
-							title: "DDoS Prevention Chat",
+							title: chatTitle2,
 						});
-						setCreatedChatId(newChatResult);
-						console.log('New chat created with ID:', newChatResult);
+						setCreatedChatId(newChatResult2);
+						console.log('New chat created with ID:', newChatResult2);
 						
 						// Now save the user message (if not already saved)
 						await saveChatMessage({
 							humanInTheLoopId: userMessage.id || uuidv4(),
-							chatId: newChatResult as Id<"chats">,
+							chatId: newChatResult2 as Id<"chats">,
 							sender: userMessage.sender,
 							message: userMessage.message,
 						});
@@ -1175,7 +1179,7 @@ const MiraChatBot: React.FC = () => {
 						
 						await saveEnhancedChatMessage({
 							humanInTheLoopId: botMessage.id || uuidv4(),
-							chatId: newChatResult as Id<"chats">,
+							chatId: newChatResult2 as Id<"chats">,
 							sender: botMessage.sender,
 							message: botMessage.message,
 							Answer: response.answer,
@@ -1199,9 +1203,9 @@ const MiraChatBot: React.FC = () => {
 						
 						// Update URL
 						window.history.pushState(
-							{ path: `/chatbot/${newChatResult}` },
+							{ path: `/chatbot/${newChatResult2}` },
 							"",
-							`/chatbot/${newChatResult}`,
+							`/chatbot/${newChatResult2}`,
 						);
 					} catch (chatCreateError) {
 						console.error('Failed to create new chat:', chatCreateError);
@@ -2444,7 +2448,13 @@ const MiraChatBot: React.FC = () => {
 				sender: "user",
 				isRelatedQuestion: isRelatedQuestion,
 			};
-			setMessages((prev) => [...prev, userMessage]);
+			// Optimistically add the user message only for related question clicks
+			if (isRelatedQuestion) {
+				setMessages((prev) => {
+					if (prev.some(m => m.id === userMessage.id)) return prev;
+					return [...prev, userMessage];
+				});
+			}
 			setInput("");
 			if (createdChatId || chatId) {
 				setFetchChatsRegurlarly(false);
@@ -2556,10 +2566,33 @@ const MiraChatBot: React.FC = () => {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [messages]);
 
+	// Find the index of the last AI message
+	const lastAiIndex = [...messages].reverse().findIndex(m => m.sender === "ai");
+	const lastAiMessageIdx = lastAiIndex === -1 ? -1 : messages.length - 1 - lastAiIndex;
+
+	// Add duplicate ID check before rendering
+	const idSet = new Set();
+	messages.forEach(m => {
+		if (idSet.has(m.id)) {
+			console.warn('Duplicate message id detected:', m.id);
+		}
+		idSet.add(m.id);
+	});
+
+	// Filter out duplicate message IDs before rendering
+	const uniqueMessages: Message[] = [];
+	const seenIds = new Set();
+	for (const msg of messages) {
+		if (!seenIds.has(msg.id)) {
+			uniqueMessages.push(msg);
+			seenIds.add(msg.id);
+		}
+	}
+
 	return (
 		<div className="flex justify-center">
 			<div className="flex flex-col space-y-3 sm:w-3/4 md:w-4/5 lg:w-3/5 h-[89vh] rounded-lg">
-				{messages?.length === 0 ? (
+				{uniqueMessages.length === 0 ? (
 					<div className="flex flex-col items-center justify-end w-full lg:h-1/3 md:h-1 sm:h-full p-4 sm:p-8">
 						<motion.div
 							className="flex flex-col items-center text-center text-xl sm:text-2xl font-semibold mt-4 sm:mt-6 space-y-1 sm:space-y-1"
@@ -2577,7 +2610,7 @@ const MiraChatBot: React.FC = () => {
 						ref={scrollAreaRef}
 						className="flex-1 p-4 w-full overflow-y-hidden"
 					>
-						{messages.map((message, idx) => {
+						{uniqueMessages.map((message, idx) => {
 							const isPendingAction =
 								pendingAction === message.id ||
 								pendingAction === message.humanInTheLoopId;
@@ -2586,7 +2619,7 @@ const MiraChatBot: React.FC = () => {
 							if (isPendingAction && isAISender) {
 								return actionType === "approval" ? (
 									<motion.div
-										key={message.id}
+										key={message.id + '-' + idx}
 										initial={{ opacity: 0, y: 50 }}
 										animate={{ opacity: 1, y: 0 }}
 										exit={{ opacity: 0, y: -50 }}
@@ -2603,7 +2636,7 @@ const MiraChatBot: React.FC = () => {
 									</motion.div>
 								) : actionType === "input" || actionType === "sast-input" ? (
 									<motion.div
-										key={message.id}
+										key={message.id + '-' + idx}
 										initial={{ opacity: 0, y: 50 }}
 										animate={{ opacity: 1, y: 0 }}
 										exit={{ opacity: 0, y: -50 }}
@@ -2620,7 +2653,7 @@ const MiraChatBot: React.FC = () => {
 									</motion.div>
 								) : (
 									<motion.div
-										key={message.id}
+										key={message.id + '-' + idx}
 										initial={{ opacity: 0, y: 50 }}
 										animate={{ opacity: 1, y: 0 }}
 										exit={{ opacity: 0, y: -50 }}
@@ -2647,14 +2680,14 @@ const MiraChatBot: React.FC = () => {
 							const containerClasses = `mb-4  ${isUser ? "text-right" : "text-left"}`;
 
 							// Before rendering related questions:
-							const lastUserMsg = messages.slice(0, idx).reverse().find(m => m.sender === 'user');
+							const lastUserMsg = uniqueMessages.slice(0, idx).reverse().find(m => m.sender === 'user');
 							const userQuestion = lastUserMsg ? lastUserMsg.message : '';
 							const contextKey = (userQuestion + ' ' + message.message).toLowerCase();
 							let relatedQuestions = getRelatedQuestions(
 								userQuestion,
 								message.message,
 								message.reasoningTrace ? JSON.stringify(message.reasoningTrace) : '',
-								messages
+								uniqueMessages
 							);
 							const shownForThisContext = contextToShownQuestions[contextKey] || [];
 							relatedQuestions = relatedQuestions.filter(q => !shownForThisContext.includes(q));
@@ -2683,9 +2716,12 @@ const MiraChatBot: React.FC = () => {
 							}
 							relatedQuestions = relatedQuestions.slice(0, 3);
 
+							// Only show related questions for the very last message if it is an AI message
+							const isLastMessage = idx === uniqueMessages.length - 1;
+
 							return (
 								<motion.div
-									key={message.id}
+									key={message.id + '-' + idx}
 									className={containerClasses}
 									initial={{ opacity: 0 }}
 									animate={{ opacity: 1, y: 0 }}
@@ -2721,11 +2757,12 @@ const MiraChatBot: React.FC = () => {
 													{message.sourceLinks && message.sourceLinks.length > 0 && (
 														<SourceLinks sourceLinks={message.sourceLinks} />
 													)}
-													{!isUser && (
+													{/* Only show related questions for the very last message if it is an AI message */}
+													{!isUser && isLastMessage && (
 														<div className="mt-3 flex flex-wrap gap-2">
 															{relatedQuestions.map((q, i) => (
 																<motion.button
-																	key={q}
+																	key={`${message.id}-${q}-${i}`}
 																	onClick={() => handleSend(q, false, true)}
 																	className="rounded-lg px-3 py-1.5 bg-white border border-gray-300 text-gray-700 text-xs sm:text-sm font-medium hover:bg-gray-50 hover:shadow-sm transition-shadow focus:outline-none focus:ring-2 focus:ring-indigo-400"
 																	style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
