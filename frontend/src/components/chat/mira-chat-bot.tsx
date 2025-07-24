@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { v4 as uuidv4 } from "uuid";
+import { FaRegLightbulb } from 'react-icons/fa';
+import { FaChevronDown, FaChevronRight } from 'react-icons/fa';
 
 //components
 import { ScrollArea } from "@components/ui/scroll-area";
@@ -382,6 +384,9 @@ const MiraChatBot: React.FC = () => {
 		fetchChatsRegurlarly && isValidChatId ? { chatId: chatId } : "skip",
 	);
 
+	// Add state to track expanded reasoning per message
+	const [expandedReasoning, setExpandedReasoning] = useState<{ [id: string]: boolean }>({});
+
 	// biome-ignore lint/correctness/useExhaustiveDependencies: all dependencies not needed
 	useEffect(() => {
 		setChatsLoader(true);
@@ -431,8 +436,11 @@ const MiraChatBot: React.FC = () => {
 						? Object.entries(chat.Jargons).map(([term, description]) => ({ term, description }))
 						: undefined;
 					
-					// Convert reasoning trace if available
-					const reasoningTrace = chat.Reasoning?.trace || undefined;
+					// Map reasoningTrace to narrative if present (from DB Reasoning field or trace)
+					let reasoningTrace = chat.Reasoning ||
+						((chat as any).trace && typeof (chat as any).trace[0]?.narrative === 'string'
+							? (chat as any).trace[0].narrative
+							: (chat as any).trace || undefined);
 					
 					// Create CVE descriptions map from Info if available
 					const cveDescriptionsMap = chat.Info?.cve_id 
@@ -724,8 +732,15 @@ const MiraChatBot: React.FC = () => {
 								return acc;
 							}, {}) : {};
 						
-						const reasoningObject = response.reasoningTrace ? 
-							{ trace: response.reasoningTrace } : {};
+						// Always extract the summary narrative as a string for Reasoning
+						let reasoningString: string | undefined = undefined;
+						if (typeof response.trace === 'string') {
+							reasoningString = response.trace;
+						} else if (Array.isArray(response.trace) && response.trace[0]?.narrative) {
+							reasoningString = response.trace[0].narrative;
+						} else if (response.trace && typeof response.trace.narrative === 'string') {
+							reasoningString = response.trace.narrative;
+						}
 						
 						// Enhanced Info field population with context data
 						const cveIds = Object.keys(response.cveDescriptionsMap || {});
@@ -742,11 +757,13 @@ const MiraChatBot: React.FC = () => {
 						// Get mitigation from context data
 						const mitigation = response.contextData?.mitigations?.[0] || "Apply security patches and follow vendor recommendations";
 						
-						const sources = response.reasoningTrace?.map((step: { step: string; message: string }) => step.step).filter(Boolean) || [];
+						const sources = response.reasoningTrace && Array.isArray(response.reasoningTrace)
+							? response.reasoningTrace.map((step: { step: string; message: string }) => step.step).filter(Boolean)
+							: [];
 						
 						console.log('Prepared enhanced data:', {
 							jargonsObject,
-							reasoningObject,
+							reasoningString,
 							sourceLinks: response.sourceLinks,
 							cveInfo: mainCveId ? { cve_id: mainCveId, cve_desc: mainCveDesc, mitigation } : response.contextData ? {
 								concept: response.contextData.concept,
@@ -765,7 +782,7 @@ const MiraChatBot: React.FC = () => {
 							sender: botMessage.sender,
 							message: botMessage.message,
 							Answer: response.answer,
-							Reasoning: reasoningObject,
+							Reasoning: reasoningString, // Always a string summary
 							Sources: sources,
 							SourceLinks: response.sourceLinks || [],
 							Jargons: jargonsObject,
@@ -848,8 +865,15 @@ const MiraChatBot: React.FC = () => {
 								return acc;
 							}, {}) : {};
 						
-						const reasoningObject = response.reasoningTrace ? 
-							{ trace: response.reasoningTrace } : {};
+						// Always extract the summary narrative as a string for Reasoning
+						let reasoningString: string | undefined = undefined;
+						if (typeof response.trace === 'string') {
+							reasoningString = response.trace;
+						} else if (Array.isArray(response.trace) && response.trace[0]?.narrative) {
+							reasoningString = response.trace[0].narrative;
+						} else if (response.trace && typeof response.trace.narrative === 'string') {
+							reasoningString = response.trace.narrative;
+						}
 						
 						// Enhanced Info field population with context data (for new chat)
 						const cveIds = Object.keys(response.cveDescriptionsMap || {});
@@ -866,7 +890,9 @@ const MiraChatBot: React.FC = () => {
 						// Get mitigation from context data
 						const mitigation = response.contextData?.mitigations?.[0] || "Apply security patches and follow vendor recommendations";
 						
-						const sources = response.reasoningTrace?.map((step: { step: string; message: string }) => step.step).filter(Boolean) || [];
+						const sources = response.reasoningTrace && Array.isArray(response.reasoningTrace)
+							? response.reasoningTrace.map((step: { step: string; message: string }) => step.step).filter(Boolean)
+							: [];
 						
 						await saveEnhancedChatMessage({
 							humanInTheLoopId: botMessage.id || uuidv4(),
@@ -874,7 +900,7 @@ const MiraChatBot: React.FC = () => {
 							sender: botMessage.sender,
 							message: botMessage.message,
 							Answer: response.answer,
-							Reasoning: reasoningObject,
+							Reasoning: reasoningString, // Always a string summary
 							Sources: sources,
 							SourceLinks: response.sourceLinks || [],
 							Jargons: jargonsObject,
@@ -999,11 +1025,18 @@ const MiraChatBot: React.FC = () => {
 					jargons: response.jargons
 				});
 				
+				const getReasoningString = (trace: any, fallback: any) => {
+					if (typeof trace === 'string') return trace;
+					if (Array.isArray(trace) && trace[0]?.narrative) return trace[0].narrative;
+					if (trace && typeof trace.narrative === 'string') return trace.narrative;
+					return typeof fallback === 'string' ? fallback : '';
+				};
+				
 				const botMessage: Message = {
 					id: uuidv4(),
 					message: response.answer,
 					sender: 'ai',
-					reasoningTrace: response.reasoningTrace,
+					reasoningTrace: getReasoningString(response.trace, response.reasoningTrace),
 					jargons: response.jargons,
 					cveDescriptionsMap: response.cveDescriptionsMap,
 					sourceLinks: response.sourceLinks || [],
@@ -1033,8 +1066,15 @@ const MiraChatBot: React.FC = () => {
 								return acc;
 							}, {}) : {};
 						
-						const reasoningObject = response.reasoningTrace ? 
-							{ trace: response.reasoningTrace } : {};
+						// Always extract the summary narrative as a string for Reasoning
+						let reasoningString: string | undefined = undefined;
+						if (typeof response.trace === 'string') {
+							reasoningString = response.trace;
+						} else if (Array.isArray(response.trace) && response.trace[0]?.narrative) {
+							reasoningString = response.trace[0].narrative;
+						} else if (response.trace && typeof response.trace.narrative === 'string') {
+							reasoningString = response.trace.narrative;
+						}
 						
 						// Enhanced Info field population with context data
 						const cveIds = Object.keys(response.cveDescriptionsMap || {});
@@ -1051,11 +1091,13 @@ const MiraChatBot: React.FC = () => {
 						// Get mitigation from context data
 						const mitigation = response.contextData?.mitigations?.[0] || "Apply security patches and follow vendor recommendations";
 						
-						const sources = response.reasoningTrace?.map((step: { step: string; message: string }) => step.step).filter(Boolean) || [];
+						const sources = response.reasoningTrace && Array.isArray(response.reasoningTrace)
+							? response.reasoningTrace.map((step: { step: string; message: string }) => step.step).filter(Boolean)
+							: [];
 						
 						console.log('Prepared enhanced data:', {
 							jargonsObject,
-							reasoningObject,
+							reasoningString,
 							sourceLinks: response.sourceLinks,
 							cveInfo: mainCveId ? { cve_id: mainCveId, cve_desc: mainCveDesc, mitigation } : response.contextData ? {
 								concept: response.contextData.concept,
@@ -1074,7 +1116,7 @@ const MiraChatBot: React.FC = () => {
 							sender: botMessage.sender,
 							message: botMessage.message,
 							Answer: response.answer,
-							Reasoning: reasoningObject,
+							Reasoning: reasoningString, // Always a string summary
 							Sources: sources,
 							SourceLinks: response.sourceLinks || [],
 							Jargons: jargonsObject,
@@ -1096,35 +1138,35 @@ const MiraChatBot: React.FC = () => {
 						
 						await saveEnhancedChatMessage(enhancedData);
 						console.log('AI response saved successfully with enhanced data');
-									} catch (saveError) {
-					console.error('Failed to save AI response with enhanced data:', saveError);
-					console.error('Save error details:', saveError);
-					console.error('Enhanced data that failed to save:', {
-						humanInTheLoopId: botMessage.id || uuidv4(),
-						chatId: currentChatId,
-						sender: botMessage.sender,
-						message: botMessage.message,
-						Answer: response.answer,
-						hasSourceLinks: !!(response.sourceLinks && response.sourceLinks.length > 0),
-						hasJargons: !!(response.jargons && response.jargons.length > 0),
-						hasDynamicTag: !!response.dynamicTag,
-						hasContextData: !!response.contextData
-					});
-					
-					// Fallback: try saving with basic saveChatMessage
-					try {
-						console.log('Attempting fallback save with basic saveChatMessage...');
-						await saveChatMessage({
+					} catch (saveError) {
+						console.error('Failed to save AI response with enhanced data:', saveError);
+						console.error('Save error details:', saveError);
+						console.error('Enhanced data that failed to save:', {
 							humanInTheLoopId: botMessage.id || uuidv4(),
-							chatId: currentChatId as Id<"chats">,
+							chatId: currentChatId,
 							sender: botMessage.sender,
 							message: botMessage.message,
+							Answer: response.answer,
+							hasSourceLinks: !!(response.sourceLinks && response.sourceLinks.length > 0),
+							hasJargons: !!(response.jargons && response.jargons.length > 0),
+							hasDynamicTag: !!response.dynamicTag,
+							hasContextData: !!response.contextData
 						});
-						console.log('Fallback save successful');
-					} catch (fallbackError) {
-						console.error('Fallback save also failed:', fallbackError);
+						
+						// Fallback: try saving with basic saveChatMessage
+						try {
+							console.log('Attempting fallback save with basic saveChatMessage...');
+							await saveChatMessage({
+								humanInTheLoopId: botMessage.id || uuidv4(),
+								chatId: currentChatId as Id<"chats">,
+								sender: botMessage.sender,
+								message: botMessage.message,
+							});
+							console.log('Fallback save successful');
+						} catch (fallbackError) {
+							console.error('Fallback save also failed:', fallbackError);
+						}
 					}
-				}
 				} else {
 					console.log('No chatId available, creating new chat first...');
 					console.log('User ID for new chat:', user?.id);
@@ -1157,8 +1199,15 @@ const MiraChatBot: React.FC = () => {
 								return acc;
 							}, {}) : {};
 						
-						const reasoningObject = response.reasoningTrace ? 
-							{ trace: response.reasoningTrace } : {};
+						// Always extract the summary narrative as a string for Reasoning
+						let reasoningString: string | undefined = undefined;
+						if (typeof response.trace === 'string') {
+							reasoningString = response.trace;
+						} else if (Array.isArray(response.trace) && response.trace[0]?.narrative) {
+							reasoningString = response.trace[0].narrative;
+						} else if (response.trace && typeof response.trace.narrative === 'string') {
+							reasoningString = response.trace.narrative;
+						}
 						
 						// Enhanced Info field population with context data (for new chat)
 						const cveIds = Object.keys(response.cveDescriptionsMap || {});
@@ -1175,7 +1224,9 @@ const MiraChatBot: React.FC = () => {
 						// Get mitigation from context data
 						const mitigation = response.contextData?.mitigations?.[0] || "Apply security patches and follow vendor recommendations";
 						
-						const sources = response.reasoningTrace?.map((step: { step: string; message: string }) => step.step).filter(Boolean) || [];
+						const sources = response.reasoningTrace && Array.isArray(response.reasoningTrace)
+							? response.reasoningTrace.map((step: { step: string; message: string }) => step.step).filter(Boolean)
+							: [];
 						
 						await saveEnhancedChatMessage({
 							humanInTheLoopId: botMessage.id || uuidv4(),
@@ -1183,7 +1234,7 @@ const MiraChatBot: React.FC = () => {
 							sender: botMessage.sender,
 							message: botMessage.message,
 							Answer: response.answer,
-							Reasoning: reasoningObject,
+							Reasoning: reasoningString, // Always a string summary
 							Sources: sources,
 							SourceLinks: response.sourceLinks || [],
 							Jargons: jargonsObject,
@@ -2736,13 +2787,39 @@ const MiraChatBot: React.FC = () => {
 										)}
 
 										<div className={`${messageClasses}`}>
+											{/* Reasoning summary indicator (before every message if present) */}
+											{message.reasoningTrace && (
+												<div className="flex items-center mb-1 text-xs text-blue-600 dark:text-blue-300 cursor-pointer select-none"
+													onClick={() => setExpandedReasoning(prev => ({ ...prev, [String(message.id)]: !prev[String(message.id)] }))}
+													tabIndex={0}
+													role="button"
+													aria-expanded={!!expandedReasoning[String(message.id)]}
+													aria-controls={`reasoning-summary-${String(message.id)}`}
+												>
+													<FaRegLightbulb className="mr-1" />
+													<span>Reasoning available</span>
+													{typeof message.durationSec === 'number' && (
+														<span className="ml-2 text-gray-500">Thought for {Math.round(message.durationSec)}s</span>
+													)}
+													{expandedReasoning[String(message.id)] ? (
+														<FaChevronDown className="ml-1" />
+													) : (
+														<FaChevronRight className="ml-1" />
+													)}
+												</div>
+											)}
+											{message.reasoningTrace && expandedReasoning[String(message.id)] && (
+												<div id={`reasoning-summary-${String(message.id)}`} className="mb-2 p-2 bg-blue-50 dark:bg-blue-900 rounded text-xs text-blue-900 dark:text-blue-100 border border-blue-200 dark:border-blue-700">
+													{/* Render reasoningTrace as string */}
+													{Array.isArray(message.reasoningTrace)
+														? message.reasoningTrace.map(step => String(step)).join(' ')
+														: (typeof message.reasoningTrace === 'string' ? message.reasoningTrace : String(message.reasoningTrace))}
+												</div>
+											)}
 											{isUser ? (
 												message.message
 											) : (
 												<>
-													{message.reasoningTrace && message.reasoningTrace.length > 0 && (
-														<ReasoningTrace className="mb-2" trace={message.reasoningTrace} durationSec={message.durationSec} />
-													)}
 													{(() => {
 														console.log('Rendering message:', {
 															sender: message.sender,
