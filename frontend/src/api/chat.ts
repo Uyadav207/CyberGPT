@@ -157,8 +157,11 @@ const chatSummaryOpenAI = async (payload: { messages: string[] }) => {
 };
 
 // Add a new function to call the backend chatWithJargon endpoint
-export const chatWithJargon = async (payload: { message: string }) => {
-  const response = await fetch(`/api/chat/with-jargon`, {
+export const chatWithJargon = async (payload: {
+  message: string;
+  agentPersonality?: string;
+}) => {
+  const response = await fetch(`${BASE_URL}/chat/with-jargon`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),

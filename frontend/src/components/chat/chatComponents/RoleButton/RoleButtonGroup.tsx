@@ -37,17 +37,19 @@ const iconMap = {
 
 interface RoleButtonGroupProps {
 	handleActionClick: (action: string, useRAG?: boolean) => void;
+	selectedAgentMode: 'tutor' | 'investigator' | 'analyst';
+	onAgentModeChange: (mode: 'tutor' | 'investigator' | 'analyst') => void;
+	agentButtonsDisabled: boolean;
 }
 
 export default function RoleButtonGroup({
 	handleActionClick,
+	selectedAgentMode,
+	onAgentModeChange,
+	agentButtonsDisabled,
 }: RoleButtonGroupProps): JSX.Element {
-	const leftButtons = tooltipData.filter(
-		(item): item is TooltipDataItem => !item.iconOnly,
-	);
-	const rightButtons = tooltipData.filter(
-		(item): item is TooltipDataItem => item.iconOnly === true,
-	);
+	const leftButtons = tooltipData.slice(0, 3); // Tutor, Investigator, Analyst
+	const rightButtons = tooltipData.slice(3); // More, Submit
 
 	interface TooltipDataItem {
 		label: string;
@@ -59,22 +61,38 @@ export default function RoleButtonGroup({
 	return (
 		<TooltipProvider>
 			<div className="flex justify-between items-center mt-3 flex-wrap">
-				{/* Left Group */}
+				{/* Left Group - Agent Personality Buttons */}
 				<div className="flex space-x-2">
-					{leftButtons.map(({ label, icon, tooltip }) => (
-						<Tooltip key={label}>
-							<TooltipTrigger asChild>
-								{/* biome-ignore lint/a11y/useButtonType: <explanation> */}
-								<button className="flex items-center space-x-1 px-3 py-1 rounded-full border border-gray-300 text-gray-700 hover:bg-gray-200">
-									{iconMap[icon as keyof typeof iconMap]}
-									<span className="text-[#5E5E5D] text-sm">{label}</span>
-								</button>
-							</TooltipTrigger>
-							<TooltipContent>
-								<p>{tooltip}</p>
-							</TooltipContent>
-						</Tooltip>
-					))}
+					{leftButtons.map(({ label, icon, tooltip }) => {
+						const agentMode = label.toLowerCase() as 'tutor' | 'investigator' | 'analyst';
+						const isSelected = selectedAgentMode === agentMode;
+						
+						return (
+							<Tooltip key={label}>
+								<TooltipTrigger asChild>
+									<button 
+										onClick={() => !agentButtonsDisabled && onAgentModeChange(agentMode)}
+										disabled={agentButtonsDisabled}
+										className={`flex items-center space-x-1 px-3 py-1 rounded-full border transition-all duration-200 ${
+											isSelected 
+												? 'border-[#7156DB] bg-[#7156DB] text-white' 
+												: 'border-gray-300 text-gray-700 hover:bg-gray-200'
+										} ${
+											agentButtonsDisabled 
+												? 'opacity-50 cursor-not-allowed' 
+												: 'cursor-pointer'
+										}`}
+									>
+										{iconMap[icon as keyof typeof iconMap]}
+										<span className="text-sm">{label}</span>
+									</button>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>{tooltip} {isSelected ? '(Active)' : ''}</p>
+								</TooltipContent>
+							</Tooltip>
+						);
+					})}
 				</div>
 
 				{/* Right Group */}

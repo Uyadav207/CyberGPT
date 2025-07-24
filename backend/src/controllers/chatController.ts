@@ -94,7 +94,8 @@ export class ChatController {
   // Add a new endpoint for chat with jargon extraction
   async chatWithJargon(c: Context) {
     try {
-      const { message } = await c.req.json();
+      const { message, agentPersonality } = await c.req.json();
+      console.log("DEBUG: Received agent personality:", agentPersonality);
       const {
         answer,
         reasoningTrace,
@@ -102,7 +103,7 @@ export class ChatController {
         cveDescriptionsMap,
         dynamicTag,
         contextData,
-      } = await graphRAGAnswer(message);
+      } = await graphRAGAnswer(message, agentPersonality);
       return c.json({
         answer,
         reasoningTrace,
