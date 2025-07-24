@@ -34,9 +34,9 @@ export const saveEnhancedChatMessage = mutation({
     sender: v.union(v.literal("user"), v.literal("ai")),
     message: v.string(),
     Answer: v.optional(v.string()),
-    Reasoning: v.optional(v.object({})),
+    Reasoning: v.optional(v.any()),
     Sources: v.optional(v.array(v.string())),
-    Jargons: v.optional(v.object({})),
+    Jargons: v.optional(v.any()),
     Info: v.optional(
       v.object({
         cve_id: v.optional(v.string()),
@@ -63,6 +63,15 @@ export const saveEnhancedChatMessage = mutation({
       tags,
     }
   ) => {
+    console.log("saveEnhancedChatMessage called with:", {
+      chatId,
+      sender,
+      hasAnswer: !!Answer,
+      hasJargons: !!Jargons,
+      hasInfo: !!Info,
+      hasReasoning: !!Reasoning,
+      jargonsKeys: Jargons ? Object.keys(Jargons) : [],
+    });
     const now = Date.now();
     const result = await ctx.db.insert("chatHistory", {
       chatId,

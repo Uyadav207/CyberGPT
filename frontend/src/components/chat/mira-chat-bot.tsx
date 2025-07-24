@@ -298,6 +298,7 @@ const MiraChatBot: React.FC = () => {
 	// Get greeting based on the detected time zone
 	// const greeting = getGreeting(timeZone);
 	const saveChatMessage = useMutation(api.chats.saveChatMessage);
+	const saveEnhancedChatMessage = useMutation(api.chats.saveEnhancedChatMessage);
 	const saveChat = useMutation(api.chats.saveChat);
 	const saveFile = useMutation(api.reports.addReport);
 	const saveSummary = useMutation(api.summaries.saveSummary);
@@ -347,14 +348,46 @@ const MiraChatBot: React.FC = () => {
 	// biome-ignore lint/correctness/useExhaustiveDependencies: all dependencies not needed
 	useEffect(() => {
 		if (chatData) {
+			console.log('Loading chat history from database:', chatData);
 			const chatHistory: Message[] = chatData.map(
-				(chat: ChatHistory): Message => ({
-					id: chat._id,
-					humanInTheLoopId: chat.humanInTheLoopId,
-					chatId: chat.chatId,
-					message: chat.message,
-					sender: chat.sender as "user" | "ai",
-				}),
+				(chat: ChatHistory): Message => {
+					// Debug: Check if enhanced data exists
+					if (chat.sender === "ai") {
+						console.log('AI message enhanced data:', {
+							hasJargons: !!chat.Jargons,
+							jargonsKeys: chat.Jargons ? Object.keys(chat.Jargons) : [],
+							hasReasoning: !!chat.Reasoning,
+							hasInfo: !!chat.Info
+						});
+					}
+					
+					// Convert Jargons object back to array format for frontend
+					const jargons = chat.Jargons 
+						? Object.entries(chat.Jargons).map(([term, description]) => ({ term, description }))
+						: undefined;
+					
+					// Convert reasoning trace if available
+					const reasoningTrace = chat.Reasoning?.trace || undefined;
+					
+					// Create CVE descriptions map from Info if available
+					const cveDescriptionsMap = chat.Info?.cve_id 
+						? { [chat.Info.cve_id]: chat.Info.cve_desc || 'CVE description not available' }
+						: undefined;
+					
+					return {
+						id: chat._id,
+						humanInTheLoopId: chat.humanInTheLoopId,
+						chatId: chat.chatId,
+						message: chat.message,
+						sender: chat.sender as "user" | "ai",
+						// Include enhanced fields for AI messages
+						...(chat.sender === "ai" && {
+							jargons,
+							reasoningTrace,
+							cveDescriptionsMap,
+						}),
+					};
+				},
 			);
 
 			setMessages(chatHistory);
@@ -601,8 +634,20 @@ const MiraChatBot: React.FC = () => {
 				console.log('Backend response:', {
 					jargons: response.jargons,
 					cveDescriptionsMap: response.cveDescriptionsMap,
-					answerLength: response.answer?.length
+					answerLength: response.answer?.length,
+					dynamicTag: response.dynamicTag
 				});
+				console.log('Full backend response:', response);
+				console.log('Dynamic tag validation:', {
+					exists: !!response.dynamicTag,
+					value: response.dynamicTag,
+					type: typeof response.dynamicTag,
+					fallback: response.dynamicTag || "cybersecurity_general"
+				});
+				console.log('Context data from backend:', response.contextData);
+				
+				// Test if saveEnhancedChatMessage function exists
+				console.log('saveEnhancedChatMessage function:', typeof saveEnhancedChatMessage);
 				const botMessage: Message = {
 					id: uuidv4(),
 					message: response.answer,
@@ -611,6 +656,185 @@ const MiraChatBot: React.FC = () => {
 					jargons: response.jargons,
 					cveDescriptionsMap: response.cveDescriptionsMap,
 				};
+				
+				// Save AI response to database
+				const currentChatId = createdChatId || chatId;
+				console.log('Debug - Chat IDs:', { createdChatId, chatId, currentChatId });
+				
+				if (currentChatId) {
+					try {
+						console.log('Saving AI response to database with chatId:', currentChatId);
+						
+						// Prepare enhanced data for AI response
+						const jargonsObject = response.jargons ? 
+							response.jargons.reduce((acc: Record<string, string>, jargon: { term: string; description: string }) => {
+								acc[jargon.term] = jargon.description;
+								return acc;
+							}, {}) : {};
+						
+						const reasoningObject = response.reasoningTrace ? 
+							{ trace: response.reasoningTrace } : {};
+						
+						// Enhanced Info field population with context data
+						const cveIds = Object.keys(response.cveDescriptionsMap || {});
+						const contextCveIds = response.contextData?.cveIds || [];
+						const allCveIds = [...cveIds, ...contextCveIds.filter((id: string) => !cveIds.includes(id))];
+						
+						const mainCveId = allCveIds.length > 0 ? allCveIds[0] : undefined;
+						const mainCveDesc = mainCveId ? (
+							response.cveDescriptionsMap?.[mainCveId] || 
+							response.contextData?.cveDescriptions?.[0] ||
+							"CVE description not available"
+						) : undefined;
+						
+						// Get mitigation from context data
+						const mitigation = response.contextData?.mitigations?.[0] || "Apply security patches and follow vendor recommendations";
+						
+						const sources = response.reasoningTrace?.map((step: { step: string; message: string }) => step.step).filter(Boolean) || [];
+						
+						console.log('Prepared enhanced data:', {
+							jargonsObject,
+							reasoningObject,
+							cveInfo: mainCveId ? { cve_id: mainCveId, cve_desc: mainCveDesc, mitigation } : response.contextData ? {
+								concept: response.contextData.concept,
+								risk_level: response.contextData.riskLevels?.[0],
+								mitigation: mitigation
+							} : undefined,
+							contextData: response.contextData,
+							sources,
+							jargonsCount: Object.keys(jargonsObject).length
+						});
+						
+						// Use enhanced save for AI response with all the extra fields
+						const enhancedData = {
+							humanInTheLoopId: botMessage.id || uuidv4(),
+							chatId: currentChatId as Id<"chats">,
+							sender: botMessage.sender,
+							message: botMessage.message,
+							Answer: response.answer,
+							Reasoning: reasoningObject,
+							Sources: sources,
+							Jargons: jargonsObject,
+							Info: mainCveId ? {
+								cve_id: mainCveId,
+								cve_desc: mainCveDesc,
+								mitigation: mitigation
+							} : (response.contextData && (response.contextData.concept || response.contextData.riskLevels?.[0])) ? {
+								cve_id: response.contextData.concept || "General Security Topic",
+								cve_desc: `Risk Level: ${response.contextData.riskLevels?.[0] || "Unknown"}. Topic: ${response.contextData.concept || "Security analysis"}`,
+								mitigation: mitigation
+							} : undefined,
+							Severity: "Medium",
+							tags: [response.dynamicTag || "cybersecurity_general"]
+						};
+						
+						console.log('About to save with data:', enhancedData);
+						console.log('Tag being saved to database:', enhancedData.tags);
+						
+						await saveEnhancedChatMessage(enhancedData);
+						console.log('AI response saved successfully with enhanced data');
+					} catch (saveError) {
+						console.error('Failed to save AI response with enhanced data:', saveError);
+						console.error('Save error details:', saveError);
+						
+						// Fallback: try saving with basic saveChatMessage
+						try {
+							console.log('Attempting fallback save with basic saveChatMessage...');
+							await saveChatMessage({
+								humanInTheLoopId: botMessage.id || uuidv4(),
+								chatId: currentChatId as Id<"chats">,
+								sender: botMessage.sender,
+								message: botMessage.message,
+							});
+							console.log('Fallback save successful');
+						} catch (fallbackError) {
+							console.error('Fallback save also failed:', fallbackError);
+						}
+					}
+				} else {
+					console.log('No chatId available, AI response not saved');
+					console.log('Need to create a new chat first...');
+					
+					// Try to create a new chat if none exists
+					try {
+						const titleResponse = await generateTitle(response.answer);
+						const newChatResult = await saveChat({
+							userId: String((titleResponse as { userId: string }).userId || user?.id || "anonymous"),
+							title: (titleResponse as { title: string })?.title || "New Chat",
+						});
+						setCreatedChatId(newChatResult);
+						console.log('New chat created with ID:', newChatResult);
+						
+						// Now save the user message (if not already saved)
+						await saveChatMessage({
+							humanInTheLoopId: userMessage.id || uuidv4(),
+							chatId: newChatResult as Id<"chats">,
+							sender: userMessage.sender,
+							message: userMessage.message,
+						});
+						console.log('User message saved to new chat');
+						
+						// Save the AI response with enhanced data
+						const jargonsObject = response.jargons ? 
+							response.jargons.reduce((acc: Record<string, string>, jargon: { term: string; description: string }) => {
+								acc[jargon.term] = jargon.description;
+								return acc;
+							}, {}) : {};
+						
+						const reasoningObject = response.reasoningTrace ? 
+							{ trace: response.reasoningTrace } : {};
+						
+						// Enhanced Info field population with context data (for new chat)
+						const cveIds = Object.keys(response.cveDescriptionsMap || {});
+						const contextCveIds = response.contextData?.cveIds || [];
+						const allCveIds = [...cveIds, ...contextCveIds.filter((id: string) => !cveIds.includes(id))];
+						
+						const mainCveId = allCveIds.length > 0 ? allCveIds[0] : undefined;
+						const mainCveDesc = mainCveId ? (
+							response.cveDescriptionsMap?.[mainCveId] || 
+							response.contextData?.cveDescriptions?.[0] ||
+							"CVE description not available"
+						) : undefined;
+						
+						// Get mitigation from context data
+						const mitigation = response.contextData?.mitigations?.[0] || "Apply security patches and follow vendor recommendations";
+						
+						const sources = response.reasoningTrace?.map((step: { step: string; message: string }) => step.step).filter(Boolean) || [];
+						
+						await saveEnhancedChatMessage({
+							humanInTheLoopId: botMessage.id || uuidv4(),
+							chatId: newChatResult as Id<"chats">,
+							sender: botMessage.sender,
+							message: botMessage.message,
+							Answer: response.answer,
+							Reasoning: reasoningObject,
+							Sources: sources,
+							Jargons: jargonsObject,
+							Info: mainCveId ? {
+								cve_id: mainCveId,
+								cve_desc: mainCveDesc,
+								mitigation: mitigation
+							} : (response.contextData && (response.contextData.concept || response.contextData.riskLevels?.[0])) ? {
+								cve_id: response.contextData.concept || "General Security Topic",
+								cve_desc: `Risk Level: ${response.contextData.riskLevels?.[0] || "Unknown"}. Topic: ${response.contextData.concept || "Security analysis"}`,
+								mitigation: mitigation
+							} : undefined,
+							Severity: "Medium",
+							tags: [response.dynamicTag || "cybersecurity_general"]
+						});
+						console.log('AI response saved to new chat with enhanced data');
+						
+						// Update URL
+						window.history.pushState(
+							{ path: `/chatbot/${newChatResult}` },
+							"",
+							`/chatbot/${newChatResult}`,
+						);
+					} catch (chatCreateError) {
+						console.error('Failed to create new chat:', chatCreateError);
+					}
+				}
+				
 				setMessages((prev) => [...prev, botMessage]);
 				setIsLoading(false);
 			} catch (error) {

@@ -29,15 +29,30 @@ export class ChatController {
     try {
       const { message } = await c.req.json();
       // Use graphRAGAnswer for the main chat flow
-      const { answer, reasoningTrace, jargons, cveDescriptionsMap } =
-        await graphRAGAnswer(message);
+      const {
+        answer,
+        reasoningTrace,
+        jargons,
+        cveDescriptionsMap,
+        dynamicTag,
+        contextData,
+      } = await graphRAGAnswer(message);
       console.log("DEBUG: Returning chat answer with jargons:", {
         answer,
         reasoningTrace,
         jargons,
         cveDescriptionsMap,
+        dynamicTag,
+        contextData,
       });
-      return c.json({ answer, reasoningTrace, jargons, cveDescriptionsMap });
+      return c.json({
+        answer,
+        reasoningTrace,
+        jargons,
+        cveDescriptionsMap,
+        dynamicTag,
+        contextData,
+      });
     } catch (error) {
       console.error("Controller error:", error);
       const errorMessage =
@@ -80,8 +95,22 @@ export class ChatController {
   async chatWithJargon(c: Context) {
     try {
       const { message } = await c.req.json();
-      const { answer, reasoningTrace, jargons, cveDescriptionsMap } = await graphRAGAnswer(message);
-      return c.json({ answer, reasoningTrace, jargons, cveDescriptionsMap });
+      const {
+        answer,
+        reasoningTrace,
+        jargons,
+        cveDescriptionsMap,
+        dynamicTag,
+        contextData,
+      } = await graphRAGAnswer(message);
+      return c.json({
+        answer,
+        reasoningTrace,
+        jargons,
+        cveDescriptionsMap,
+        dynamicTag,
+        contextData,
+      });
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";

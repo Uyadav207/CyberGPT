@@ -18,6 +18,18 @@ export interface ChatHistory {
   message: string;
   sender: string;
   createdAt: string;
+  // Enhanced fields
+  Answer?: string;
+  Reasoning?: any;
+  Sources?: string[];
+  Jargons?: Record<string, string>;
+  Info?: {
+    cve_id?: string;
+    cve_desc?: string;
+    mitigation?: string;
+  };
+  Severity?: string;
+  tags?: string[];
 }
 
 export interface ReasoningStep {

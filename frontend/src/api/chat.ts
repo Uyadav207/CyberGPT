@@ -30,6 +30,14 @@ interface GraphRAGResponse {
   }>;
   jargons?: { term: string; description: string }[];
   cveDescriptionsMap?: Record<string, string>;
+  dynamicTag?: string;
+  contextData?: {
+    cveIds: string[];
+    cveDescriptions: string[];
+    riskLevels: string[];
+    mitigations: string[];
+    concept: string;
+  };
 }
 
 // New GraphRAG chat function
