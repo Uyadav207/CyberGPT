@@ -22,6 +22,7 @@ interface ReasoningStep {
 interface ReasoningTraceProps {
   trace: ReasoningStep[];
   className?: string;
+  durationSec?: number;
 }
 
 const getStepIcon = (step: string) => {
@@ -127,6 +128,63 @@ const getSourceCount = (trace: ReasoningStep[]) => {
   return sources.length;
 };
 
-export const ReasoningTrace: React.FC<ReasoningTraceProps> = () => {
-  return null;
+export const ReasoningTrace: React.FC<ReasoningTraceProps> = ({ trace, className, durationSec }) => {
+  const [expanded, setExpanded] = useState<boolean>(true);
+
+  // Auto-collapse after 6 seconds like ChatGPT reasoning tab behaviour
+  React.useEffect(() => {
+    if (!expanded) return;
+    const timer = setTimeout(() => setExpanded(false), 6000);
+    return () => clearTimeout(timer);
+  }, [expanded]);
+
+  if (!trace || trace.length === 0) return null;
+
+  return (
+    <div className={`w-full ${className ?? ""}`}>
+      {/* Toggle Header */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-1 text-gray-700 dark:text-gray-200 text-sm font-medium mb-2 focus:outline-none"
+      >
+        <span>
+          Thought for {durationSec !== undefined ? `${durationSec.toFixed(1)}s` : 'a moment'}
+        </span>
+        {expanded ? (
+          <ChevronDown className="w-4 h-4" />
+        ) : (
+          <ChevronRight className="w-4 h-4" />
+        )}
+      </button>
+
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.ol
+            key="timeline"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.25 }}
+            className="relative border-l border-gray-200 dark:border-gray-700 ml-4 pl-6 space-y-3 sm:space-y-4 text-[13px] leading-relaxed"
+          >
+            {trace.map((step, idx) => (
+              <li key={idx} className="relative">
+                <span className="absolute -left-[18px] top-1.5 w-2 h-2 rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-primary-950" />
+                <span className="text-gray-700 dark:text-gray-300">
+                  {createNarrativeMessage(step, idx, trace)}
+                </span>
+              </li>
+            ))}
+
+            {/* Done item */}
+            <li className="relative flex items-center gap-2 text-gray-700 dark:text-gray-300">
+              <span className="absolute -left-[18px] top-1.5 w-2 h-2 rounded-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-primary-950" />
+              <CheckCircle className="w-4 h-4 text-green-600" />
+              <span>Done</span>
+            </li>
+          </motion.ol>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }; 

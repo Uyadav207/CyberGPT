@@ -357,6 +357,9 @@ const MiraChatBot: React.FC = () => {
 	// Track shown related questions per context
 	const [contextToShownQuestions, setContextToShownQuestions] = useState<{ [context: string]: string[] }>({});
 
+	// Track when the AI starts thinking (spinner shown)
+	const thinkingStartRef = useRef<number | null>(null);
+
 	// Get greeting based on the detected time zone
 	// const greeting = getGreeting(timeZone);
 	const saveChatMessage = useMutation(api.chats.saveChatMessage);
@@ -604,7 +607,10 @@ const MiraChatBot: React.FC = () => {
 				message: graphRAGResponse.answer,
 				sender: "ai",
 				reasoningTrace: graphRAGResponse.reasoningTrace,
+				durationSec: thinkingStartRef.current ? (Date.now() - thinkingStartRef.current) / 1000 : undefined,
 			};
+			// Reset start ref after computing
+			thinkingStartRef.current = null;
 
 			// Add messages to UI
 			setMessages((prev) => [...prev, botMessage]);
@@ -692,7 +698,9 @@ const MiraChatBot: React.FC = () => {
 					jargons: response.jargons,
 					cveDescriptionsMap: response.cveDescriptionsMap,
 					sourceLinks: response.sourceLinks || [],
+					durationSec: thinkingStartRef.current ? (Date.now() - thinkingStartRef.current) / 1000 : undefined,
 				};
+				thinkingStartRef.current = null;
 				
 				console.log('Created botMessage:', {
 					hasJargons: !!(botMessage.jargons && botMessage.jargons.length > 0),
@@ -997,7 +1005,9 @@ const MiraChatBot: React.FC = () => {
 					jargons: response.jargons,
 					cveDescriptionsMap: response.cveDescriptionsMap,
 					sourceLinks: response.sourceLinks || [],
+					durationSec: thinkingStartRef.current ? (Date.now() - thinkingStartRef.current) / 1000 : undefined,
 				};
+				thinkingStartRef.current = null;
 				
 				console.log('Created botMessage:', {
 					hasJargons: !!(botMessage.jargons && botMessage.jargons.length > 0),
@@ -2425,6 +2435,9 @@ const MiraChatBot: React.FC = () => {
 	const handleSend = async (message?: string, useRAG?: boolean, isRelatedQuestion = false) => {
 		const finalMessage = message || input.trim();
 		if (finalMessage) {
+			// Record the time when AI will start thinking
+			thinkingStartRef.current = Date.now();
+
 			const userMessage: Message = {
 				id: uuidv4(),
 				message: finalMessage,
@@ -2693,6 +2706,9 @@ const MiraChatBot: React.FC = () => {
 												message.message
 											) : (
 												<>
+													{message.reasoningTrace && message.reasoningTrace.length > 0 && (
+														<ReasoningTrace className="mb-2" trace={message.reasoningTrace} durationSec={message.durationSec} />
+													)}
 													{(() => {
 														console.log('Rendering message:', {
 															sender: message.sender,
@@ -2702,27 +2718,24 @@ const MiraChatBot: React.FC = () => {
 														});
 														return message.jargons ? <div>{highlightJargon(message.message, message.jargons, message.cveDescriptionsMap)}</div> : <MarkdownViewer content={message.message} />;
 													})()}
-													{message.reasoningTrace && message.reasoningTrace.length > 0 && (
-														<ReasoningTrace trace={message.reasoningTrace} />
-													)}
 													{message.sourceLinks && message.sourceLinks.length > 0 && (
 														<SourceLinks sourceLinks={message.sourceLinks} />
 													)}
 													{!isUser && (
-														<div className="mt-2 text-xs text-gray-500 bg-gray-50 rounded px-3 py-2 flex flex-col sm:flex-row sm:items-center gap-2">
-															<span className="font-medium">Related questions:</span>
-															<div className="flex gap-2 mt-1 sm:mt-0">
-																{relatedQuestions.map((q) => (
-																	<button
-																		key={q}
-																		onClick={() => handleSend(q, false, true)}
-																		className="rounded-full px-3 py-1 bg-white text-gray-800 text-xs font-medium border border-gray-200 hover:bg-gray-100 hover:shadow-sm transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-200"
-																		style={{ boxShadow: '0 1px 4px 0 rgba(0,0,0,0.03)' }}
-																	>
-																		{q}
-																	</button>
-																))}
-															</div>
+														<div className="mt-3 flex flex-wrap gap-2">
+															{relatedQuestions.map((q, i) => (
+																<motion.button
+																	key={q}
+																	onClick={() => handleSend(q, false, true)}
+																	className="rounded-lg px-3 py-1.5 bg-white border border-gray-300 text-gray-700 text-xs sm:text-sm font-medium hover:bg-gray-50 hover:shadow-sm transition-shadow focus:outline-none focus:ring-2 focus:ring-indigo-400"
+																	style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+																	initial={{ opacity: 0, y: 20 }}
+																	animate={{ opacity: 1, y: 0 }}
+																	transition={{ delay: 0.15 * i, duration: 0.35, type: 'spring', stiffness: 200 }}
+																>
+																	{q}
+																</motion.button>
+															))}
 														</div>
 													)}
 												</>

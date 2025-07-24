@@ -63,6 +63,8 @@ export interface Message {
     url: string;
     type: "official" | "reference" | "framework";
   }>;
+  /** Time taken (in seconds) for the AI to respond */
+  durationSec?: number;
 }
 
 export interface RequestHumanInLoop {
