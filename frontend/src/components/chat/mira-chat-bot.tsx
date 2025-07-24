@@ -2448,13 +2448,11 @@ const MiraChatBot: React.FC = () => {
 				sender: "user",
 				isRelatedQuestion: isRelatedQuestion,
 			};
-			// Optimistically add the user message only for related question clicks
-			if (isRelatedQuestion) {
-				setMessages((prev) => {
-					if (prev.some(m => m.id === userMessage.id)) return prev;
-					return [...prev, userMessage];
-				});
-			}
+			// Always optimistically add the user message
+			setMessages((prev) => {
+				if (prev.some(m => m.id === userMessage.id)) return prev;
+				return [...prev, userMessage];
+			});
 			setInput("");
 			if (createdChatId || chatId) {
 				setFetchChatsRegurlarly(false);
