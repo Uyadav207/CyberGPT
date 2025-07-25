@@ -26,6 +26,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { chatApis } from "../../api/chat";
 import { chatWithJargon } from '../../api/chat';
+import { BASE_URL } from '../../api/config.backend';
 import type { Id } from "../../convex/_generated/dataModel";
 
 //store
@@ -72,145 +73,170 @@ import { ReasoningTrace } from "./ReasoningTrace";
 import { SourceLinks } from "./SourceLinks";
 import { ChatSearch } from "./chat-search";
 
-// Add helper for highlighting jargon terms
-function highlightJargon(answer: string, jargons: { term: string; description: string }[] = [], cveDescriptionsMap: Record<string, string> = {}) {
-	console.log('Highlighting jargons:', jargons); // Debug log
-	
-	const cveRegex = /CVE-\d{4}-\d{4,7}/gi;
-	const foundCVEs = (answer.match(cveRegex) || []).map(id => id.toUpperCase());
-	
-	// Build a map of all jargons (preserve original case for display, use lowercase for matching)
-	const jargonMap = new Map<string, { originalTerm: string; description: string }>();
-	
-	// Add LLM-identified jargons
-	jargons.forEach(j => {
-		jargonMap.set(j.term.toLowerCase(), { originalTerm: j.term, description: j.description });
-	});
-	
-	// Add CVE IDs with their specific descriptions from the backend
-	foundCVEs.forEach(id => {
-		const lowerCaseId = id.toLowerCase();
-		if (!jargonMap.has(lowerCaseId)) {
-			// Try to find the specific CVE description from the backend mapping
-			const description = cveDescriptionsMap[id] || 
-							   cveDescriptionsMap[lowerCaseId] || 
-							   'A unique identifier for a publicly known cybersecurity vulnerability.';
-			jargonMap.set(lowerCaseId, { originalTerm: id, description });
-		}
-	});
-	
-	const allJargons = Array.from(jargonMap, ([, { originalTerm, description }]) => ({ term: originalTerm, description }));
-	if (!allJargons || allJargons.length === 0) {
-		console.log('No jargons to highlight');
-		return answer;
-	}
-	
-	console.log('Will highlight these jargons:', allJargons.map(j => j.term));
-	
-	// Sort by term length descending to avoid partial matches (longer terms first)
-	const sortedJargons = [...allJargons].sort((a, b) => b.term.length - a.term.length);
-	let parts: (string | JSX.Element)[] = [answer];
-	
-	sortedJargons.forEach(({ term, description }) => {
-		console.log(`Highlighting term: "${term}"`);
-		
-		// Improved regex with word boundary consideration for multi-word terms
-		const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-		// Use word boundaries for single words, but allow partial matches for multi-word terms and technical terms
-		const isMultiWord = term.includes(' ') || term.includes('-') || /^[A-Z]{2,}/.test(term);
-		const regex = isMultiWord 
-			? new RegExp(`(${escapedTerm})`, 'gi')
-			: new RegExp(`\\b(${escapedTerm})\\b`, 'gi');
-		
-		console.log(`Creating regex for "${term}": ${regex.toString()}, isMultiWord: ${isMultiWord}`);
-		
-		parts = parts.flatMap(part => {
-			if (typeof part !== 'string') return [part];
-			
-			const splitParts = part.split(regex);
-			return splitParts.map((p, i) => {
-				const isMatch = splitParts.length > 1 && i % 2 === 1 && p.toLowerCase() === term.toLowerCase();
-				if (isMatch) {
-					// Use a stateful tooltip for accessibility
-					return (
-						<Tooltip key={`${term}-${i}-${Math.random()}`}>
-							<TooltipTrigger asChild>
-								<span
-									className="jargon-highlight inline-block focus-within:z-50 cursor-pointer bg-yellow-100 border-b-2 border-dotted border-yellow-400 rounded px-1"
-									tabIndex={0}
-									style={{ background: 'rgba(255, 230, 150, 0.7)' }}
-								>
-									{p}
-								</span>
-							</TooltipTrigger>
-							<TooltipContent side="top" className="max-w-xs whitespace-pre-line break-words box-border">
-								{description}
-							</TooltipContent>
-						</Tooltip>
-					);
-				}
-				return p;
-			});
-		});
-	});
-	
-	console.log('Highlighting complete, returning parts:', parts.length);
-	return parts;
-}
+// Interactive Loading Messages
+const INTERACTIVE_LOADING_MESSAGES = [
+	"Thinking... 🤔",
+	"Oh well, it's taking long... ⏳",
+	"Maybe the knowledge is self-growing... 🌱",
+	"Oh, I'm trying to search across the web... 🔍",
+	"Analyzing security vulnerabilities... 🔒",
+	"Scanning CVE databases... 🛡️",
+	"Checking threat intelligence feeds... 📊",
+	"Validating security findings... ✅",
+	"Cross-referencing with NVD... 🔍",
+	"Analyzing attack vectors... ⚔️",
+	"Evaluating risk levels... 📈",
+	"Compiling mitigation strategies... 🛠️",
+	"Verifying security recommendations... 🔐",
+	"Checking compliance frameworks... 📋",
+	"Analyzing exploit techniques... 💻",
+	"Reviewing security best practices... 📖",
+	"Validating patch recommendations... 🔧",
+	"Ohh, found it! Let me add it to my knowledge... 📚",
+	"About to prepare the answer... Almost done! ✨",
+	"Just a few more seconds... ⏳",
+	"Completing the answer... ✨",
 
-function getRelatedQuestions(userQuestion: string, aiAnswer: string, kgContext: string, chatHistory: Message[]) {
-	const context = (userQuestion + ' ' + aiAnswer + ' ' + (kgContext || '')).toLowerCase();
-	const previousQuestions = new Set(
-		(chatHistory || [])
-			.filter((msg) => msg.sender === 'user' || msg.isRelatedQuestion)
-			.map((msg) => (msg.message || '').toLowerCase())
-	);
-	let candidates = [];
-	if (context.includes('wordpress')) {
-		candidates = [
-			'How do I secure my WordPress site?',
-			'What are the most common WordPress vulnerabilities?',
-			'Are there plugins to improve WordPress security?'
-		];
-	} else if (context.includes('sql injection')) {
-		candidates = [
-			'What are the risks of SQL injection?',
-			'How can I prevent SQL injection?',
-			'What tools detect SQL injection vulnerabilities?'
-		];
-	} else if (context.includes('xss') || context.includes('cross-site scripting')) {
-		candidates = [
-			'What is cross-site scripting (XSS)?',
-			'How do I protect my app from XSS?',
-			'What are common XSS attack vectors?'
-		];
-	} else if (context.includes('csrf')) {
-		candidates = [
-			'What is CSRF?',
-			'How can I prevent CSRF attacks?',
-			'What are signs of CSRF vulnerabilities?'
-		];
-	} else if (context.includes('authentication')) {
-		candidates = [
-			'What are best practices for authentication?',
-			'How do I implement secure authentication?',
-			'What are common authentication flaws?'
-		];
-	} else if (context.includes('authorization')) {
-		candidates = [
-			'What is the difference between authentication and authorization?',
-			'How do I enforce proper authorization?',
-			'What are common authorization issues?'
-		];
+];
+
+// Function to start interactive loading with progressive messages
+const startInteractiveLoading = (
+	setLoadingMessage: (message: string) => void, 
+	setLoadingMessageIndex: (index: number) => void,
+	loadingIntervalRef: React.MutableRefObject<NodeJS.Timeout | null>
+) => {
+	let currentIndex = 0;
+	
+	// Clear any existing interval
+	if (loadingIntervalRef.current) {
+		clearInterval(loadingIntervalRef.current);
+	}
+	
+	// Set initial message
+	setLoadingMessage(INTERACTIVE_LOADING_MESSAGES[currentIndex]);
+	setLoadingMessageIndex(currentIndex);
+	
+	// Create interval to cycle through messages
+	const interval = setInterval(() => {
+		currentIndex++;
+		if (currentIndex < INTERACTIVE_LOADING_MESSAGES.length) {
+			setLoadingMessage(INTERACTIVE_LOADING_MESSAGES[currentIndex]);
+			setLoadingMessageIndex(currentIndex);
+		} else {
+			// Stop at the last message
+			clearInterval(interval);
+			loadingIntervalRef.current = null;
+		}
+	}, 3500); // Change message every 5 seconds
+	
+	// Store the interval in the ref
+	loadingIntervalRef.current = interval;
+	
+	return interval;
+};
+
+// Function to stop interactive loading
+const stopInteractiveLoading = (loadingIntervalRef: React.MutableRefObject<NodeJS.Timeout | null>) => {
+	console.log('stopInteractiveLoading called - checking interval');
+	if (loadingIntervalRef.current) {
+		console.log('Clearing loading interval');
+		clearInterval(loadingIntervalRef.current);
+		loadingIntervalRef.current = null;
+		console.log('Loading interval cleared');
 	} else {
-		candidates = [
-			'What are common risks?',
-			'How can I prevent this?',
-			'Can you give an example?'
+		console.log('No loading interval to clear');
+	}
+};
+
+// Helper function to stop loading and reset state
+const stopLoading = (
+	setIsLoading: (loading: boolean) => void,
+	setAgentButtonsDisabled: (disabled: boolean) => void,
+	loadingIntervalRef: React.MutableRefObject<NodeJS.Timeout | null>,
+	setLoadingMessage: (message: string) => void
+) => {
+	console.log('stopLoading called - clearing loading state');
+	stopInteractiveLoading(loadingIntervalRef);
+	setIsLoading(false);
+	setAgentButtonsDisabled(false);
+	setLoadingMessage("Thinking..."); // Reset to initial message
+	console.log('stopLoading completed - loading state cleared');
+};
+
+async function getRelatedQuestions(userQuestion: string, aiAnswer: string, kgContext: string, chatHistory: Message[]) {
+	try {
+		console.log('[Related Questions] Starting generation for question:', userQuestion.substring(0, 50) + '...');
+		console.log('[Related Questions] AI answer length:', aiAnswer.length);
+		console.log('[Related Questions] KG context length:', kgContext.length);
+		
+		// Get previous questions to avoid duplicates
+		const previousQuestions = (chatHistory || [])
+			.filter((msg) => msg.sender === 'user' || msg.isRelatedQuestion)
+			.map((msg) => msg.message || '');
+
+		console.log('[Related Questions] Previous questions count:', previousQuestions.length);
+
+		// Call backend API to generate contextual questions
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+		
+		try {
+			const response = await fetch(`${BASE_URL}/chat/related-questions`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					userQuestion,
+					aiAnswer,
+					kgContext,
+					previousQuestions
+				}),
+				signal: controller.signal
+			});
+
+			clearTimeout(timeoutId);
+
+			if (!response.ok) {
+				const errorText = await response.text();
+				console.error('[Related Questions] API Error:', response.status, errorText);
+				throw new Error(`Failed to generate related questions: ${response.status} ${errorText}`);
+			}
+
+			const data = await response.json();
+			const questions = data.questions || [];
+
+			console.log('[Related Questions] Generated:', questions);
+			console.log('[Related Questions] Questions count:', questions.length);
+			
+			// Ensure we have exactly 3 questions
+			if (questions.length < 3) {
+				console.warn('[Related Questions] Only got', questions.length, 'questions, using fallback for remaining');
+				const fallbackQuestions = [
+					'What are the main attack vectors for this vulnerability?',
+					'How do the prevention techniques work in practice?',
+					'What are the latest tools for detecting this threat?'
+				];
+				return [...questions, ...fallbackQuestions.slice(0, 3 - questions.length)];
+			}
+			
+			return questions.slice(0, 3); // Ensure exactly 3 questions
+		} catch (error) {
+			clearTimeout(timeoutId);
+			if (error instanceof Error && error.name === 'AbortError') {
+				console.error('[Related Questions] API call timed out after 10 seconds');
+			}
+			throw error;
+		}
+	} catch (error) {
+		console.error('[Related Questions] Error generating questions:', error);
+		// Fallback to basic questions if API fails
+		return [
+			'What are the main attack vectors for this vulnerability?',
+			'How do the prevention techniques work in practice?',
+			'What are the latest tools for detecting this threat?'
 		];
 	}
-	const unique = candidates.filter(q => !previousQuestions.has(q.toLowerCase()));
-	return unique.slice(0, 3);
 }
 
 // Agent Personality System Prompts
@@ -314,6 +340,11 @@ const MiraChatBot: React.FC = () => {
 	const [requestHumanInLoop, setRequestHumanInLoop] =
 		useState<RequestHumanInLoop | null>();
 
+	// Interactive Loading State
+	const [loadingMessage, setLoadingMessage] = useState("Thinking...");
+	const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
+	const loadingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
 	// Agent Personality State
 	const [selectedAgentMode, setSelectedAgentMode] = useState<'tutor' | 'investigator' | 'analyst' | undefined>('tutor');
 	const [agentButtonsDisabled, setAgentButtonsDisabled] = useState(false);
@@ -389,6 +420,15 @@ const MiraChatBot: React.FC = () => {
 
 	// Add state to track expanded reasoning per message
 	const [expandedReasoning, setExpandedReasoning] = useState<{ [id: string]: boolean }>({});
+	const [relatedQuestions, setRelatedQuestions] = useState<{ [messageId: string]: string[] }>({});
+	
+	// Add state to track which messages have already had related questions generated
+	const [processedRelatedQuestions, setProcessedRelatedQuestions] = useState<Set<string>>(new Set());
+	
+	// Reasoning visibility is now handled by expandedReasoning state only
+	
+	// Add ref to track ongoing related questions requests to prevent duplicates
+	const ongoingRequestsRef = useRef<Set<string>>(new Set());
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: all dependencies not needed
 	useEffect(() => {
@@ -397,26 +437,174 @@ const MiraChatBot: React.FC = () => {
 			setFetchChatsRegurlarly(true);
 			setCreatedChatId(chatIdParam);
 			if (isValidChatId !== undefined) {
-				setFetchChatsRegurlarly(false);
 				if (isValidChatId) {
-					setFetchChatsRegurlarly(true);
-				} else {
-					setMessages([]);
-					setFetchChatsRegurlarly(false);
-					navigate("/chatbot");
 					setChatsLoader(false);
+				} else {
+					navigate("/chatbot");
 				}
 			}
 		} else {
 			setChatsLoader(false);
-			setMessages([]);
 		}
-	}, [chatIdParam, isValidChatId]);
+		
+		// Reset reasoning state when chat changes
+		setExpandedReasoning({});
+		setProcessedRelatedQuestions(new Set());
+		ongoingRequestsRef.current.clear();
+	}, [chatIdParam, isValidChatId, navigate]);
+
+	// Cleanup loading interval on component unmount
+	useEffect(() => {
+		return () => {
+			if (loadingIntervalRef.current) {
+				clearInterval(loadingIntervalRef.current);
+			}
+		};
+	}, []);
+
+	// Reset processed related questions when chat changes
+	useEffect(() => {
+		setProcessedRelatedQuestions(new Set());
+	}, [chatId]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: all dependencies not needed
 	useEffect(() => {
 		handleScrollToBottom();
 	}, [messages]);
+
+	// Debug effect to monitor messages state changes
+	useEffect(() => {
+		console.log('Messages state changed:', {
+			count: messages.length,
+			lastMessage: messages[messages.length - 1],
+			lastMessageSender: messages[messages.length - 1]?.sender,
+			lastMessageContent: messages[messages.length - 1]?.message?.substring(0, 100) + '...'
+		});
+	}, [messages]);
+
+	// Debug effect to monitor loading state changes
+	useEffect(() => {
+		console.log('Loading state changed:', {
+			isLoading,
+			loadingMessage,
+			loadingMessageIndex
+		});
+	}, [isLoading, loadingMessage, loadingMessageIndex]);
+
+	// Generate related questions for new AI messages immediately
+	useEffect(() => {
+		if (messages.length > 0) {
+			const lastMessage = messages[messages.length - 1];
+			const messageId = String(lastMessage.id);
+			
+			// Only generate for new AI messages that don't have related questions yet
+			if (lastMessage.sender === 'ai' && 
+				!relatedQuestions[messageId] && 
+				!processedRelatedQuestions.has(messageId) &&
+				!ongoingRequestsRef.current.has(messageId)) {
+				
+				console.log('[Related Questions] Immediately generating for new AI message:', messageId);
+				
+				// Mark as processed to prevent duplicate calls
+				setProcessedRelatedQuestions(prev => new Set([...prev, messageId]));
+				ongoingRequestsRef.current.add(messageId);
+				
+				// Find the user question that prompted this AI response
+				const userQuestion = messages.slice(0, -1).reverse().find(m => m.sender === 'user')?.message || '';
+				
+				// Generate contextual questions immediately
+				getRelatedQuestions(
+					userQuestion,
+					lastMessage.message,
+					lastMessage.reasoningTrace ? JSON.stringify(lastMessage.reasoningTrace) : '',
+					messages
+				).then(generatedQuestions => {
+					if (generatedQuestions && generatedQuestions.length > 0) {
+						console.log('[Related Questions] Successfully generated context-specific questions:', generatedQuestions);
+						setRelatedQuestions(prev => ({
+							...prev,
+							[messageId]: generatedQuestions
+						}));
+					}
+					// Clean up ongoing request
+					ongoingRequestsRef.current.delete(messageId);
+				}).catch(error => {
+					console.error('[Related Questions] Failed to generate context-specific questions:', error);
+					// Remove from processed set if it failed so it can be retried
+					setProcessedRelatedQuestions(prev => {
+						const newSet = new Set(prev);
+						newSet.delete(messageId);
+						return newSet;
+					});
+					// Clean up ongoing request
+					ongoingRequestsRef.current.delete(messageId);
+				});
+			}
+		}
+	}, [messages]); // Removed relatedQuestions and processedRelatedQuestions from dependencies to prevent infinite loop
+
+	// Auto-expand reasoning traces for new AI messages with reasoning data
+	useEffect(() => {
+		if (messages.length > 0) {
+			const lastMessage = messages[messages.length - 1];
+			
+			// Check if this is a new AI message with reasoning trace that's not already expanded
+			if (lastMessage.sender === 'ai' && 
+				lastMessage.reasoningTrace && 
+				!expandedReasoning[String(lastMessage.id)]) {
+				
+				console.log('[Reasoning] Auto-expanding reasoning for new AI message:', {
+					messageId: lastMessage.id,
+					hasReasoningTrace: !!lastMessage.reasoningTrace,
+					reasoningType: typeof lastMessage.reasoningTrace,
+					isArray: Array.isArray(lastMessage.reasoningTrace),
+					reasoningLength: Array.isArray(lastMessage.reasoningTrace) ? lastMessage.reasoningTrace.length : 'N/A',
+					currentExpandedState: expandedReasoning[String(lastMessage.id)]
+				});
+				
+				// Auto-expand the reasoning trace for new messages
+				setExpandedReasoning(prev => ({
+					...prev,
+					[String(lastMessage.id)]: true
+				}));
+			}
+		}
+	}, [messages]); // Removed expandedReasoning from dependencies to prevent conflicts
+
+	// Additional effect to ensure reasoning is visible for AI messages with reasoning data
+	useEffect(() => {
+		messages.forEach((message) => {
+			if (message.sender === 'ai' && 
+				message.reasoningTrace && 
+				expandedReasoning[String(message.id)] === undefined) {
+				
+				console.log('[Reasoning] Ensuring reasoning is visible for message:', message.id);
+				setExpandedReasoning(prev => ({
+					...prev,
+					[String(message.id)]: true
+				}));
+			}
+		});
+	}, [messages, expandedReasoning]);
+
+	// Force refresh reasoning state when messages change (for related questions)
+	useEffect(() => {
+		const lastMessage = messages[messages.length - 1];
+		if (lastMessage?.sender === 'ai' && lastMessage?.reasoningTrace) {
+			console.log('[Reasoning] Force refreshing reasoning state for new AI message:', {
+				messageId: lastMessage.id,
+				hasReasoningTrace: !!lastMessage.reasoningTrace,
+				reasoningType: typeof lastMessage.reasoningTrace,
+				isArray: Array.isArray(lastMessage.reasoningTrace)
+			});
+			
+			// Force expand reasoning for new AI messages
+			setExpandedReasoning(prev => ({
+				...prev,
+				[String(lastMessage.id)]: true
+			}));
+		}
+	}, [messages.length]); // Only trigger when message count changes
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: all dependencies not needed
 	useEffect(() => {
@@ -515,6 +703,15 @@ const MiraChatBot: React.FC = () => {
 			);
 
 			setMessages(chatHistory);
+			
+			// Preserve reasoning visibility state for loaded messages
+			const reasoningState: { [id: string]: boolean } = {};
+			chatHistory.forEach((message) => {
+				if (message.sender === 'ai' && message.reasoningTrace) {
+					reasoningState[String(message.id)] = true; // Auto-expand reasoning for loaded messages
+				}
+			});
+			setExpandedReasoning(prev => ({ ...prev, ...reasoningState }));
 
 			setChatsLoader(false);
 		}
@@ -626,6 +823,9 @@ const MiraChatBot: React.FC = () => {
 	const processPrompt = async (userMessage: Message, useRAG?: boolean) => {
 		setIsLoading(true);
 		setAgentButtonsDisabled(true); // Disable agent buttons during processing
+		
+		// Start interactive loading with progressive messages
+		const loadingInterval = startInteractiveLoading(setLoadingMessage, setLoadingMessageIndex, loadingIntervalRef);
 		const lowerPrompt = userMessage.message.toLowerCase().trim();
 		const extractURLs = (text: string): string[] => {
 			return text.match(URL_PATTERN) || [];
@@ -690,7 +890,7 @@ const MiraChatBot: React.FC = () => {
 				});
 			}
 
-			setIsLoading(false);
+			stopLoading(setIsLoading, setAgentButtonsDisabled, loadingIntervalRef, setLoadingMessage);
 		} else if (isClarification) {
 			// Route clarification to main flow for enhanced processing
 			console.log('🔄 CLARIFICATION ROUTED TO MAIN FLOW');
@@ -949,16 +1149,21 @@ const MiraChatBot: React.FC = () => {
 					hasSourceLinks: !!botMessage.sourceLinks,
 					sourceLinksCount: botMessage.sourceLinks?.length || 0
 				});
-				setMessages((prev) => [...prev, botMessage]);
-				setIsLoading(false);
-				setAgentButtonsDisabled(false); // Re-enable agent buttons
+				setMessages((prev) => {
+					console.log('Previous messages count:', prev.length);
+					const newMessages = [...prev, botMessage];
+					console.log('New messages count:', newMessages.length);
+					return newMessages;
+				});
+				console.log('About to stop loading state...');
+				stopLoading(setIsLoading, setAgentButtonsDisabled, loadingIntervalRef, setLoadingMessage);
+				console.log('Loading state stopped');
 			} catch (error) {
-				setIsLoading(false);
-				setAgentButtonsDisabled(false); // Re-enable agent buttons on error
+				stopLoading(setIsLoading, setAgentButtonsDisabled, loadingIntervalRef, setLoadingMessage);
 				showErrorToast('Failed to get answer.');
 			}
 		} else if (isGitHubURL) {
-			setIsLoading(false);
+			stopLoading(setIsLoading, setAgentButtonsDisabled, loadingIntervalRef, setLoadingMessage);
 			const urls = extractURLs(userMessage.message);
 			setTargetUrl(urls[0]);
 			const manualMessage =
@@ -1004,20 +1209,29 @@ const MiraChatBot: React.FC = () => {
 					message: userMessage.message,
 					agentPersonality: selectedAgentMode 
 				});
-				console.log('Backend response:', {
-					jargons: response.jargons,
-					cveDescriptionsMap: response.cveDescriptionsMap,
+				console.log('Backend response received:', {
+					hasAnswer: !!response.answer,
 					answerLength: response.answer?.length,
-					dynamicTag: response.dynamicTag,
-					sourceLinks: response.sourceLinks,
-					contextData: response.contextData
+					hasJargons: !!response.jargons,
+					jargonsCount: response.jargons?.length || 0,
+					hasCveDescriptionsMap: !!response.cveDescriptionsMap,
+					hasSourceLinks: !!response.sourceLinks,
+					hasReasoningTrace: !!response.reasoningTrace,
+					responseKeys: Object.keys(response)
 				});
 				console.log('Full backend response:', response);
+				console.log('Response answer field:', response.answer);
+				console.log('Response answer type:', typeof response.answer);
 				
 				// Validate response structure
 				if (!response.answer) {
 					console.error('ERROR: No answer in response!');
 					throw new Error('Backend response missing answer field');
+				}
+				
+				if (typeof response.answer !== 'string' || response.answer.trim() === '') {
+					console.error('ERROR: Answer is empty or not a string!');
+					throw new Error('Backend response has empty answer field');
 				}
 				console.log('Dynamic tag validation:', {
 					exists: !!response.dynamicTag,
@@ -1038,17 +1252,99 @@ const MiraChatBot: React.FC = () => {
 				});
 				
 				const getReasoningString = (trace: any, fallback: any) => {
-					if (typeof trace === 'string') return trace;
-					if (Array.isArray(trace) && trace[0]?.narrative) return trace[0].narrative;
-					if (trace && typeof trace.narrative === 'string') return trace.narrative;
-					return typeof fallback === 'string' ? fallback : '';
+					console.log('[Reasoning] Processing reasoning trace:', {
+						traceType: typeof trace,
+						traceIsArray: Array.isArray(trace),
+						traceLength: Array.isArray(trace) ? trace.length : 'N/A',
+						fallbackType: typeof fallback,
+						fallbackIsArray: Array.isArray(fallback),
+						fallbackLength: Array.isArray(fallback) ? fallback.length : 'N/A'
+					});
+					
+					if (typeof trace === 'string') {
+						console.log('[Reasoning] Using trace as string:', trace.substring(0, 100) + '...');
+						return trace;
+					}
+					if (Array.isArray(trace) && trace[0]?.narrative) {
+						console.log('[Reasoning] Using trace[0].narrative:', trace[0].narrative.substring(0, 100) + '...');
+						return trace[0].narrative;
+					}
+					if (trace && typeof trace.narrative === 'string') {
+						console.log('[Reasoning] Using trace.narrative:', trace.narrative.substring(0, 100) + '...');
+						return trace.narrative;
+					}
+					
+					// Try fallback
+					if (typeof fallback === 'string') {
+						console.log('[Reasoning] Using fallback as string:', fallback.substring(0, 100) + '...');
+						return fallback;
+					}
+					if (Array.isArray(fallback) && fallback[0]?.narrative) {
+						console.log('[Reasoning] Using fallback[0].narrative:', fallback[0].narrative.substring(0, 100) + '...');
+						return fallback[0].narrative;
+					}
+					if (fallback && typeof fallback.narrative === 'string') {
+						console.log('[Reasoning] Using fallback.narrative:', fallback.narrative.substring(0, 100) + '...');
+						return fallback.narrative;
+					}
+					
+					console.log('[Reasoning] No valid reasoning trace found, returning empty string');
+					return '';
 				};
 				
+				// Create proper reasoning trace structure for frontend display
+				const createReasoningTrace = (trace: any, fallback: any): any[] | undefined => {
+					// If we have a proper trace array, use it
+					if (Array.isArray(trace) && trace.length > 0) {
+						return trace;
+					}
+					
+					// If we have a fallback array, use it
+					if (Array.isArray(fallback) && fallback.length > 0) {
+						return fallback;
+					}
+					
+					// If we have a string, create a simple array structure
+					const reasoningString = getReasoningString(trace, fallback);
+					if (reasoningString) {
+						return [
+							{
+								narrative: reasoningString
+							},
+							{
+								step: "Step1",
+								message: "Context retrieved from knowledge graph."
+							},
+							{
+								step: "Step2", 
+								message: "Comprehensive analysis completed."
+							},
+							{
+								step: "Step3",
+								message: "Response generated using LLM with context."
+							}
+						];
+					}
+					
+					return undefined;
+				};
+
+				const reasoningTrace = createReasoningTrace(response.trace, response.reasoningTrace);
+				
+				console.log('[Reasoning] Created reasoning trace for bot message:', {
+					messageId: uuidv4(),
+					hasReasoningTrace: !!reasoningTrace,
+					reasoningType: typeof reasoningTrace,
+					isArray: Array.isArray(reasoningTrace),
+					reasoningLength: Array.isArray(reasoningTrace) ? reasoningTrace.length : 'N/A',
+					reasoningContent: Array.isArray(reasoningTrace) ? reasoningTrace[0]?.narrative?.substring(0, 100) + '...' : 'N/A'
+				});
+
 				const botMessage: Message = {
 					id: uuidv4(),
 					message: response.answer,
 					sender: 'ai',
-					reasoningTrace: getReasoningString(response.trace, response.reasoningTrace),
+					reasoningTrace: reasoningTrace,
 					jargons: response.jargons,
 					cveDescriptionsMap: response.cveDescriptionsMap,
 					sourceLinks: response.sourceLinks || [],
@@ -1056,9 +1352,20 @@ const MiraChatBot: React.FC = () => {
 				};
 				thinkingStartRef.current = null;
 				
+				// Validate bot message was created correctly
+				if (!botMessage.message || botMessage.message.trim() === '') {
+					console.error('ERROR: Bot message is empty after creation!');
+					throw new Error('Bot message creation failed - empty message');
+				}
+				
 				console.log('Created botMessage:', {
+					id: botMessage.id,
+					messageLength: botMessage.message?.length,
 					hasJargons: !!(botMessage.jargons && botMessage.jargons.length > 0),
-					jargonsCount: botMessage.jargons?.length || 0
+					jargonsCount: botMessage.jargons?.length || 0,
+					hasSourceLinks: !!(botMessage.sourceLinks && botMessage.sourceLinks.length > 0),
+					sourceLinksCount: botMessage.sourceLinks?.length || 0,
+					hasReasoningTrace: !!botMessage.reasoningTrace
 				});
 				
 				// Save AI response to database
@@ -1281,12 +1588,17 @@ const MiraChatBot: React.FC = () => {
 					hasSourceLinks: !!botMessage.sourceLinks,
 					sourceLinksCount: botMessage.sourceLinks?.length || 0
 				});
-				setMessages((prev) => [...prev, botMessage]);
-				setIsLoading(false);
-				setAgentButtonsDisabled(false); // Re-enable agent buttons
+				setMessages((prev) => {
+					console.log('Previous messages count:', prev.length);
+					const newMessages = [...prev, botMessage];
+					console.log('New messages count:', newMessages.length);
+					return newMessages;
+				});
+				console.log('About to stop loading state...');
+				stopLoading(setIsLoading, setAgentButtonsDisabled, loadingIntervalRef, setLoadingMessage);
+				console.log('Loading state stopped');
 			} catch (error) {
-				setIsLoading(false);
-				setAgentButtonsDisabled(false); // Re-enable agent buttons on error
+				stopLoading(setIsLoading, setAgentButtonsDisabled, loadingIntervalRef, setLoadingMessage);
 				showErrorToast('Failed to get answer.');
 			}
 		}
@@ -2090,7 +2402,7 @@ const MiraChatBot: React.FC = () => {
 				const { done, value } = await reader.read();
 
 				if (done) {
-					setIsLoading(false);
+					stopLoading(setIsLoading, setAgentButtonsDisabled, loadingIntervalRef, setLoadingMessage);
 					if (!accumulatedMessage && humanAction !== "sendRagQuery") {
 						accumulatedMessage = question;
 					}
@@ -2113,7 +2425,7 @@ const MiraChatBot: React.FC = () => {
 						} catch (error) {
 							return error;
 						} finally {
-							setIsLoading(false);
+							stopLoading(setIsLoading, setAgentButtonsDisabled, loadingIntervalRef, setLoadingMessage);
 						}
 					} else if (humanAction === "sendEmail") {
 						const manualMessage = "Please select either yes or no";
@@ -2207,7 +2519,7 @@ const MiraChatBot: React.FC = () => {
 			addBotMessage(`Error: ${errorMessage}`);
 		} finally {
 			setStreaming(false);
-			setIsLoading(false);
+			stopLoading(setIsLoading, setAgentButtonsDisabled, loadingIntervalRef, setLoadingMessage);
 		}
 	};
 
@@ -2234,7 +2546,7 @@ const MiraChatBot: React.FC = () => {
 				//report generation api call
 				const responseStream =
 					await scanApis.scanReportGeneration(scanResponse);
-				setIsLoading(false);
+				stopLoading(setIsLoading, setAgentButtonsDisabled, loadingIntervalRef, setLoadingMessage);
 
 				await streamChatResponse(userMessage, responseStream);
 
@@ -2281,7 +2593,7 @@ const MiraChatBot: React.FC = () => {
 				//report generation api call
 				const responseStream =
 					await scanApis.scanSastReportGeneration(scanSastResponse);
-				setIsLoading(false);
+				stopLoading(setIsLoading, setAgentButtonsDisabled, loadingIntervalRef, setLoadingMessage);
 
 				await streamChatResponse(userMessage, responseStream);
 
@@ -2510,6 +2822,11 @@ const MiraChatBot: React.FC = () => {
 				sender: "user",
 				isRelatedQuestion: isRelatedQuestion,
 			};
+			
+			// If this is a related question, ensure we're ready for new reasoning
+			if (isRelatedQuestion) {
+				console.log('[Related Question] Preparing for new reasoning display');
+			}
 			// Always optimistically add the user message
 			setMessages((prev) => {
 				if (prev.some(m => m.id === userMessage.id)) return prev;
@@ -2825,45 +3142,26 @@ const MiraChatBot: React.FC = () => {
 								}`;
 								const containerClasses = `mb-4  ${isUser ? "text-right" : "text-left"}`;
 
-								// Before rendering related questions:
-								const lastUserMsg = uniqueMessages.slice(0, idx).reverse().find(m => m.sender === 'user');
-								const userQuestion = lastUserMsg ? lastUserMsg.message : '';
-								const contextKey = (userQuestion + ' ' + message.message).toLowerCase();
-								let relatedQuestions = getRelatedQuestions(
-									userQuestion,
-									message.message,
-									message.reasoningTrace ? JSON.stringify(message.reasoningTrace) : '',
-									uniqueMessages
-								);
-								const shownForThisContext = contextToShownQuestions[contextKey] || [];
-								relatedQuestions = relatedQuestions.filter(q => !shownForThisContext.includes(q));
-								allRelatedQuestionsThisRender.push(...relatedQuestions);
+							// Only show related questions for the very last message if it is an AI message
+							const isLastMessage = idx === uniqueMessages.length - 1;
 
-								// If fewer than 3, fill with least recently shown for this context (but not currently visible)
-								if (relatedQuestions.length < 3) {
-									const fillQuestions = shownForThisContext.filter(q => !relatedQuestions.includes(q));
-									relatedQuestions = [...relatedQuestions, ...fillQuestions.slice(0, 3 - relatedQuestions.length)];
-								}
-								// After filling with least recently shown, if still less than 3, fill with generic fallbacks (ensuring no duplicates)
-								const fallbackQuestions = [
-									'What are common risks?',
-									'How can I prevent this?',
-									'Can you give an example?'
-								];
-								if (relatedQuestions.length < 3) {
-									const alreadyUsed = new Set(relatedQuestions);
-									for (const q of fallbackQuestions) {
-										if (relatedQuestions.length >= 3) break;
-										if (!alreadyUsed.has(q)) {
-											relatedQuestions.push(q);
-											alreadyUsed.add(q);
-										}
-									}
-								}
-								relatedQuestions = relatedQuestions.slice(0, 3);
+							// Get related questions from state or use fallback
+							const messageRelatedQuestions = relatedQuestions[String(message.id)] || [
+								'Can you explain this in more detail?',
+								'What are the key takeaways?',
+								'How can I apply this knowledge?'
+							];
 
-								// Only show related questions for the very last message if it is an AI message
-								const isLastMessage = idx === uniqueMessages.length - 1;
+							console.log('Related questions for message:', {
+								messageId: String(message.id),
+								hasGeneratedQuestions: !!relatedQuestions[String(message.id)],
+								generatedQuestions: relatedQuestions[String(message.id)],
+								fallbackQuestions: messageRelatedQuestions,
+								questionCount: messageRelatedQuestions.length
+							});
+
+							// Related questions generation is now handled in the useEffect hook above
+							// This prevents duplicate API calls and infinite loops
 
 								return (
 									<motion.div
@@ -2891,14 +3189,30 @@ const MiraChatBot: React.FC = () => {
 											{message.reasoningTrace && (
 												<div className="flex items-center mb-1 text-xs text-blue-600 dark:text-blue-300 cursor-pointer select-none"
 													onClick={() => {
+														const messageId = String(message.id);
+														const currentState = expandedReasoning[messageId] || false;
+														const newState = !currentState;
+														
 														console.log('[Reasoning Toggle] Clicked reasoning for message:', {
 															messageId: message.id,
 															hasReasoningTrace: !!message.reasoningTrace,
 															reasoningType: typeof message.reasoningTrace,
 															isArray: Array.isArray(message.reasoningTrace),
-															reasoningLength: Array.isArray(message.reasoningTrace) ? message.reasoningTrace.length : 'N/A'
+															reasoningLength: Array.isArray(message.reasoningTrace) ? message.reasoningTrace.length : 'N/A',
+															currentExpandedState: currentState,
+															newState: newState
 														});
-														setExpandedReasoning(prev => ({ ...prev, [String(message.id)]: !prev[String(message.id)] }));
+														
+														setExpandedReasoning(prev => ({ ...prev, [messageId]: newState }));
+													}}
+													onKeyDown={(e) => {
+														if (e.key === 'Enter' || e.key === ' ') {
+															e.preventDefault();
+															const messageId = String(message.id);
+															const currentState = expandedReasoning[messageId] || false;
+															const newState = !currentState;
+															setExpandedReasoning(prev => ({ ...prev, [messageId]: newState }));
+														}
 													}}
 													tabIndex={0}
 													role="button"
@@ -2910,6 +3224,7 @@ const MiraChatBot: React.FC = () => {
 													{typeof message.durationSec === 'number' && (
 														<span className="ml-2 text-gray-500">Thought for {Math.round(message.durationSec)}s</span>
 													)}
+
 													{expandedReasoning[String(message.id)] ? (
 														<FaChevronDown className="ml-1" />
 													) : (
@@ -2927,7 +3242,16 @@ const MiraChatBot: React.FC = () => {
 														<span className="text-2xl mr-2">🤔</span>
 														<span className="font-semibold text-blue-700 dark:text-blue-200 text-lg">Reasoning</span>
 													</div>
-													<MarkdownViewer content={getReasoningString(message.reasoningTrace)} />
+													{(() => {
+														const reasoningContent = getReasoningString(message.reasoningTrace);
+														console.log('[Reasoning Display] Rendering reasoning for message:', {
+															messageId: message.id,
+															reasoningContentLength: reasoningContent.length,
+															reasoningContentPreview: reasoningContent.substring(0, 100) + '...',
+															isExpanded: expandedReasoning[String(message.id)]
+														});
+														return <MarkdownViewer content={reasoningContent} />;
+													})()}
 												</div>
 											)}
 											
@@ -2945,10 +3269,10 @@ const MiraChatBot: React.FC = () => {
 													{message.sourceLinks && message.sourceLinks.length > 0 && (
 														<SourceLinks sourceLinks={message.sourceLinks} />
 													)}
-													{/* Only show related questions for the very last message if it is an AI message */}
-													{isLastMessage && (
+													{/* Show related questions for all AI messages */}
+													{message.sender === 'ai' && (
 														<div className="mt-3 flex flex-wrap gap-2">
-															{relatedQuestions.map((q, i) => (
+															{messageRelatedQuestions.map((q: string, i: number) => (
 																<motion.button
 																	key={`${message.id}-${q}-${i}`}
 																	onClick={() => handleSend(q, false, true)}
@@ -2976,23 +3300,23 @@ const MiraChatBot: React.FC = () => {
 							);
 						})}
 
-							{isLoading && (
-								<motion.div
-									initial={{ opacity: 0, y: 50 }}
-									animate={{ opacity: 1, y: 0 }}
-									exit={{ opacity: 0, y: -50 }}
-									transition={{ duration: 0.3 }}
-									className="flex items-center space-x-2 text-gray-500"
-								>
-									<Spinner />
-									<span>Thinking...</span>
-								</motion.div>
-							)}
-						</ScrollArea>
-					)}
-					{isScanLoading && (
-						<div className="space-y-2">
-							<Progress value={progress} className="w-full" />
+						{isLoading && (
+							<motion.div
+								initial={{ opacity: 0, y: 50 }}
+								animate={{ opacity: 1, y: 0 }}
+								exit={{ opacity: 0, y: -50 }}
+								transition={{ duration: 0.3 }}
+								className="flex items-center space-x-2 text-gray-500"
+							>
+								<Spinner />
+								<span>{loadingMessage}</span>
+							</motion.div>
+						)}
+					</ScrollArea>
+				)}
+				{isScanLoading && (
+					<div className="space-y-2">
+						<Progress value={progress} className="w-full" />
 
 							<p className="text-sm text-center text-gray-500">
 								{progress === 95
