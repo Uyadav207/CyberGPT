@@ -2940,7 +2940,7 @@ const MiraChatBot: React.FC = () => {
 							initial={{ width: "70%" }}
 							animate={{ width: "90%" }}
 							transition={{ duration: 0.3 }}
-							className="chat-input flex flex-col p-2 rounded-2xl border border-gray-100 bg-white w-full shadow-sm dark:bg-primary-900 dark:border-gray-700"
+							className="chat-input flex flex-col p-2 rounded-2xl border border-sidebar-border bg-sidebar text-sidebar-foreground w-full shadow-sm transition-colors"
 						>
 							{/* Input Field */}
 							<textarea
@@ -2952,7 +2952,7 @@ const MiraChatBot: React.FC = () => {
 										handleSend();
 									}
 								}}
-								className="w-full text-sm bg-transparent rounded-md h-10 px-3 py-2 text-gray-700 focus:outline-none resize-none"
+								className="w-full text-sm bg-sidebar text-sidebar-foreground rounded-md h-10 px-3 py-2 placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none transition-colors"
 								placeholder="Type your message here..."
 								disabled={isLoading || !!pendingAction}
 							/>
@@ -2963,6 +2963,7 @@ const MiraChatBot: React.FC = () => {
 								selectedAgentMode={selectedAgentMode}
 								onAgentModeChange={setSelectedAgentMode}
 								agentButtonsDisabled={agentButtonsDisabled}
+								buttonClassName="border border-sidebar-border"
 							/>
 						</motion.div>
 					</div>

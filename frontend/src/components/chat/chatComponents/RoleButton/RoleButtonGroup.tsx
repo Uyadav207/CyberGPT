@@ -67,9 +67,9 @@ export default function RoleButtonGroup({
 					{leftButtons.map(({ label, icon, tooltip }) => {
 						const agentMode = label.toLowerCase() as 'tutor' | 'investigator' | 'analyst';
 						const isSelected = selectedAgentMode === agentMode;
-						// Icon color logic
+						// Update iconElement logic to use text-white dark:text-black for selected, text-muted-foreground otherwise
 						const iconElement = React.cloneElement(iconMap[icon], {
-							className: isSelected ? 'mr-1 text-white' : 'mr-1 text-[#5E5E5D]'
+							className: isSelected ? 'mr-1 text-white dark:text-black' : 'mr-1 text-muted-foreground'
 						});
 						return (
 							<Tooltip key={label}>
@@ -79,8 +79,8 @@ export default function RoleButtonGroup({
 										disabled={agentButtonsDisabled}
 										className={`flex items-center space-x-1 px-3 py-1 rounded-full border transition-all duration-200 font-medium focus:outline-none focus:ring-2 focus:ring-black/30 focus:z-10
   ${isSelected
-    ? 'border-black bg-black text-white font-bold'
-    : 'border-gray-300 text-gray-700 hover:bg-gray-200'}
+    ? 'border-sidebar-border bg-black text-white dark:bg-white dark:text-black font-bold'
+    : 'border-sidebar-border text-muted-foreground hover:bg-accent/60'}
   ${agentButtonsDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
 `}
 									>
@@ -105,7 +105,7 @@ export default function RoleButtonGroup({
 								<DropdownMenu key={label}>
 									<DropdownMenuTrigger asChild>
 										{/* biome-ignore lint/a11y/useButtonType: <explanation> */}
-										<button className="border p-2 rounded-full border-gray-300 hover:bg-gray-100">
+										<button className="border p-2 rounded-full border-sidebar-border hover:bg-accent/60">
 											{iconMap[icon]}
 										</button>
 									</DropdownMenuTrigger>
@@ -139,10 +139,10 @@ export default function RoleButtonGroup({
 								<TooltipTrigger asChild>
 									{/* biome-ignore lint/a11y/useButtonType: <explanation> */}
 									<button
-										className={`text-gray-500 hover:text-gray-700 ${
+										className={`text-muted-foreground hover:text-sidebar-foreground ${
 											icon === "ArrowUp"
-												? "bg-gray-200 p-2 rounded-full"
-												: "border p-2 rounded-full border-gray-300"
+												? "bg-accent/60 p-2 rounded-full"
+												: "border p-2 rounded-full border-sidebar-border"
 										}`}
 									>
 										{iconMap[icon]}
