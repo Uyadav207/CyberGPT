@@ -150,14 +150,14 @@ export function ChatSearch({ isOpen, onClose }: ChatSearchProps) {
           )}
         </AnimatePresence>
         {/* Floating pill search bar */}
-        <div className="flex items-center w-full bg-white/70 dark:bg-black/60 shadow-lg rounded-full px-6 py-3 backdrop-blur-lg border border-gray-200 dark:border-gray-700">
+        <div className="flex items-center w-full bg-sidebar/70 shadow-lg rounded-full px-6 py-3 backdrop-blur-lg border border-sidebar-border">
           <Search className="h-5 w-5 text-muted-foreground mr-2" />
           <input
             autoFocus
             placeholder="Search messages..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 bg-transparent outline-none text-base placeholder:text-gray-400 dark:placeholder:text-gray-500"
+            className="flex-1 bg-transparent outline-none text-base placeholder:text-sidebar-foreground/60"
             style={{ minWidth: 0 }}
           />
           <Button
@@ -199,7 +199,7 @@ export function ChatSearch({ isOpen, onClose }: ChatSearchProps) {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}
                   transition={{ delay: i * 0.03, duration: 0.18 }}
-                  className="flex items-start gap-2 px-4 py-2 cursor-pointer hover:bg-accent/60 rounded-md transition-colors text-sm min-h-[44px]"
+                  className="flex items-start gap-2 px-4 py-2 cursor-pointer hover:bg-sidebar-accent/60 rounded-md transition-colors text-sm min-h-[44px]"
                   style={{ border: "none", background: "none", scrollSnapAlign: 'start' }}
                   onClick={() => {
                     navigate(`/chatbot/${chat._id}?tag=${encodeURIComponent(selectedTags[0])}`);
@@ -245,7 +245,7 @@ export function ChatSearch({ isOpen, onClose }: ChatSearchProps) {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}
                   transition={{ delay: i * 0.03, duration: 0.18 }}
-                  className="flex items-start gap-2 px-4 py-2 cursor-pointer hover:bg-accent/60 rounded-md transition-colors text-sm min-h-[44px]"
+                  className="flex items-start gap-2 px-4 py-2 cursor-pointer hover:bg-sidebar-accent/60 rounded-md transition-colors text-sm min-h-[44px]"
                   style={{ border: "none", background: "none", scrollSnapAlign: 'start' }}
                   onClick={() => {
                     navigate(`/chatbot/${msg.chatId}?messageId=${msg._id}`);

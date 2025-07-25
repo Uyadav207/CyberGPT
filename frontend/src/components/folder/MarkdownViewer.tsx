@@ -1,4 +1,5 @@
 import ReactMarkdown from "react-markdown";
+import rehypeRaw from "rehype-raw";
 
 interface MarkdownViewerProps {
 	content: string;
@@ -7,7 +8,7 @@ interface MarkdownViewerProps {
 export default function MarkdownViewer({ content }: MarkdownViewerProps) {
 	return (
 		<div className="prose max-w-none">
-			<ReactMarkdown>{content}</ReactMarkdown>
+			<ReactMarkdown rehypePlugins={[rehypeRaw]}>{content}</ReactMarkdown>
 		</div>
 	);
 }

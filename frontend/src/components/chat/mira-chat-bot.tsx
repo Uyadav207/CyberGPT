@@ -440,10 +440,51 @@ const MiraChatBot: React.FC = () => {
 						: undefined;
 					
 					// Map reasoningTrace to narrative if present (from DB Reasoning field or trace)
-					let reasoningTrace = chat.Reasoning ||
-						((chat as any).trace && typeof (chat as any).trace[0]?.narrative === 'string'
-							? (chat as any).trace[0].narrative
-							: (chat as any).trace || undefined);
+					let reasoningTrace;
+					if (chat.Reasoning) {
+						// If we have a Reasoning string, create a proper reasoningTrace structure
+						reasoningTrace = [
+							{
+								narrative: chat.Reasoning
+							},
+							{
+								step: "Step1",
+								message: "Context retrieved from knowledge graph."
+							},
+							{
+								step: "Step2", 
+								message: "Comprehensive analysis completed."
+							},
+							{
+								step: "Step3",
+								message: "Response generated using LLM with context."
+							}
+						];
+						console.log('[Message Loading] Created reasoningTrace from Reasoning field:', {
+							messageId: chat._id,
+							reasoningLength: chat.Reasoning?.length || 0,
+							hasReasoningTrace: !!reasoningTrace
+						});
+					} else if ((chat as any).trace && typeof (chat as any).trace[0]?.narrative === 'string') {
+						reasoningTrace = (chat as any).trace;
+						console.log('[Message Loading] Using existing trace with narrative:', {
+							messageId: chat._id,
+							hasReasoningTrace: !!reasoningTrace
+						});
+					} else if ((chat as any).trace) {
+						reasoningTrace = (chat as any).trace;
+						console.log('[Message Loading] Using existing trace:', {
+							messageId: chat._id,
+							hasReasoningTrace: !!reasoningTrace
+						});
+					} else {
+						reasoningTrace = undefined;
+						console.log('[Message Loading] No reasoning found for message:', {
+							messageId: chat._id,
+							hasReasoning: !!chat.Reasoning,
+							hasTrace: !!(chat as any).trace
+						});
+					}
 					
 					// Create CVE descriptions map from Info if available
 					const cveDescriptionsMap = chat.Info?.cve_id 
@@ -667,39 +708,14 @@ const MiraChatBot: React.FC = () => {
 					message: userMessage.message,
 					agentPersonality: selectedAgentMode 
 				});
-				console.log('Backend response:', {
-					jargons: response.jargons,
-					cveDescriptionsMap: response.cveDescriptionsMap,
-					answerLength: response.answer?.length,
-					dynamicTag: response.dynamicTag,
-					sourceLinks: response.sourceLinks,
-					contextData: response.contextData
-				});
-				console.log('Full backend response:', response);
 				
 				// Validate response structure
 				if (!response.answer) {
 					console.error('ERROR: No answer in response!');
 					throw new Error('Backend response missing answer field');
 				}
-				console.log('Dynamic tag validation:', {
-					exists: !!response.dynamicTag,
-					value: response.dynamicTag,
-					type: typeof response.dynamicTag,
-					fallback: response.dynamicTag || "cybersecurity_general"
-				});
-				console.log('Context data from backend:', response.contextData);
-				
 				// Test if saveEnhancedChatMessage function exists
 				console.log('saveEnhancedChatMessage function:', typeof saveEnhancedChatMessage);
-				
-				console.log('Creating botMessage with response data:', {
-					hasJargons: !!(response.jargons && response.jargons.length > 0),
-					jargonsCount: response.jargons?.length || 0,
-					hasSourceLinks: !!(response.sourceLinks && response.sourceLinks.length > 0),
-					sourceLinksCount: response.sourceLinks?.length || 0,
-					jargons: response.jargons
-				});
 				
 				const botMessage: Message = {
 					id: uuidv4(),
@@ -712,12 +728,6 @@ const MiraChatBot: React.FC = () => {
 					durationSec: thinkingStartRef.current ? (Date.now() - thinkingStartRef.current) / 1000 : undefined,
 				};
 				thinkingStartRef.current = null;
-				
-				console.log('Created botMessage:', {
-					hasJargons: !!(botMessage.jargons && botMessage.jargons.length > 0),
-					jargonsCount: botMessage.jargons?.length || 0,
-					jargons: botMessage.jargons
-				});
 				
 				// Save AI response to database (same logic as main flow)
 				const currentChatId = createdChatId || chatId;
@@ -1024,8 +1034,7 @@ const MiraChatBot: React.FC = () => {
 					hasJargons: !!(response.jargons && response.jargons.length > 0),
 					jargonsCount: response.jargons?.length || 0,
 					hasSourceLinks: !!(response.sourceLinks && response.sourceLinks.length > 0),
-					sourceLinksCount: response.sourceLinks?.length || 0,
-					jargons: response.jargons
+					sourceLinksCount: response.sourceLinks?.length || 0
 				});
 				
 				const getReasoningString = (trace: any, fallback: any) => {
@@ -1049,8 +1058,7 @@ const MiraChatBot: React.FC = () => {
 				
 				console.log('Created botMessage:', {
 					hasJargons: !!(botMessage.jargons && botMessage.jargons.length > 0),
-					jargonsCount: botMessage.jargons?.length || 0,
-					jargons: botMessage.jargons
+					jargonsCount: botMessage.jargons?.length || 0
 				});
 				
 				// Save AI response to database
@@ -2641,6 +2649,46 @@ const MiraChatBot: React.FC = () => {
 		}
 	}
 
+	// Helper to normalize reasoningTrace to string
+	const getReasoningString = (trace: any) => {
+		if (typeof trace === 'string') return trace;
+		if (Array.isArray(trace) && trace[0]?.narrative) return trace[0].narrative;
+		if (trace && typeof trace.narrative === 'string') return trace.narrative;
+		return '';
+	};
+
+	// Helper to preprocess message.message for jargons before passing to MarkdownViewer
+	const preprocessJargonMarkdown = (content: string, jargons: any[] = [], cveDescriptionsMap: Record<string, string> = {}) => {
+		if (!jargons || jargons.length === 0) return content;
+		
+		console.log('Preprocessing jargons:', jargons.length, 'jargons found');
+		
+		let processed = content;
+		// Sort by term length descending to avoid partial matches (longer terms first)
+		const sortedJargons = [...jargons].sort((a, b) => b.term.length - a.term.length);
+		
+		sortedJargons.forEach(j => {
+			const term = j.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+			// Use word boundaries for single words, but allow partial matches for multi-word terms and technical terms
+			const isMultiWord = j.term.includes(' ') || j.term.includes('-') || /^[A-Z]{2,}/.test(j.term);
+			const regex = isMultiWord 
+				? new RegExp(`(${term})`, 'gi')
+				: new RegExp(`\\b(${term})\\b`, 'gi');
+			
+			const desc = j.description || cveDescriptionsMap[j.term] || '';
+			console.log(`Highlighting term: "${j.term}" with description: "${desc.substring(0, 50)}..."`);
+			
+			// Replace with inline HTML span with tooltip and better styling
+			processed = processed.replace(
+				regex,
+				`<span class="jargon-highlight" title="${desc.replace(/"/g, '&quot;')}" style="background: rgba(255, 230, 150, 0.7); border-bottom: 2px dotted #f59e0b; border-radius: 3px; padding: 0 2px; cursor: pointer; font-weight: 500;">${j.term}</span>`
+			);
+		});
+		
+		console.log('Jargon preprocessing complete');
+		return processed;
+	};
+
 	const [isSearchOpen, setIsSearchOpen] = useState(false);
 	const location = useLocation();
 	const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
@@ -2838,77 +2886,95 @@ const MiraChatBot: React.FC = () => {
 												/>
 											)}
 
-											<div className={`${messageClasses}`}>
-												{/* Reasoning summary indicator (before every message if present) */}
-												{message.reasoningTrace && (
-													<div className="flex items-center mb-1 text-xs text-blue-600 dark:text-blue-300 cursor-pointer select-none"
-														onClick={() => setExpandedReasoning(prev => ({ ...prev, [String(message.id)]: !prev[String(message.id)] }))}
-														tabIndex={0}
-														role="button"
-														aria-expanded={!!expandedReasoning[String(message.id)]}
-														aria-controls={`reasoning-summary-${String(message.id)}`}
-													>
-														<FaRegLightbulb className="mr-1" />
-														<span>Reasoning available</span>
-														{typeof message.durationSec === 'number' && (
-															<span className="ml-2 text-gray-500">Thought for {Math.round(message.durationSec)}s</span>
-														)}
-														{expandedReasoning[String(message.id)] ? (
-															<FaChevronDown className="ml-1" />
-														) : (
-															<FaChevronRight className="ml-1" />
-														)}
+										<div className={`${messageClasses}`}>
+											{/* Reasoning summary indicator (before every message if present) */}
+											{message.reasoningTrace && (
+												<div className="flex items-center mb-1 text-xs text-blue-600 dark:text-blue-300 cursor-pointer select-none"
+													onClick={() => {
+														console.log('[Reasoning Toggle] Clicked reasoning for message:', {
+															messageId: message.id,
+															hasReasoningTrace: !!message.reasoningTrace,
+															reasoningType: typeof message.reasoningTrace,
+															isArray: Array.isArray(message.reasoningTrace),
+															reasoningLength: Array.isArray(message.reasoningTrace) ? message.reasoningTrace.length : 'N/A'
+														});
+														setExpandedReasoning(prev => ({ ...prev, [String(message.id)]: !prev[String(message.id)] }));
+													}}
+													tabIndex={0}
+													role="button"
+													aria-expanded={!!expandedReasoning[String(message.id)]}
+													aria-controls={`reasoning-summary-${String(message.id)}`}
+												>
+													<FaRegLightbulb className="mr-1" />
+													<span>Reasoning available</span>
+													{typeof message.durationSec === 'number' && (
+														<span className="ml-2 text-gray-500">Thought for {Math.round(message.durationSec)}s</span>
+													)}
+													{expandedReasoning[String(message.id)] ? (
+														<FaChevronDown className="ml-1" />
+													) : (
+														<FaChevronRight className="ml-1" />
+													)}
+												</div>
+											)}
+											{message.reasoningTrace && expandedReasoning[String(message.id)] && (
+												<div
+													id={`reasoning-summary-${String(message.id)}`}
+													className="mb-4 p-5 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 rounded-xl border-l-8 border-blue-400 dark:border-blue-500 shadow-lg relative"
+													style={{ fontSize: '1.08rem', lineHeight: 1.7 }}
+												>
+													<div className="flex items-center mb-2">
+														<span className="text-2xl mr-2">🤔</span>
+														<span className="font-semibold text-blue-700 dark:text-blue-200 text-lg">Reasoning</span>
 													</div>
-												)}
-												{message.reasoningTrace && expandedReasoning[String(message.id)] && (
-													<div id={`reasoning-summary-${String(message.id)}`} className="mb-2 p-2 bg-blue-50 dark:bg-blue-900 rounded text-xs text-blue-900 dark:text-blue-100 border border-blue-200 dark:border-blue-700">
-														{/* Render reasoningTrace as string */}
-														{Array.isArray(message.reasoningTrace)
-															? message.reasoningTrace.map(step => String(step)).join(' ')
-															: (typeof message.reasoningTrace === 'string' ? message.reasoningTrace : String(message.reasoningTrace))}
-													</div>
-												)}
-												{isUser ? (
-													message.message
-												) : (
-													<>
-														{(() => {
-															console.log('Rendering message:', {
-																sender: message.sender,
-																hasJargons: !!message.jargons,
-																jargonsCount: message.jargons?.length || 0,
-																messageId: message.id
-															});
-															return message.jargons ? <div>{highlightJargon(message.message, message.jargons, message.cveDescriptionsMap)}</div> : <MarkdownViewer content={message.message} />;
-														})()}
-														{message.sourceLinks && message.sourceLinks.length > 0 && (
-															<SourceLinks sourceLinks={message.sourceLinks} />
-														)}
-														{/* Only show related questions for the very last message if it is an AI message */}
-														{!isUser && isLastMessage && (
-															<div className="mt-3 flex flex-wrap gap-2">
-																{relatedQuestions.map((q, i) => (
-																	<motion.button
-																		key={`${message.id}-${q}-${i}`}
-																		onClick={() => handleSend(q, false, true)}
-																		className="rounded-lg px-3 py-1.5 bg-muted text-muted-foreground border border-sidebar-border text-xs sm:text-sm font-medium hover:bg-accent hover:text-foreground transition-shadow focus:outline-none focus:ring-2 focus:ring-primary"
-																		style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
-																		initial={{ opacity: 0, y: 20 }}
-																		animate={{ opacity: 1, y: 0 }}
-																		transition={{ delay: 0.15 * i, duration: 0.35, type: 'spring', stiffness: 200 }}
-																	>
-																		{q}
-																	</motion.button>
-																))}
-															</div>
-														)}
-													</>
-												)}
-											</div>
+													<MarkdownViewer content={getReasoningString(message.reasoningTrace)} />
+												</div>
+											)}
+											
+											{!isUser && (
+												<div className="mb-6 p-5 bg-background">
+													{(() => {
+														console.log('Rendering message:', {
+															sender: message.sender,
+															hasJargons: !!message.jargons,
+															jargonsCount: message.jargons?.length || 0,
+															messageId: message.id
+														});
+														return <MarkdownViewer content={preprocessJargonMarkdown(message.message, message.jargons, message.cveDescriptionsMap)} />;
+													})()}
+													{message.sourceLinks && message.sourceLinks.length > 0 && (
+														<SourceLinks sourceLinks={message.sourceLinks} />
+													)}
+													{/* Only show related questions for the very last message if it is an AI message */}
+													{isLastMessage && (
+														<div className="mt-3 flex flex-wrap gap-2">
+															{relatedQuestions.map((q, i) => (
+																<motion.button
+																	key={`${message.id}-${q}-${i}`}
+																	onClick={() => handleSend(q, false, true)}
+																	className="rounded-lg px-3 py-1.5 bg-sidebar border border-sidebar-border text-sidebar-foreground text-xs sm:text-sm font-medium hover:bg-sidebar-accent hover:shadow-sm transition-shadow focus:outline-none focus:ring-2 focus:ring-sidebar-ring"
+																	style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+																	initial={{ opacity: 0, y: 20 }}
+																	animate={{ opacity: 1, y: 0 }}
+																	transition={{ delay: 0.15 * i, duration: 0.35, type: 'spring', stiffness: 200 }}
+																>
+																	{q}
+																</motion.button>
+															))}
+														</div>
+													)}
+												</div>
+											)}
+											{isUser && (
+												<div className="mb-4">
+													{message.message}
+												</div>
+											)}
 										</div>
-									</motion.div>
-								);
-							})}
+									</div>
+								</motion.div>
+							);
+						})}
 
 							{isLoading && (
 								<motion.div

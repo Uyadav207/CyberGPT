@@ -38,16 +38,6 @@ export class ChatController {
         contextData,
         sourceLinks,
       } = await graphRAGAnswer(message);
-      console.log("REASONING TRACE (narrative or array):", reasoningTrace);
-      console.log("DEBUG: Returning chat answer with jargons:", {
-        answer,
-        reasoningTrace,
-        jargons,
-        cveDescriptionsMap,
-        dynamicTag,
-        contextData,
-        sourceLinks,
-      });
       // Ensure trace is always an array with a narrative field if reasoningTrace is a string
       let trace = Array.isArray(reasoningTrace)
         ? reasoningTrace
@@ -105,20 +95,10 @@ export class ChatController {
   async chatWithJargon(c: Context) {
     try {
       const body = await c.req.json();
-      console.log("DEBUG: Received request body:", body);
       const { message, agentPersonality, concept, question } = body;
-      console.log("DEBUG: Parsed parameters:", {
-        message,
-        agentPersonality,
-        concept,
-        question,
-      });
       // Accept both 'message' and 'concept' or 'question' as input
       const mainMessage = message || concept || question;
       if (!mainMessage) {
-        console.error(
-          "DEBUG: Missing main message parameter (message/concept/question)"
-        );
         return c.json(
           {
             status: "error",
@@ -127,10 +107,6 @@ export class ChatController {
           400
         );
       }
-      console.log("DEBUG: Calling graphRAGAnswer with:", {
-        mainMessage,
-        agentPersonality,
-      });
       const {
         answer,
         reasoningTrace,
@@ -140,22 +116,12 @@ export class ChatController {
         contextData,
         sourceLinks,
       } = await graphRAGAnswer(mainMessage, agentPersonality);
-      console.log("REASONING TRACE (narrative or array):", reasoningTrace);
       // Ensure trace is always an array with a narrative field if reasoningTrace is a string
       let trace = Array.isArray(reasoningTrace)
         ? reasoningTrace
         : reasoningTrace
           ? [{ narrative: reasoningTrace }]
           : [];
-      console.log("DEBUG: Returning chat answer with jargons:", {
-        answer,
-        trace,
-        jargons,
-        cveDescriptionsMap,
-        dynamicTag,
-        contextData,
-        sourceLinks,
-      });
       return c.json({
         answer,
         trace,
