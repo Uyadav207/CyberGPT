@@ -2891,7 +2891,7 @@ const MiraChatBot: React.FC = () => {
 																	<motion.button
 																		key={`${message.id}-${q}-${i}`}
 																		onClick={() => handleSend(q, false, true)}
-																		className="rounded-lg px-3 py-1.5 bg-white border border-gray-300 text-gray-700 text-xs sm:text-sm font-medium hover:bg-gray-50 hover:shadow-sm transition-shadow focus:outline-none focus:ring-2 focus:ring-indigo-400"
+																		className="rounded-lg px-3 py-1.5 bg-muted text-muted-foreground border border-sidebar-border text-xs sm:text-sm font-medium hover:bg-accent hover:text-foreground transition-shadow focus:outline-none focus:ring-2 focus:ring-primary"
 																		style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
 																		initial={{ opacity: 0, y: 20 }}
 																		animate={{ opacity: 1, y: 0 }}
@@ -2952,7 +2952,7 @@ const MiraChatBot: React.FC = () => {
 										handleSend();
 									}
 								}}
-								className="w-full text-sm bg-sidebar text-sidebar-foreground rounded-md h-10 px-3 py-2 placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none transition-colors"
+								className="w-full text-sm bg-sidebar text-sidebar-foreground rounded-md h-10 px-3 py-2 placeholder:text-muted-foreground focus:outline-none border-none resize-none transition-colors"
 								placeholder="Type your message here..."
 								disabled={isLoading || !!pendingAction}
 							/>

@@ -60,22 +60,22 @@ export const SourceLinks: React.FC<SourceLinksProps> = ({ sourceLinks, className
 
   return (
     <div className={`mt-3 ${className}`}>
-      <div className="border border-gray-200 rounded-lg bg-gray-50/50 overflow-hidden">
+      <div className="border border-sidebar-border rounded-lg bg-sidebar text-sidebar-foreground overflow-hidden">
         {/* Header */}
         <button
           onClick={() => setIsExpanded(!isExpanded)}
-          className="w-full px-3 py-2 flex items-center justify-between hover:bg-gray-100/70 transition-colors"
+          className="w-full px-3 py-2 flex items-center justify-between hover:bg-accent/60 transition-colors"
         >
           <div className="flex items-center gap-2">
-            <ExternalLink className="w-4 h-4 text-gray-600" />
-            <span className="text-sm font-medium text-gray-700">
+            <ExternalLink className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm font-medium text-sidebar-foreground">
               Sources ({sourceLinks.length})
             </span>
           </div>
           {isExpanded ? (
-            <ChevronDown className="w-4 h-4 text-gray-500" />
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
           ) : (
-            <ChevronRight className="w-4 h-4 text-gray-500" />
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
           )}
         </button>
 
@@ -87,14 +87,14 @@ export const SourceLinks: React.FC<SourceLinksProps> = ({ sourceLinks, className
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="border-t border-gray-200"
+              className="border-t border-sidebar-border"
             >
               <div className="p-3 space-y-3">
                 {sortedTypes.map((type) => (
                   <div key={type} className="space-y-2">
                     <div className="flex items-center gap-2">
                       {getSourceIcon(type)}
-                      <span className={`text-xs px-2 py-1 rounded-full border ${getSourceTypeColor(type)}`}>
+                      <span className="text-xs px-2 py-1 rounded-full border border-sidebar-border bg-muted text-muted-foreground">
                         {type.charAt(0).toUpperCase() + type.slice(1)}
                       </span>
                     </div>
@@ -105,10 +105,10 @@ export const SourceLinks: React.FC<SourceLinksProps> = ({ sourceLinks, className
                           href={source.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-xs text-blue-600 hover:text-blue-800 hover:underline group transition-colors"
+                          className="flex items-center gap-2 text-xs text-blue-600 dark:text-white hover:text-blue-800 dark:hover:text-primary-300 hover:underline group transition-colors"
                         >
                           <span className="truncate">{source.title}</span>
-                          <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                          <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 text-muted-foreground" />
                         </a>
                       ))}
                     </div>
@@ -116,8 +116,8 @@ export const SourceLinks: React.FC<SourceLinksProps> = ({ sourceLinks, className
                 ))}
                 
                 {/* Footer */}
-                <div className="pt-2 border-t border-gray-100">
-                  <p className="text-xs text-gray-500 italic">
+                <div className="pt-2 border-t border-sidebar-border">
+                  <p className="text-xs text-muted-foreground italic">
                     Click any link to verify information from trusted cybersecurity sources
                   </p>
                 </div>
