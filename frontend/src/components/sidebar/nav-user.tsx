@@ -51,12 +51,12 @@ export function NavUser() {
 								size="lg"
 								className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
 							>
-								<Avatar className="rounded-lg object-cover">
+								<Avatar className="rounded-lg object-cover bg-sidebar border border-sidebar-border">
 									<AvatarImage
 										src={user?.avatar ?? undefined}
 										alt={user?.firstName}
 									/>
-									<AvatarFallback className="rounded-lg bg-[#E5E7EB]">
+									<AvatarFallback className="rounded-lg bg-muted text-muted-foreground border border-sidebar-border">
 										{user?.firstName.substring(0, 1)}
 									</AvatarFallback>
 								</Avatar>

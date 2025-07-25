@@ -6,6 +6,7 @@ import {
 	MessageCircleDashedIcon,
 	MessageSquareCode,
 	TrendingUpDown,
+	Search,
 } from "lucide-react";
 import {
 	Folder,
@@ -123,7 +124,11 @@ const renderCategory = (
 	</>
 );
 
-export default function ChatHistory() {
+interface NavChatHistoryProps {
+  onOpenSearch: () => void;
+}
+
+export default function ChatHistory({ onOpenSearch }: NavChatHistoryProps) {
 	const navigate = useNavigate();
 	const [isLoading, setIsLoading] = useState(true);
 	const { state } = useSidebar();
@@ -223,12 +228,28 @@ export default function ChatHistory() {
 
 	return (
 		<>
-			<div className="chat-history-section max-h-[70vh] overflow-y-scroll scrollbar-grey">
+			{/* Search button and shortcut icons above Recent Chats */}
+			<button
+				onClick={onOpenSearch}
+				className="flex items-center justify-between w-full bg-sidebar text-sidebar-foreground hover:bg-accent/60 rounded-none px-4 py-2 border-b border-sidebar-border transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40"
+				title="Search"
+				style={{ borderTopLeftRadius: 0, borderTopRightRadius: 0 }}
+			>
+				<span className="flex items-center gap-2 text-sm font-medium">
+					<Search className="h-5 w-5 mr-1 text-muted-foreground" />
+					<span>Search</span>
+				</span>
+				<span className="flex items-center gap-1">
+					<span className="inline-flex items-center justify-center w-6 h-6 rounded bg-muted text-xs font-semibold text-muted-foreground border border-sidebar-border">⌘</span>
+					<span className="inline-flex items-center justify-center w-6 h-6 rounded bg-muted text-xs font-semibold text-muted-foreground border border-sidebar-border">S</span>
+				</span>
+			</button>
+			<div className="flex-1 flex flex-col overflow-y-auto scrollbar-grey">
 				<SidebarGroup>
 					{recentChats?.length > 0 && (
 						<SidebarGroupLabel>Recent Chats</SidebarGroupLabel>
 					)}
-					<SidebarContent className="h-[calc(100vh-280px)]">
+					<SidebarContent className="flex-1 flex flex-col">
 						<SidebarGroupContent>
 							<SidebarMenu>
 								{isLoading ? (

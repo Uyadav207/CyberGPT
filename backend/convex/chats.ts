@@ -206,3 +206,26 @@ export const validateChatId = query({
     return chat !== null;
   },
 });
+
+export const getAllUserChatMessages = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    // Get all chats for the user
+    const userChats = await ctx.db
+      .query("chats")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .collect();
+
+    // Get all messages for these chats
+    const allMessages = [];
+    for (const chat of userChats) {
+      const messages = await ctx.db
+        .query("chatHistory")
+        .withIndex("by_chatId", (q) => q.eq("chatId", chat._id))
+        .collect();
+      allMessages.push(...messages);
+    }
+
+    return allMessages;
+  },
+});

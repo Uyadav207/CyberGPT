@@ -8,25 +8,42 @@ import {
 	SidebarRail,
 	SidebarSeparator,
 } from "../ui/sidebar";
-import ChatHistory from "./nav-chat-history";
-// import aevix from "../../../public/aevix.png";
+import NavChatHistory from "./nav-chat-history";
+import { Search } from "lucide-react";
+import { Button } from "../ui/button";
+import { useState, useEffect } from "react";
+import { ChatSearch } from "../chat/chat-search";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+	const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+	// Keyboard shortcut: Cmd+S or Ctrl+S
+	useEffect(() => {
+		const handler = (e: KeyboardEvent) => {
+			if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+				e.preventDefault();
+				setIsSearchOpen(true);
+			}
+		};
+		window.addEventListener("keydown", handler);
+		return () => window.removeEventListener("keydown", handler);
+	}, []);
+
 	return (
 		<Sidebar collapsible="offcanvas" {...props}>
-			<SidebarHeader className="flex items-center mb-5">
-				{/* <img src={aevix} alt="Logo" className="h-6 w-auto" /> */}
+			<SidebarHeader className="flex items-center mb-5 justify-between">
 				<NewChat />
 			</SidebarHeader>
 			<SidebarSeparator />
 			<SidebarContent className="overflow-hidden h-screen">
-				<ChatHistory />
+				<NavChatHistory onOpenSearch={() => setIsSearchOpen(true)} />
 			</SidebarContent>
 			<SidebarSeparator />
 			<SidebarFooter>
 				<NavUser />
 			</SidebarFooter>
 			<SidebarRail />
+			<ChatSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
 		</Sidebar>
 	);
 }

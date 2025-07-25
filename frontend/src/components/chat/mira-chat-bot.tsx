@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { v4 as uuidv4 } from "uuid";
 import { FaRegLightbulb } from 'react-icons/fa';
 import { FaChevronDown, FaChevronRight } from 'react-icons/fa';
+import { Button } from "@components/ui/button";
+import { Search } from "lucide-react";
 
 //components
 import { ScrollArea } from "@components/ui/scroll-area";
@@ -68,6 +70,7 @@ import { agentApi } from "../../api/agent";
 import RoleButtonGroup from "./chatComponents/RoleButton/RoleButtonGroup";
 import { ReasoningTrace } from "./ReasoningTrace";
 import { SourceLinks } from "./SourceLinks";
+import { ChatSearch } from "./chat-search";
 
 // Add helper for highlighting jargon terms
 function highlightJargon(answer: string, jargons: { term: string; description: string }[] = [], cveDescriptionsMap: Record<string, string> = {}) {
@@ -2638,326 +2641,367 @@ const MiraChatBot: React.FC = () => {
 		}
 	}
 
+	const [isSearchOpen, setIsSearchOpen] = useState(false);
+	const location = useLocation();
+	const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+	const [highlightChatBlock, setHighlightChatBlock] = useState(false);
+	const messageRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+	const [highlightedTagMessageId, setHighlightedTagMessageId] = useState<string | null>(null);
+
+	useEffect(() => {
+		const params = new URLSearchParams(location.search);
+		const messageId = params.get("messageId");
+		if (messageId) {
+			setHighlightedMessageId(messageId);
+			setTimeout(() => {
+				const el = messageRefs.current[messageId];
+				if (el) {
+					el.scrollIntoView({ behavior: "smooth", block: "center" });
+				}
+			}, 300); // Wait for render
+			// Remove highlight after 3 seconds
+			setTimeout(() => setHighlightedMessageId(null), 3000);
+		}
+		// Highlight chat block if highlight param is present
+		if (params.get("highlight") === "1") {
+			setHighlightChatBlock(true);
+			setTimeout(() => setHighlightChatBlock(false), 2500);
+		}
+		// Highlight first message with tag if tag param is present
+		const tag = params.get("tag");
+		if (tag) {
+			const found = uniqueMessages.find(m => Array.isArray(m.tags) && m.tags.includes(tag));
+			if (found) {
+				setHighlightedTagMessageId(String(found.id));
+				setTimeout(() => {
+					const el = messageRefs.current[String(found.id)];
+					if (el) {
+						el.scrollIntoView({ behavior: "smooth", block: "center" });
+					}
+				}, 300);
+				setTimeout(() => setHighlightedTagMessageId(null), 3000);
+			}
+		}
+		// Remove chat block highlight logic
+	}, [location.search, uniqueMessages.length]);
+
 	return (
-		<div className="flex justify-center">
-			<div className="flex flex-col space-y-3 sm:w-3/4 md:w-4/5 lg:w-3/5 h-[89vh] rounded-lg">
-				{uniqueMessages.length === 0 ? (
-					<div className="flex flex-col items-center justify-end w-full lg:h-1/3 md:h-1 sm:h-full p-4 sm:p-8">
-						<motion.div
-							className="flex flex-col items-center text-center text-xl sm:text-2xl font-semibold mt-4 sm:mt-6 space-y-1 sm:space-y-1"
-							initial={{ opacity: 0, y: 10 }}
-							animate={{ opacity: 1, y: 0 }}
-							transition={{ delay: 0.3 }}
-						/>
-					</div>
-				) : chatsLoader ? (
-					<div className="flex items-center justify-center w-full h-full">
-						<Spinner />
-					</div>
-				) : (
-					<ScrollArea
-						ref={scrollAreaRef}
-						className="flex-1 p-4 w-full overflow-y-hidden"
-					>
-						{uniqueMessages.map((message, idx) => {
-							const isPendingAction =
-								pendingAction === message.id ||
-								pendingAction === message.humanInTheLoopId;
-							const isAISender = message.sender === "ai";
+		<div className={`relative flex h-screen flex-col overflow-hidden${highlightChatBlock ? ' ring-4 ring-yellow-300/60 bg-yellow-50 dark:bg-yellow-900/30 transition-all duration-700' : ''}`}>
+			<div className="flex justify-center">
+				<div className="flex flex-col space-y-3 sm:w-3/4 md:w-4/5 lg:w-3/5 h-[89vh] rounded-lg">
+					{uniqueMessages.length === 0 ? (
+						<div className="flex flex-col items-center justify-end w-full lg:h-1/3 md:h-1 sm:h-full p-4 sm:p-8">
+							<motion.div
+								className="flex flex-col items-center text-center text-xl sm:text-2xl font-semibold mt-4 sm:mt-6 space-y-1 sm:space-y-1"
+								initial={{ opacity: 0, y: 10 }}
+								animate={{ opacity: 1, y: 0 }}
+								transition={{ delay: 0.3 }}
+							/>
+						</div>
+					) : chatsLoader ? (
+						<div className="flex items-center justify-center w-full h-full">
+							<Spinner />
+						</div>
+					) : (
+						<ScrollArea
+							ref={scrollAreaRef}
+							className="flex-1 p-4 w-full overflow-y-hidden"
+						>
+							{uniqueMessages.map((message, idx) => {
+								const isPendingAction =
+									pendingAction === message.id ||
+									pendingAction === message.humanInTheLoopId;
+								const isAISender = message.sender === "ai";
+								const isHighlighted = highlightedMessageId === String(message.id) || highlightedTagMessageId === String(message.id);
 
-							if (isPendingAction && isAISender) {
-								return actionType === "approval" ? (
-									<motion.div
-										key={message.id + '-' + idx}
-										initial={{ opacity: 0, y: 50 }}
-										animate={{ opacity: 1, y: 0 }}
-										exit={{ opacity: 0, y: -50 }}
-										transition={{ duration: 0.3 }}
-									>
-										<HumanInTheLoopApproval
-											addBotMessage={addBotMessage}
-											key={message.id}
-											message={humanInTheLoopMessage || ""}
-											onCancel={cancelAction}
-											confirmType={confirmType || ""}
-											onConfirm={yesClicked}
-										/>
-									</motion.div>
-								) : actionType === "input" || actionType === "sast-input" ? (
-									<motion.div
-										key={message.id + '-' + idx}
-										initial={{ opacity: 0, y: 50 }}
-										animate={{ opacity: 1, y: 0 }}
-										exit={{ opacity: 0, y: -50 }}
-										transition={{ duration: 0.3 }}
-									>
-										<HumanInTheLoopInput
-											addBotMessage={addBotMessage}
-											key={message.id}
-											message={humanInTheLoopMessage || ""}
-											onConfirm={handleFileCreation}
-											setShowInfo={setShowInfo}
-											requestHumanInLoop={requestHumanInLoop ?? null}
-										/>
-									</motion.div>
-								) : (
-									<motion.div
-										key={message.id + '-' + idx}
-										initial={{ opacity: 0, y: 50 }}
-										animate={{ opacity: 1, y: 0 }}
-										exit={{ opacity: 0, y: -50 }}
-										transition={{ duration: 0.3 }}
-									>
-										<HumanInTheLoopOptions
-											addBotMessage={addBotMessage}
-											key={message.id}
-											setShowInfo={setShowInfo}
-											question={humanInTheLoopMessage || ""}
-											actionPrompts={actionPrompts || []}
-											onConfirm={confirmAction}
-										/>
-									</motion.div>
+								if (isPendingAction && isAISender) {
+									return actionType === "approval" ? (
+										<motion.div
+											key={message.id + '-' + idx}
+											initial={{ opacity: 0, y: 50 }}
+											animate={{ opacity: 1, y: 0 }}
+											exit={{ opacity: 0, y: -50 }}
+											transition={{ duration: 0.3 }}
+										>
+											<HumanInTheLoopApproval
+												addBotMessage={addBotMessage}
+												key={message.id}
+												message={humanInTheLoopMessage || ""}
+												onCancel={cancelAction}
+												confirmType={confirmType || ""}
+												onConfirm={yesClicked}
+											/>
+										</motion.div>
+									) : actionType === "input" || actionType === "sast-input" ? (
+										<motion.div
+											key={message.id + '-' + idx}
+											initial={{ opacity: 0, y: 50 }}
+											animate={{ opacity: 1, y: 0 }}
+											exit={{ opacity: 0, y: -50 }}
+											transition={{ duration: 0.3 }}
+										>
+											<HumanInTheLoopInput
+												addBotMessage={addBotMessage}
+												key={message.id}
+												message={humanInTheLoopMessage || ""}
+												onConfirm={handleFileCreation}
+												setShowInfo={setShowInfo}
+												requestHumanInLoop={requestHumanInLoop ?? null}
+											/>
+										</motion.div>
+									) : (
+										<motion.div
+											key={message.id + '-' + idx}
+											initial={{ opacity: 0, y: 50 }}
+											animate={{ opacity: 1, y: 0 }}
+											exit={{ opacity: 0, y: -50 }}
+											transition={{ duration: 0.3 }}
+										>
+											<HumanInTheLoopOptions
+												addBotMessage={addBotMessage}
+												key={message.id}
+												setShowInfo={setShowInfo}
+												question={humanInTheLoopMessage || ""}
+												actionPrompts={actionPrompts || []}
+												onConfirm={confirmAction}
+											/>
+										</motion.div>
+									);
+								}
+
+								const isUser = message.sender === "user";
+								const messageClasses = `inline-block px-3 pt-3 rounded-xl max-w-[80%] sm:max-w-[100%] ${
+									isUser
+										? "bg-secondary dark:bg-primary-900 p-4 text-sm"
+										: "text-foreground pr-4 overflow-y-auto text-pretty break-normal text-sm"
+								}`;
+								const containerClasses = `mb-4  ${isUser ? "text-right" : "text-left"}`;
+
+								// Before rendering related questions:
+								const lastUserMsg = uniqueMessages.slice(0, idx).reverse().find(m => m.sender === 'user');
+								const userQuestion = lastUserMsg ? lastUserMsg.message : '';
+								const contextKey = (userQuestion + ' ' + message.message).toLowerCase();
+								let relatedQuestions = getRelatedQuestions(
+									userQuestion,
+									message.message,
+									message.reasoningTrace ? JSON.stringify(message.reasoningTrace) : '',
+									uniqueMessages
 								);
-							}
+								const shownForThisContext = contextToShownQuestions[contextKey] || [];
+								relatedQuestions = relatedQuestions.filter(q => !shownForThisContext.includes(q));
+								allRelatedQuestionsThisRender.push(...relatedQuestions);
 
-							const isUser = message.sender === "user";
-							const messageClasses = `inline-block px-3 pt-3 rounded-xl max-w-[80%] sm:max-w-[100%] ${
-								isUser
-									? "bg-secondary dark:bg-primary-900 p-4 text-sm"
-									: "text-foreground pr-4 overflow-y-auto text-pretty break-normal text-sm"
-							}`;
-							const containerClasses = `mb-4  ${isUser ? "text-right" : "text-left"}`;
-
-							// Before rendering related questions:
-							const lastUserMsg = uniqueMessages.slice(0, idx).reverse().find(m => m.sender === 'user');
-							const userQuestion = lastUserMsg ? lastUserMsg.message : '';
-							const contextKey = (userQuestion + ' ' + message.message).toLowerCase();
-							let relatedQuestions = getRelatedQuestions(
-								userQuestion,
-								message.message,
-								message.reasoningTrace ? JSON.stringify(message.reasoningTrace) : '',
-								uniqueMessages
-							);
-							const shownForThisContext = contextToShownQuestions[contextKey] || [];
-							relatedQuestions = relatedQuestions.filter(q => !shownForThisContext.includes(q));
-							allRelatedQuestionsThisRender.push(...relatedQuestions);
-
-							// If fewer than 3, fill with least recently shown for this context (but not currently visible)
-							if (relatedQuestions.length < 3) {
-								const fillQuestions = shownForThisContext.filter(q => !relatedQuestions.includes(q));
-								relatedQuestions = [...relatedQuestions, ...fillQuestions.slice(0, 3 - relatedQuestions.length)];
-							}
-							// After filling with least recently shown, if still less than 3, fill with generic fallbacks (ensuring no duplicates)
-							const fallbackQuestions = [
-								'What are common risks?',
-								'How can I prevent this?',
-								'Can you give an example?'
-							];
-							if (relatedQuestions.length < 3) {
-								const alreadyUsed = new Set(relatedQuestions);
-								for (const q of fallbackQuestions) {
-									if (relatedQuestions.length >= 3) break;
-									if (!alreadyUsed.has(q)) {
-										relatedQuestions.push(q);
-										alreadyUsed.add(q);
+								// If fewer than 3, fill with least recently shown for this context (but not currently visible)
+								if (relatedQuestions.length < 3) {
+									const fillQuestions = shownForThisContext.filter(q => !relatedQuestions.includes(q));
+									relatedQuestions = [...relatedQuestions, ...fillQuestions.slice(0, 3 - relatedQuestions.length)];
+								}
+								// After filling with least recently shown, if still less than 3, fill with generic fallbacks (ensuring no duplicates)
+								const fallbackQuestions = [
+									'What are common risks?',
+									'How can I prevent this?',
+									'Can you give an example?'
+								];
+								if (relatedQuestions.length < 3) {
+									const alreadyUsed = new Set(relatedQuestions);
+									for (const q of fallbackQuestions) {
+										if (relatedQuestions.length >= 3) break;
+										if (!alreadyUsed.has(q)) {
+											relatedQuestions.push(q);
+											alreadyUsed.add(q);
+										}
 									}
 								}
-							}
-							relatedQuestions = relatedQuestions.slice(0, 3);
+								relatedQuestions = relatedQuestions.slice(0, 3);
 
-							// Only show related questions for the very last message if it is an AI message
-							const isLastMessage = idx === uniqueMessages.length - 1;
+								// Only show related questions for the very last message if it is an AI message
+								const isLastMessage = idx === uniqueMessages.length - 1;
 
-							return (
-								<motion.div
-									key={message.id + '-' + idx}
-									className={containerClasses}
-									initial={{ opacity: 0 }}
-									animate={{ opacity: 1, y: 0 }}
-								>
-									<div
-										className={`items-center ${message.sender === "ai" ? "flex space-x-3" : ""}`}
+								return (
+									<motion.div
+										key={message.id + '-' + idx}
+										className={containerClasses + (isHighlighted ? " border-2 border-gray-400 bg-gray-100 dark:bg-gray-800 transition-all duration-700" : "")}
+										initial={{ opacity: 0 }}
+										animate={{ opacity: 1, y: 0 }}
+										ref={el => {
+											if (el) messageRefs.current[String(message.id)] = el;
+										}}
 									>
-										{message.sender === "ai" && (
-											<img
-												src={mira_logo}
-												alt="Avatar"
-												className="w-5 h-5 mt-3 object-cover rounded-full justify-self-center mb-auto"
-											/>
-										)}
+										<div
+											className={`items-center ${message.sender === "ai" ? "flex space-x-3" : ""}`}
+										>
+											{message.sender === "ai" && (
+												<img
+													src={mira_logo}
+													alt="Avatar"
+													className="w-5 h-5 mt-3 object-cover rounded-full justify-self-center mb-auto"
+												/>
+											)}
 
-										<div className={`${messageClasses}`}>
-											{/* Reasoning summary indicator (before every message if present) */}
-											{message.reasoningTrace && (
-												<div className="flex items-center mb-1 text-xs text-blue-600 dark:text-blue-300 cursor-pointer select-none"
-													onClick={() => setExpandedReasoning(prev => ({ ...prev, [String(message.id)]: !prev[String(message.id)] }))}
-													tabIndex={0}
-													role="button"
-													aria-expanded={!!expandedReasoning[String(message.id)]}
-													aria-controls={`reasoning-summary-${String(message.id)}`}
-												>
-													<FaRegLightbulb className="mr-1" />
-													<span>Reasoning available</span>
-													{typeof message.durationSec === 'number' && (
-														<span className="ml-2 text-gray-500">Thought for {Math.round(message.durationSec)}s</span>
-													)}
-													{expandedReasoning[String(message.id)] ? (
-														<FaChevronDown className="ml-1" />
-													) : (
-														<FaChevronRight className="ml-1" />
-													)}
-												</div>
-											)}
-											{message.reasoningTrace && expandedReasoning[String(message.id)] && (
-												<div id={`reasoning-summary-${String(message.id)}`} className="mb-2 p-2 bg-blue-50 dark:bg-blue-900 rounded text-xs text-blue-900 dark:text-blue-100 border border-blue-200 dark:border-blue-700">
-													{/* Render reasoningTrace as string */}
-													{Array.isArray(message.reasoningTrace)
-														? message.reasoningTrace.map(step => String(step)).join(' ')
-														: (typeof message.reasoningTrace === 'string' ? message.reasoningTrace : String(message.reasoningTrace))}
-												</div>
-											)}
-											{isUser ? (
-												message.message
-											) : (
-												<>
-													{(() => {
-														console.log('Rendering message:', {
-															sender: message.sender,
-															hasJargons: !!message.jargons,
-															jargonsCount: message.jargons?.length || 0,
-															messageId: message.id
-														});
-														return message.jargons ? <div>{highlightJargon(message.message, message.jargons, message.cveDescriptionsMap)}</div> : <MarkdownViewer content={message.message} />;
-													})()}
-													{message.sourceLinks && message.sourceLinks.length > 0 && (
-														<SourceLinks sourceLinks={message.sourceLinks} />
-													)}
-													{/* Only show related questions for the very last message if it is an AI message */}
-													{!isUser && isLastMessage && (
-														<div className="mt-3 flex flex-wrap gap-2">
-															{relatedQuestions.map((q, i) => (
-																<motion.button
-																	key={`${message.id}-${q}-${i}`}
-																	onClick={() => handleSend(q, false, true)}
-																	className="rounded-lg px-3 py-1.5 bg-white border border-gray-300 text-gray-700 text-xs sm:text-sm font-medium hover:bg-gray-50 hover:shadow-sm transition-shadow focus:outline-none focus:ring-2 focus:ring-indigo-400"
-																	style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
-																	initial={{ opacity: 0, y: 20 }}
-																	animate={{ opacity: 1, y: 0 }}
-																	transition={{ delay: 0.15 * i, duration: 0.35, type: 'spring', stiffness: 200 }}
-																>
-																	{q}
-																</motion.button>
-															))}
-														</div>
-													)}
-												</>
-											)}
+											<div className={`${messageClasses}`}>
+												{/* Reasoning summary indicator (before every message if present) */}
+												{message.reasoningTrace && (
+													<div className="flex items-center mb-1 text-xs text-blue-600 dark:text-blue-300 cursor-pointer select-none"
+														onClick={() => setExpandedReasoning(prev => ({ ...prev, [String(message.id)]: !prev[String(message.id)] }))}
+														tabIndex={0}
+														role="button"
+														aria-expanded={!!expandedReasoning[String(message.id)]}
+														aria-controls={`reasoning-summary-${String(message.id)}`}
+													>
+														<FaRegLightbulb className="mr-1" />
+														<span>Reasoning available</span>
+														{typeof message.durationSec === 'number' && (
+															<span className="ml-2 text-gray-500">Thought for {Math.round(message.durationSec)}s</span>
+														)}
+														{expandedReasoning[String(message.id)] ? (
+															<FaChevronDown className="ml-1" />
+														) : (
+															<FaChevronRight className="ml-1" />
+														)}
+													</div>
+												)}
+												{message.reasoningTrace && expandedReasoning[String(message.id)] && (
+													<div id={`reasoning-summary-${String(message.id)}`} className="mb-2 p-2 bg-blue-50 dark:bg-blue-900 rounded text-xs text-blue-900 dark:text-blue-100 border border-blue-200 dark:border-blue-700">
+														{/* Render reasoningTrace as string */}
+														{Array.isArray(message.reasoningTrace)
+															? message.reasoningTrace.map(step => String(step)).join(' ')
+															: (typeof message.reasoningTrace === 'string' ? message.reasoningTrace : String(message.reasoningTrace))}
+													</div>
+												)}
+												{isUser ? (
+													message.message
+												) : (
+													<>
+														{(() => {
+															console.log('Rendering message:', {
+																sender: message.sender,
+																hasJargons: !!message.jargons,
+																jargonsCount: message.jargons?.length || 0,
+																messageId: message.id
+															});
+															return message.jargons ? <div>{highlightJargon(message.message, message.jargons, message.cveDescriptionsMap)}</div> : <MarkdownViewer content={message.message} />;
+														})()}
+														{message.sourceLinks && message.sourceLinks.length > 0 && (
+															<SourceLinks sourceLinks={message.sourceLinks} />
+														)}
+														{/* Only show related questions for the very last message if it is an AI message */}
+														{!isUser && isLastMessage && (
+															<div className="mt-3 flex flex-wrap gap-2">
+																{relatedQuestions.map((q, i) => (
+																	<motion.button
+																		key={`${message.id}-${q}-${i}`}
+																		onClick={() => handleSend(q, false, true)}
+																		className="rounded-lg px-3 py-1.5 bg-white border border-gray-300 text-gray-700 text-xs sm:text-sm font-medium hover:bg-gray-50 hover:shadow-sm transition-shadow focus:outline-none focus:ring-2 focus:ring-indigo-400"
+																		style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+																		initial={{ opacity: 0, y: 20 }}
+																		animate={{ opacity: 1, y: 0 }}
+																		transition={{ delay: 0.15 * i, duration: 0.35, type: 'spring', stiffness: 200 }}
+																	>
+																		{q}
+																	</motion.button>
+																))}
+															</div>
+														)}
+													</>
+												)}
+											</div>
 										</div>
-									</div>
+									</motion.div>
+								);
+							})}
+
+							{isLoading && (
+								<motion.div
+									initial={{ opacity: 0, y: 50 }}
+									animate={{ opacity: 1, y: 0 }}
+									exit={{ opacity: 0, y: -50 }}
+									transition={{ duration: 0.3 }}
+									className="flex items-center space-x-2 text-gray-500"
+								>
+									<Spinner />
+									<span>Thinking...</span>
 								</motion.div>
-							);
-						})}
-
-						{isLoading && (
-							<motion.div
-								initial={{ opacity: 0, y: 50 }}
-								animate={{ opacity: 1, y: 0 }}
-								exit={{ opacity: 0, y: -50 }}
-								transition={{ duration: 0.3 }}
-								className="flex items-center space-x-2 text-gray-500"
-							>
-								<Spinner />
-								<span>Thinking...</span>
-							</motion.div>
-						)}
-					</ScrollArea>
-				)}
-				{isScanLoading && (
-					<div className="space-y-2">
-						<Progress value={progress} className="w-full" />
-
-						<p className="text-sm text-center text-gray-500">
-							{progress === 95
-								? "Almost done..."
-								: `${progressLoaderMessage}: ${progress.toFixed(0)}%`}
-						</p>
-					</div>
-				)}
-				<div className="flex justify-center w-full">
-					<motion.div
-						initial={{ width: "70%" }}
-						animate={{ width: "90%" }}
-						transition={{ duration: 0.3 }}
-						className="chat-input flex flex-col p-2 rounded-2xl border border-gray-100 bg-white w-full shadow-sm dark:bg-primary-900 dark:border-gray-700"
-					>
-						{/* Input Field */}
-						<textarea
-							value={input}
-							onChange={(e) => setInput(e.target.value)}
-							onKeyDown={(e) => {
-								if (e.key === "Enter" && !e.shiftKey) {
-									e.preventDefault();
-									handleSend();
-								}
-							}}
-							className="w-full text-sm bg-transparent rounded-md h-10 px-3 py-2 text-gray-700 focus:outline-none resize-none"
-							placeholder="Type your message here..."
-							disabled={isLoading || !!pendingAction}
-						/>
-
-						{/* Agent Mode Indicator */}
-						{selectedAgentMode && (
-							<div className="mb-2 text-center">
-								<span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-									MIRA Mode: {selectedAgentMode.charAt(0).toUpperCase() + selectedAgentMode.slice(1)}
-								</span>
-							</div>
-						)}
-
-						{/* Buttons Section */}
-						<RoleButtonGroup 
-							handleActionClick={handleActionSend}
-							selectedAgentMode={selectedAgentMode}
-							onAgentModeChange={setSelectedAgentMode}
-							agentButtonsDisabled={agentButtonsDisabled}
-						/>
-					</motion.div>
-				</div>
-
-				<Dialog open={showInfo} onOpenChange={setShowInfo}>
-					<DialogContent className="dialog-content">
-						<DialogHeader>
-							<DialogTitle className="dialog-title">Information</DialogTitle>
-						</DialogHeader>
-						<ScrollArea
-							style={{
-								maxHeight: "400px",
-								width: "100%",
-								overflowY: "auto",
-								scrollbarWidth: "thick",
-								scrollbarColor: "#888 #f0f0f0",
-							}}
-						>
-							<div className="dialog-body">
-								{info.map((item) => (
-									<div key={item.id} className="info-item">
-										<h2 className="text-lg font-semibold">{item.name}</h2>
-										<p className="info-description">
-											{item.description || "No description available."}
-										</p>
-									</div>
-								))}
-							</div>
+							)}
 						</ScrollArea>
-					</DialogContent>
-				</Dialog>
+					)}
+					{isScanLoading && (
+						<div className="space-y-2">
+							<Progress value={progress} className="w-full" />
+
+							<p className="text-sm text-center text-gray-500">
+								{progress === 95
+									? "Almost done..."
+									: `${progressLoaderMessage}: ${progress.toFixed(0)}%`}
+							</p>
+						</div>
+					)}
+					<div className="flex justify-center w-full">
+						<motion.div
+							initial={{ width: "70%" }}
+							animate={{ width: "90%" }}
+							transition={{ duration: 0.3 }}
+							className="chat-input flex flex-col p-2 rounded-2xl border border-gray-100 bg-white w-full shadow-sm dark:bg-primary-900 dark:border-gray-700"
+						>
+							{/* Input Field */}
+							<textarea
+								value={input}
+								onChange={(e) => setInput(e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === "Enter" && !e.shiftKey) {
+										e.preventDefault();
+										handleSend();
+									}
+								}}
+								className="w-full text-sm bg-transparent rounded-md h-10 px-3 py-2 text-gray-700 focus:outline-none resize-none"
+								placeholder="Type your message here..."
+								disabled={isLoading || !!pendingAction}
+							/>
+
+							{/* Buttons Section */}
+							<RoleButtonGroup 
+								handleActionClick={handleActionSend}
+								selectedAgentMode={selectedAgentMode}
+								onAgentModeChange={setSelectedAgentMode}
+								agentButtonsDisabled={agentButtonsDisabled}
+							/>
+						</motion.div>
+					</div>
+
+					<Dialog open={showInfo} onOpenChange={setShowInfo}>
+						<DialogContent className="dialog-content">
+							<DialogHeader>
+								<DialogTitle className="dialog-title">Information</DialogTitle>
+							</DialogHeader>
+							<ScrollArea
+								style={{
+									maxHeight: "400px",
+									width: "100%",
+									overflowY: "auto",
+									scrollbarWidth: "thick",
+									scrollbarColor: "#888 #f0f0f0",
+								}}
+							>
+								<div className="dialog-body">
+									{info.map((item) => (
+										<div key={item.id} className="info-item">
+											<h2 className="text-lg font-semibold">{item.name}</h2>
+											<p className="info-description">
+												{item.description || "No description available."}
+											</p>
+										</div>
+									))}
+								</div>
+							</ScrollArea>
+						</DialogContent>
+					</Dialog>
+				</div>
+				<CreateFolderDialog
+					open={isCreateDialogOpen}
+					humanInTheLoopAction={requestHumanInLoop}
+					onOpenChange={setIsCreateDialogOpen}
+					onCreateFolder={handleCreateFolder}
+				/>
 			</div>
-			<CreateFolderDialog
-				open={isCreateDialogOpen}
-				humanInTheLoopAction={requestHumanInLoop}
-				onOpenChange={setIsCreateDialogOpen}
-				onCreateFolder={handleCreateFolder}
-			/>
 		</div>
 	);
 };

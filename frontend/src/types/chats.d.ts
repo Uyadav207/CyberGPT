@@ -65,6 +65,7 @@ export interface Message {
   }>;
   /** Time taken (in seconds) for the AI to respond */
   durationSec?: number;
+  tags?: string[];
 }
 
 export interface RequestHumanInLoop {

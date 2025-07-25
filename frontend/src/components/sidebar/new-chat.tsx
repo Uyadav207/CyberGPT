@@ -13,16 +13,16 @@ export function NewChat() {
 	};
 
 	return (
-		<SidebarMenu className="mt-8 mb-2">
+		<SidebarMenu className="m-0">
 			<SidebarMenuItem>
 				<div className="w-full flex justify-center">
 					<SidebarMenuButton
 						tooltip="New Chat"
 						onClick={handleNewChat}
-						className="w-fit flex items-center justify-center gap-2 rounded-xl bg-[#E5E7EB] p-5 font-medium transition-colors"
+						className="w-full flex items-center justify-center gap-1 rounded-md bg-sidebar text-sidebar-foreground border border-sidebar-border hover:bg-accent transition-colors px-3 py-2 font-medium text-sm"
 					>
-						<MessageCirclePlusIcon className="h-4 w-4" />
-						<span className="text-sm font-medium">New chat</span>
+						<MessageCirclePlusIcon className="h-4 w-4 text-muted-foreground" />
+						<span>New chat</span>
 					</SidebarMenuButton>
 				</div>
 			</SidebarMenuItem>
