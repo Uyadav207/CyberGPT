@@ -82,4 +82,31 @@
 	.message-enter {
 		@apply opacity-100 transform translate-y-0;
 	}
+	
+	/* Enhanced Jargon Highlighting */
+	.jargon-highlight {
+		background: rgba(255, 230, 150, 0.8) !important;
+		border-bottom: 2px dotted #f59e0b !important;
+		border-radius: 4px !important;
+		padding: 1px 3px !important;
+		cursor: pointer !important;
+		font-weight: 600 !important;
+		color: #1f2937 !important;
+		transition: all 0.2s ease !important;
+		position: relative !important;
+	}
+	
+	.jargon-highlight:hover {
+		background: rgba(251, 191, 36, 0.9) !important;
+		color: #111827 !important;
+		transform: translateY(-1px) !important;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+	}
+	
+	.jargon-highlight:focus {
+		outline: 2px solid #f59e0b !important;
+		outline-offset: 2px !important;
+	}
+	
+
 }

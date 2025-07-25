@@ -261,3 +261,19 @@
 	text-decoration: none;
 	color: #000;
 }
+
+.jargon-highlight {
+  background: #f3f4f6; /* very light gray for both themes */
+  border-bottom: 1.5px dashed #6b7280; /* subtle gray dashed underline */
+  border-radius: 3px;
+  padding: 0 2px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #374151;
+  transition: background 0.2s, color 0.2s;
+}
+.jargon-highlight:hover,
+.jargon-highlight:focus {
+  background: #e5e7eb;
+  color: #111827;
+}
