@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { v4 as uuidv4 } from "uuid";
 import { FaRegLightbulb } from 'react-icons/fa';
 import { FaChevronDown, FaChevronRight } from 'react-icons/fa';
@@ -216,7 +216,7 @@ async function getRelatedQuestions(userQuestion: string, aiAnswer: string, kgCon
 					'What are the main attack vectors for this vulnerability?',
 					'How do the prevention techniques work in practice?',
 					'What are the latest tools for detecting this threat?'
-				];
+		];
 				return [...questions, ...fallbackQuestions.slice(0, 3 - questions.length)];
 			}
 			
@@ -1339,7 +1339,7 @@ const MiraChatBot: React.FC = () => {
 					reasoningLength: Array.isArray(reasoningTrace) ? reasoningTrace.length : 'N/A',
 					reasoningContent: Array.isArray(reasoningTrace) ? reasoningTrace[0]?.narrative?.substring(0, 100) + '...' : 'N/A'
 				});
-
+				
 				const botMessage: Message = {
 					id: uuidv4(),
 					message: response.answer,
@@ -3053,7 +3053,7 @@ const MiraChatBot: React.FC = () => {
 	return (
 		<div className={`relative flex h-screen flex-col overflow-hidden${highlightChatBlock ? ' ring-4 ring-yellow-300/60 bg-yellow-50 dark:bg-yellow-900/30 transition-all duration-700' : ''}`}>
 			<div className="flex justify-center">
-				<div className="flex flex-col space-y-3 sm:w-3/4 md:w-4/5 lg:w-3/5 h-[89vh] rounded-lg">
+				<div className="flex flex-col w-full max-w-4xl mx-auto h-[89vh] rounded-lg">
 					{uniqueMessages.length === 0 ? (
 						<div className="flex flex-col items-center justify-end w-full lg:h-1/3 md:h-1 sm:h-full p-4 sm:p-8">
 							<motion.div
@@ -3070,7 +3070,7 @@ const MiraChatBot: React.FC = () => {
 					) : (
 						<ScrollArea
 							ref={scrollAreaRef}
-							className="flex-1 p-4 w-full overflow-y-hidden"
+							className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-12 pb-0 w-full overflow-y-hidden"
 						>
 							{uniqueMessages.map((message, idx) => {
 								const isPendingAction =
@@ -3140,7 +3140,7 @@ const MiraChatBot: React.FC = () => {
 										? "bg-secondary dark:bg-primary-900 p-4 text-sm"
 										: "text-foreground pr-4 overflow-y-auto text-pretty break-normal text-sm"
 								}`;
-								const containerClasses = `mb-4  ${isUser ? "text-right" : "text-left"}`;
+								const containerClasses = `mb-2  ${isUser ? "text-right" : "text-left"}`;
 
 							// Only show related questions for the very last message if it is an AI message
 							const isLastMessage = idx === uniqueMessages.length - 1;
@@ -3187,7 +3187,7 @@ const MiraChatBot: React.FC = () => {
 										<div className={`${messageClasses}`}>
 											{/* Reasoning summary indicator (before every message if present) */}
 											{message.reasoningTrace && (
-												<div className="flex items-center mb-1 text-xs text-blue-600 dark:text-blue-300 cursor-pointer select-none"
+												<div className="flex items-center mb-1 text-xs text-sidebar-foreground cursor-pointer select-none hover:text-sidebar-accent-foreground transition-colors"
 													onClick={() => {
 														const messageId = String(message.id);
 														const currentState = expandedReasoning[messageId] || false;
@@ -3219,44 +3219,59 @@ const MiraChatBot: React.FC = () => {
 													aria-expanded={!!expandedReasoning[String(message.id)]}
 													aria-controls={`reasoning-summary-${String(message.id)}`}
 												>
-													<FaRegLightbulb className="mr-1" />
+													<FaRegLightbulb className="mr-1 text-sidebar-foreground" />
 													<span>Reasoning available</span>
 													{typeof message.durationSec === 'number' && (
-														<span className="ml-2 text-gray-500">Thought for {Math.round(message.durationSec)}s</span>
+														<span className="ml-2 text-sidebar-foreground/60">Thought for {Math.round(message.durationSec)}s</span>
 													)}
 
-													{expandedReasoning[String(message.id)] ? (
-														<FaChevronDown className="ml-1" />
-													) : (
-														<FaChevronRight className="ml-1" />
-													)}
+													<motion.div
+														animate={{ rotate: expandedReasoning[String(message.id)] ? 90 : 0 }}
+														transition={{ duration: 0.2, ease: "easeInOut" }}
+														className="ml-1"
+													>
+														<FaChevronRight className="text-sidebar-foreground" />
+													</motion.div>
 												</div>
 											)}
+											<AnimatePresence>
 											{message.reasoningTrace && expandedReasoning[String(message.id)] && (
-												<div
+																																							<motion.div
 													id={`reasoning-summary-${String(message.id)}`}
-													className="mb-4 p-5 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 rounded-xl border-l-8 border-blue-400 dark:border-blue-500 shadow-lg relative"
-													style={{ fontSize: '1.08rem', lineHeight: 1.7 }}
-												>
-													<div className="flex items-center mb-2">
-														<span className="text-2xl mr-2">🤔</span>
-														<span className="font-semibold text-blue-700 dark:text-blue-200 text-lg">Reasoning</span>
+														initial={{ opacity: 0, height: 0, y: -10 }}
+														animate={{ opacity: 1, height: "auto", y: 0 }}
+														exit={{ opacity: 0, height: 0, y: -10 }}
+														transition={{ 
+															duration: 0.3, 
+															ease: "easeInOut",
+															opacity: { duration: 0.2 },
+															height: { duration: 0.3 }
+														}}
+														className="mb-2 p-3 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 rounded-lg border-l-4 border-blue-400 dark:border-blue-500 shadow-sm relative overflow-hidden"
+														style={{ fontSize: '0.875rem', lineHeight: 1.5 }}
+													>
+														<div className="flex items-center mb-1">
+															<span className="text-lg mr-1">🤔</span>
+															<span className="font-medium text-blue-700 dark:text-blue-200 text-sm">Reasoning</span>
 													</div>
-													{(() => {
-														const reasoningContent = getReasoningString(message.reasoningTrace);
-														console.log('[Reasoning Display] Rendering reasoning for message:', {
-															messageId: message.id,
-															reasoningContentLength: reasoningContent.length,
-															reasoningContentPreview: reasoningContent.substring(0, 100) + '...',
-															isExpanded: expandedReasoning[String(message.id)]
-														});
-														return <MarkdownViewer content={reasoningContent} />;
-													})()}
+														<div className="text-blue-600 dark:text-blue-300 text-xs opacity-80">
+															{(() => {
+																const reasoningContent = getReasoningString(message.reasoningTrace);
+																console.log('[Reasoning Display] Rendering reasoning for message:', {
+																	messageId: message.id,
+																	reasoningContentLength: reasoningContent.length,
+																	reasoningContentPreview: reasoningContent.substring(0, 100) + '...',
+																	isExpanded: expandedReasoning[String(message.id)]
+																});
+																return <MarkdownViewer content={reasoningContent} />;
+															})()}
 												</div>
+													</motion.div>
 											)}
+											</AnimatePresence>
 											
 											{!isUser && (
-												<div className="mb-6 p-5 bg-background">
+												<div className="mb-3 p-5 bg-background">
 													{(() => {
 														console.log('Rendering message:', {
 															sender: message.sender,
@@ -3290,7 +3305,7 @@ const MiraChatBot: React.FC = () => {
 												</div>
 											)}
 											{isUser && (
-												<div className="mb-4">
+												<div className="mb-2">
 													{message.message}
 												</div>
 											)}
@@ -3300,23 +3315,23 @@ const MiraChatBot: React.FC = () => {
 							);
 						})}
 
-						{isLoading && (
-							<motion.div
-								initial={{ opacity: 0, y: 50 }}
-								animate={{ opacity: 1, y: 0 }}
-								exit={{ opacity: 0, y: -50 }}
-								transition={{ duration: 0.3 }}
-								className="flex items-center space-x-2 text-gray-500"
-							>
-								<Spinner />
+							{isLoading && (
+								<motion.div
+									initial={{ opacity: 0, y: 50 }}
+									animate={{ opacity: 1, y: 0 }}
+									exit={{ opacity: 0, y: -50 }}
+									transition={{ duration: 0.3 }}
+									className="flex items-center space-x-2 text-gray-500"
+								>
+									<Spinner />
 								<span>{loadingMessage}</span>
-							</motion.div>
-						)}
-					</ScrollArea>
-				)}
-				{isScanLoading && (
-					<div className="space-y-2">
-						<Progress value={progress} className="w-full" />
+								</motion.div>
+							)}
+						</ScrollArea>
+					)}
+					{isScanLoading && (
+						<div className="space-y-2">
+							<Progress value={progress} className="w-full" />
 
 							<p className="text-sm text-center text-gray-500">
 								{progress === 95
@@ -3325,12 +3340,12 @@ const MiraChatBot: React.FC = () => {
 							</p>
 						</div>
 					)}
-					<div className="flex justify-center w-full">
+					<div className="flex justify-center w-full px-4 sm:px-6 lg:px-8 xl:px-12">
 						<motion.div
-							initial={{ width: "70%" }}
-							animate={{ width: "90%" }}
+							initial={{ width: "100%" }}
+							animate={{ width: "100%" }}
 							transition={{ duration: 0.3 }}
-							className="chat-input flex flex-col p-2 rounded-2xl border border-sidebar-border bg-sidebar text-sidebar-foreground w-full shadow-sm transition-colors"
+							className="chat-input flex flex-col p-2 rounded-2xl border border-sidebar-border bg-sidebar text-sidebar-foreground w-full max-w-4xl shadow-sm transition-colors"
 						>
 							{/* Input Field */}
 							<textarea
