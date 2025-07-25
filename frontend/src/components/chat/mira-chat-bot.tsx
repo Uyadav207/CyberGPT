@@ -425,6 +425,9 @@ const MiraChatBot: React.FC = () => {
 	// Add state to track which messages have already had related questions generated
 	const [processedRelatedQuestions, setProcessedRelatedQuestions] = useState<Set<string>>(new Set());
 	
+	// Add state to track when a related question is being processed
+	const [relatedQuestionFlag, setRelatedQuestionFlag] = useState<boolean>(false);
+	
 	// Reasoning visibility is now handled by expandedReasoning state only
 	
 	// Add ref to track ongoing related questions requests to prevent duplicates
@@ -464,6 +467,7 @@ const MiraChatBot: React.FC = () => {
 
 	// Reset processed related questions when chat changes
 	useEffect(() => {
+		console.log('[Chat Change] Resetting processed related questions');
 		setProcessedRelatedQuestions(new Set());
 	}, [chatId]);
 
@@ -571,40 +575,168 @@ const MiraChatBot: React.FC = () => {
 		}
 	}, [messages]); // Removed expandedReasoning from dependencies to prevent conflicts
 
-	// Additional effect to ensure reasoning is visible for AI messages with reasoning data
+	// Additional effect to ensure reasoning is collapsed by default for AI messages with reasoning data
 	useEffect(() => {
 		messages.forEach((message) => {
 			if (message.sender === 'ai' && 
 				message.reasoningTrace && 
 				expandedReasoning[String(message.id)] === undefined) {
 				
-				console.log('[Reasoning] Ensuring reasoning is visible for message:', message.id);
+				console.log('[Reasoning] Setting reasoning to collapsed by default for message:', message.id);
 				setExpandedReasoning(prev => ({
 					...prev,
-					[String(message.id)]: true
+					[String(message.id)]: false
 				}));
 			}
 		});
 	}, [messages, expandedReasoning]);
 
-	// Force refresh reasoning state when messages change (for related questions)
+	// Set reasoning to collapsed by default when new AI messages are added
 	useEffect(() => {
 		const lastMessage = messages[messages.length - 1];
 		if (lastMessage?.sender === 'ai' && lastMessage?.reasoningTrace) {
-			console.log('[Reasoning] Force refreshing reasoning state for new AI message:', {
+			console.log('[Reasoning] Setting reasoning to collapsed for new AI message:', {
 				messageId: lastMessage.id,
 				hasReasoningTrace: !!lastMessage.reasoningTrace,
 				reasoningType: typeof lastMessage.reasoningTrace,
-				isArray: Array.isArray(lastMessage.reasoningTrace)
+				isArray: Array.isArray(lastMessage.reasoningTrace),
+				relatedQuestionFlag: relatedQuestionFlag
 			});
 			
-			// Force expand reasoning for new AI messages
+			// Set reasoning to collapsed by default for new AI messages
 			setExpandedReasoning(prev => ({
 				...prev,
-				[String(lastMessage.id)]: true
+				[String(lastMessage.id)]: false
+			}));
+			
+			// Reset the related question flag after processing
+			if (relatedQuestionFlag) {
+				setRelatedQuestionFlag(false);
+			}
+		}
+	}, [messages.length, relatedQuestionFlag]); // Trigger when message count changes or related question flag changes
+
+	// Additional effect to ensure all AI messages with reasoning are collapsed by default
+	useEffect(() => {
+		messages.forEach((message) => {
+			if (message.sender === 'ai' && 
+				message.reasoningTrace && 
+				expandedReasoning[String(message.id)] === undefined) {
+				
+				console.log('[Reasoning] Setting reasoning to collapsed for existing AI message:', {
+					messageId: message.id,
+					hasReasoningTrace: !!message.reasoningTrace,
+					currentExpandedState: expandedReasoning[String(message.id)]
+				});
+				
+				setExpandedReasoning(prev => ({
+					...prev,
+					[String(message.id)]: false
+				}));
+			}
+		});
+	}, [messages]); // Trigger when messages change
+
+	// Force initialize reasoning state for new AI messages (especially from related questions)
+	useEffect(() => {
+		const lastMessage = messages[messages.length - 1];
+		if (lastMessage?.sender === 'ai' && 
+			lastMessage?.reasoningTrace && 
+			expandedReasoning[String(lastMessage.id)] === undefined) {
+			
+			console.log('[Reasoning Force Init] Initializing reasoning state for new AI message:', {
+				messageId: lastMessage.id,
+				hasReasoningTrace: !!lastMessage.reasoningTrace,
+				currentExpandedState: expandedReasoning[String(lastMessage.id)],
+				relatedQuestionFlag: relatedQuestionFlag
+			});
+			
+			// Force set reasoning to collapsed for new AI messages
+			setExpandedReasoning(prev => ({
+				...prev,
+				[String(lastMessage.id)]: false
 			}));
 		}
-	}, [messages.length]); // Only trigger when message count changes
+	}, [messages, expandedReasoning, relatedQuestionFlag]); // Trigger when messages, reasoning state, or related question flag changes
+
+	// Handle related question flag changes
+	useEffect(() => {
+		if (relatedQuestionFlag) {
+			console.log('[Related Question Flag] Flag is set, ensuring reasoning state will be properly initialized for next AI response');
+		}
+	}, [relatedQuestionFlag]);
+
+	// AGGRESSIVE: Ensure ALL AI messages with reasoning have their state set
+	useEffect(() => {
+		let hasChanges = false;
+		const newExpandedReasoning = { ...expandedReasoning };
+		
+		messages.forEach((message) => {
+			if (message.sender === 'ai' && 
+				message.reasoningTrace && 
+				expandedReasoning[String(message.id)] === undefined) {
+				
+				console.log('[AGGRESSIVE] Setting reasoning state for message:', {
+					messageId: message.id,
+					hasReasoningTrace: !!message.reasoningTrace,
+					currentState: expandedReasoning[String(message.id)]
+				});
+				
+				newExpandedReasoning[String(message.id)] = false;
+				hasChanges = true;
+			}
+		});
+		
+		if (hasChanges) {
+			console.log('[AGGRESSIVE] Updating reasoning state with new entries');
+			setExpandedReasoning(newExpandedReasoning);
+		}
+	}, [messages, expandedReasoning]); // Run on every render to catch any missing states
+
+	// IMMEDIATE: Set reasoning state for any AI message that doesn't have it
+	useEffect(() => {
+		const newMessages = messages.filter(msg => 
+			msg.sender === 'ai' && 
+			msg.reasoningTrace && 
+			expandedReasoning[String(msg.id)] === undefined
+		);
+		
+		if (newMessages.length > 0) {
+			console.log('[IMMEDIATE] Found AI messages without reasoning state:', newMessages.map(m => m.id));
+			
+			const newExpandedReasoning = { ...expandedReasoning };
+			newMessages.forEach(msg => {
+				newExpandedReasoning[String(msg.id)] = false;
+			});
+			
+			setExpandedReasoning(newExpandedReasoning);
+		}
+	}, [messages]); // Only depend on messages to avoid infinite loops
+
+	// TEMPORARY: Force reasoning to be visible for testing
+	useEffect(() => {
+		const aiMessagesWithReasoning = messages.filter(msg => 
+			msg.sender === 'ai' && msg.reasoningTrace
+		);
+		
+		if (aiMessagesWithReasoning.length > 0) {
+			console.log('[TEMPORARY] Found AI messages with reasoning:', aiMessagesWithReasoning.map(m => ({
+				id: m.id,
+				hasReasoning: !!m.reasoningTrace,
+				currentState: expandedReasoning[String(m.id)]
+			})));
+			
+			// Force all reasoning to be visible for testing
+			const newExpandedReasoning = { ...expandedReasoning };
+			aiMessagesWithReasoning.forEach(msg => {
+				newExpandedReasoning[String(msg.id)] = true;
+			});
+			
+			setExpandedReasoning(newExpandedReasoning);
+		}
+	}, [messages]); // Run when messages change
+
+
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: all dependencies not needed
 	useEffect(() => {
@@ -704,11 +836,11 @@ const MiraChatBot: React.FC = () => {
 
 			setMessages(chatHistory);
 			
-			// Preserve reasoning visibility state for loaded messages
+			// Set reasoning to collapsed by default for loaded messages
 			const reasoningState: { [id: string]: boolean } = {};
 			chatHistory.forEach((message) => {
 				if (message.sender === 'ai' && message.reasoningTrace) {
-					reasoningState[String(message.id)] = true; // Auto-expand reasoning for loaded messages
+					reasoningState[String(message.id)] = false; // Collapse reasoning by default for loaded messages
 				}
 			});
 			setExpandedReasoning(prev => ({ ...prev, ...reasoningState }));
@@ -2823,15 +2955,28 @@ const MiraChatBot: React.FC = () => {
 				isRelatedQuestion: isRelatedQuestion,
 			};
 			
-			// If this is a related question, ensure we're ready for new reasoning
+			// If this is a related question, preserve existing reasoning states but prepare for new AI response
 			if (isRelatedQuestion) {
 				console.log('[Related Question] Preparing for new reasoning display');
+				// Don't clear reasoning states - preserve them for existing messages
+				// Set a flag to ensure reasoning state is properly initialized for the next AI response
+				setRelatedQuestionFlag(true);
+			} else {
+				// If this is a new user question (not a related question), clear all related questions
+				console.log('[New Question] Clearing related questions for new user question');
+				setRelatedQuestions({});
+				setProcessedRelatedQuestions(new Set());
 			}
 			// Always optimistically add the user message
 			setMessages((prev) => {
 				if (prev.some(m => m.id === userMessage.id)) return prev;
 				return [...prev, userMessage];
 			});
+				
+				// If this is a related question, ensure reasoning will be visible for the next AI response
+				if (isRelatedQuestion) {
+					console.log('[Related Question] Setting up reasoning visibility for next AI response');
+				}
 			setInput("");
 			if (createdChatId || chatId) {
 				setFetchChatsRegurlarly(false);
@@ -2995,10 +3140,10 @@ const MiraChatBot: React.FC = () => {
 			const desc = j.description || cveDescriptionsMap[j.term] || '';
 			console.log(`Highlighting term: "${j.term}" with description: "${desc.substring(0, 50)}..."`);
 			
-			// Replace with inline HTML span with tooltip and better styling
+			// Replace with inline HTML span with tooltip and minimalist styling
 			processed = processed.replace(
 				regex,
-				`<span class="jargon-highlight" title="${desc.replace(/"/g, '&quot;')}" style="background: rgba(255, 230, 150, 0.7); border-bottom: 2px dotted #f59e0b; border-radius: 3px; padding: 0 2px; cursor: pointer; font-weight: 500;">${j.term}</span>`
+				`<span class="jargon-highlight" title="${desc.replace(/"/g, '&quot;')}" style="background: rgba(59, 130, 246, 0.08); border-bottom: 1px solid rgba(59, 130, 246, 0.3); border-radius: 2px; padding: 0 1px; cursor: pointer; font-weight: 500;">${j.term}</span>`
 			);
 		});
 		
@@ -3133,22 +3278,77 @@ const MiraChatBot: React.FC = () => {
 										</motion.div>
 									);
 								}
+								if (isPendingAction && isAISender) {
+									return actionType === "approval" ? (
+										<motion.div
+											key={message.id + '-' + idx}
+											initial={{ opacity: 0, y: 50 }}
+											animate={{ opacity: 1, y: 0 }}
+											exit={{ opacity: 0, y: -50 }}
+											transition={{ duration: 0.3 }}
+										>
+											<HumanInTheLoopApproval
+												addBotMessage={addBotMessage}
+												key={message.id}
+												message={humanInTheLoopMessage || ""}
+												onCancel={cancelAction}
+												confirmType={confirmType || ""}
+												onConfirm={yesClicked}
+											/>
+										</motion.div>
+									) : actionType === "input" || actionType === "sast-input" ? (
+										<motion.div
+											key={message.id + '-' + idx}
+											initial={{ opacity: 0, y: 50 }}
+											animate={{ opacity: 1, y: 0 }}
+											exit={{ opacity: 0, y: -50 }}
+											transition={{ duration: 0.3 }}
+										>
+											<HumanInTheLoopInput
+												addBotMessage={addBotMessage}
+												key={message.id}
+												message={humanInTheLoopMessage || ""}
+												onConfirm={handleFileCreation}
+												setShowInfo={setShowInfo}
+												requestHumanInLoop={requestHumanInLoop ?? null}
+											/>
+										</motion.div>
+									) : (
+										<motion.div
+											key={message.id + '-' + idx}
+											initial={{ opacity: 0, y: 50 }}
+											animate={{ opacity: 1, y: 0 }}
+											exit={{ opacity: 0, y: -50 }}
+											transition={{ duration: 0.3 }}
+										>
+											<HumanInTheLoopOptions
+												addBotMessage={addBotMessage}
+												key={message.id}
+												setShowInfo={setShowInfo}
+												question={humanInTheLoopMessage || ""}
+												actionPrompts={actionPrompts || []}
+												onConfirm={confirmAction}
+											/>
+										</motion.div>
+									);
+								}
 
 								const isUser = message.sender === "user";
 								const messageClasses = `inline-block px-3 pt-3 rounded-xl max-w-[80%] sm:max-w-[100%] ${
 									isUser
 										? "bg-secondary dark:bg-primary-900 p-4 text-sm"
-										: "text-foreground pr-4 overflow-y-auto text-pretty break-normal text-sm"
+										: "text-foreground pr-4 overflow-y-auto text-pretty break-normal text-sm leading-relaxed"
 								}`;
 								const containerClasses = `mb-2  ${isUser ? "text-right" : "text-left"}`;
 
-							// Only show related questions for the very last message if it is an AI message
-							const isLastMessage = idx === uniqueMessages.length - 1;
+								// Only show related questions for the very last message if it is an AI message
+								const isLastMessage = idx === uniqueMessages.length - 1;
+								const isLastAiMessage = isLastMessage && message.sender === 'ai';
 
-							// Get related questions from state or use fallback
-							const messageRelatedQuestions = relatedQuestions[String(message.id)] || [
-								'Can you explain this in more detail?',
-								'What are the key takeaways?',
+								// Get related questions from state or use fallback
+								const messageRelatedQuestions = relatedQuestions[String(message.id)] || [
+									'Can you explain this in more detail?',
+									'What are the key takeaways?',
 								'How can I apply this knowledge?'
 							];
 
@@ -3162,6 +3362,18 @@ const MiraChatBot: React.FC = () => {
 
 							// Related questions generation is now handled in the useEffect hook above
 							// This prevents duplicate API calls and infinite loops
+
+							// Debug: Log reasoning state for this message
+							if (message.sender === 'ai') {
+								console.log('[Message Render] AI message reasoning state:', {
+									messageId: message.id,
+									hasReasoningTrace: !!message.reasoningTrace,
+									reasoningType: typeof message.reasoningTrace,
+									isArray: Array.isArray(message.reasoningTrace),
+									expandedState: expandedReasoning[String(message.id)],
+									willShowReasoning: !!(message.reasoningTrace && expandedReasoning[String(message.id)])
+								});
+							}
 
 								return (
 									<motion.div
@@ -3190,33 +3402,42 @@ const MiraChatBot: React.FC = () => {
 												<div className="flex items-center mb-1 text-xs text-sidebar-foreground cursor-pointer select-none hover:text-sidebar-accent-foreground transition-colors"
 													onClick={() => {
 														const messageId = String(message.id);
-														const currentState = expandedReasoning[messageId] || false;
+														// Ensure the state is always defined
+														const currentState = expandedReasoning[messageId] === undefined ? false : expandedReasoning[messageId];
 														const newState = !currentState;
 														
 														console.log('[Reasoning Toggle] Clicked reasoning for message:', {
 															messageId: message.id,
 															hasReasoningTrace: !!message.reasoningTrace,
-															reasoningType: typeof message.reasoningTrace,
-															isArray: Array.isArray(message.reasoningTrace),
-															reasoningLength: Array.isArray(message.reasoningTrace) ? message.reasoningTrace.length : 'N/A',
 															currentExpandedState: currentState,
-															newState: newState
+															newState: newState,
+															allExpandedReasoning: expandedReasoning
 														});
 														
-														setExpandedReasoning(prev => ({ ...prev, [messageId]: newState }));
+														setExpandedReasoning(prev => {
+															const updated = { ...prev, [messageId]: newState };
+															console.log('[Reasoning Toggle] Updated state:', {
+																messageId: messageId,
+																oldState: prev[messageId],
+																newState: newState,
+																updatedState: updated
+															});
+															return updated;
+														});
 													}}
 													onKeyDown={(e) => {
 														if (e.key === 'Enter' || e.key === ' ') {
 															e.preventDefault();
 															const messageId = String(message.id);
-															const currentState = expandedReasoning[messageId] || false;
+															// Ensure the state is always defined
+															const currentState = expandedReasoning[messageId] === undefined ? false : expandedReasoning[messageId];
 															const newState = !currentState;
 															setExpandedReasoning(prev => ({ ...prev, [messageId]: newState }));
 														}
 													}}
 													tabIndex={0}
 													role="button"
-													aria-expanded={!!expandedReasoning[String(message.id)]}
+													aria-expanded={expandedReasoning[String(message.id)] === true}
 													aria-controls={`reasoning-summary-${String(message.id)}`}
 												>
 													<FaRegLightbulb className="mr-1 text-sidebar-foreground" />
@@ -3284,9 +3505,11 @@ const MiraChatBot: React.FC = () => {
 													{message.sourceLinks && message.sourceLinks.length > 0 && (
 														<SourceLinks sourceLinks={message.sourceLinks} />
 													)}
-													{/* Show related questions for all AI messages */}
-													{message.sender === 'ai' && (
-														<div className="mt-3 flex flex-wrap gap-2">
+													{/* Show related questions only for the last AI message */}
+													{isLastAiMessage && (
+														<div className="mt-3">
+															<div className="text-xs text-gray-500 mb-2 italic">Suggested follow-up questions:</div>
+															<div className="flex flex-wrap gap-2">
 															{messageRelatedQuestions.map((q: string, i: number) => (
 																<motion.button
 																	key={`${message.id}-${q}-${i}`}
@@ -3300,6 +3523,7 @@ const MiraChatBot: React.FC = () => {
 																	{q}
 																</motion.button>
 															))}
+														</div>
 														</div>
 													)}
 												</div>

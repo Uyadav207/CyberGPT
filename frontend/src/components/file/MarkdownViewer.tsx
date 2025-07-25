@@ -12,7 +12,7 @@ interface MarkdownViewerProps {
 
 const MarkdownViewer = ({ content, isUser = false }: MarkdownViewerProps) => {
   return (
-    <div className={`prose ${isUser ? 'prose-invert' : 'prose-gray'} max-w-none prose-pre:my-0 prose-pre:rounded-md prose-headings:mb-3 prose-p:mb-3 prose-p:leading-relaxed prose-li:my-0 prose-li:leading-relaxed`}>
+    <div className={`prose text-sm ${isUser ? 'prose-invert' : 'prose-gray'} max-w-none prose-pre:my-0 prose-pre:rounded-md prose-headings:mb-3 prose-p:mb-3 prose-p:leading-relaxed prose-li:my-0 prose-li:leading-relaxed`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw]}
