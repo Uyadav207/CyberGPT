@@ -69,6 +69,7 @@ import { agentApi } from "../../api/agent";
 import RoleButtonGroup from "./chatComponents/RoleButton/RoleButtonGroup";
 import { ReasoningTrace } from "./ReasoningTrace";
 import { SourceLinks } from "./SourceLinks";
+import GraphButton from "../graph-visualization/GraphButton";
 
 // Interactive Loading Messages
 const INTERACTIVE_LOADING_MESSAGES = [
@@ -3395,27 +3396,38 @@ const MiraChatBot: React.FC = () => {
 													{message.sourceLinks && message.sourceLinks.length > 0 && (
 														<SourceLinks sourceLinks={message.sourceLinks} />
 													)}
-													{/* Show related questions only for the last AI message */}
-													{isLastAiMessage && (
-														<div className="mt-3">
-															<div className="text-xs text-gray-500 mb-2 italic">Suggested follow-up questions:</div>
-															<div className="flex flex-wrap gap-2">
-															{messageRelatedQuestions.map((q: string, i: number) => (
-																<motion.button
-																	key={`${message.id}-${q}-${i}`}
-																	onClick={() => handleSend(q, false, true)}
-																	className="rounded-lg px-3 py-1.5 bg-white border border-gray-300 text-gray-700 text-xs sm:text-sm font-medium hover:bg-gray-50 hover:shadow-sm transition-shadow focus:outline-none focus:ring-2 focus:ring-indigo-400"
-																	style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
-																	initial={{ opacity: 0, y: 20 }}
-																	animate={{ opacity: 1, y: 0 }}
-																	transition={{ delay: 0.15 * i, duration: 0.35, type: 'spring', stiffness: 200 }}
-																>
-																	{q}
-																</motion.button>
-															))}
+													
+													{/* Graph Visualization Button */}
+													<div className="mt-3 flex items-center justify-between">
+														{/* Show related questions only for the last AI message */}
+														{isLastAiMessage && (
+															<div className="flex-1">
+																<div className="text-xs text-gray-500 mb-2 italic">Suggested follow-up questions:</div>
+																<div className="flex flex-wrap gap-2">
+																{messageRelatedQuestions.map((q: string, i: number) => (
+																	<motion.button
+																		key={`${message.id}-${q}-${i}`}
+																		onClick={() => handleSend(q, false, true)}
+																		className="rounded-lg px-3 py-1.5 bg-white border border-gray-300 text-gray-700 text-xs sm:text-sm font-medium hover:bg-gray-50 hover:shadow-sm transition-shadow focus:outline-none focus:ring-2 focus:ring-indigo-400"
+																		style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+																		initial={{ opacity: 0, y: 20 }}
+																		animate={{ opacity: 1, y: 0 }}
+																		transition={{ delay: 0.15 * i, duration: 0.35, type: 'spring', stiffness: 200 }}
+																	>
+																		{q}
+																	</motion.button>
+																))}
+															</div>
 														</div>
+														)}
+														
+														{/* Graph Button */}
+														<GraphButton 
+															message={message} 
+															chatId={chatId || ''} 
+															className="ml-4"
+														/>
 													</div>
-													)}
 												</div>
 											)}
 											{isUser && (

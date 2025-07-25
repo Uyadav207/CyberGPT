@@ -38,6 +38,122 @@ export default defineSchema({
     ),
     Severity: v.optional(v.string()),
     tags: v.array(v.string()), // Mandatory field for tags
+    // Graph visualization data as key-value pairs
+    graphVisualization: v.optional(
+      v.object({
+        vulnerabilities: v.optional(
+          v.array(
+            v.object({
+              id: v.string(),
+              name: v.string(),
+              description: v.optional(v.string()),
+              severity: v.optional(v.string()),
+              cvss: v.optional(v.number()),
+              cveIds: v.optional(v.array(v.string())),
+              affectedSystems: v.optional(v.array(v.string())),
+              attackVectors: v.optional(v.array(v.string())),
+              references: v.optional(v.array(v.string())),
+            })
+          )
+        ),
+        mitigations: v.optional(
+          v.array(
+            v.object({
+              id: v.string(),
+              name: v.string(),
+              description: v.optional(v.string()),
+              type: v.optional(v.string()),
+              effectiveness: v.optional(v.number()),
+              implementation: v.optional(v.string()),
+              cost: v.optional(v.string()),
+              references: v.optional(v.array(v.string())),
+            })
+          )
+        ),
+        sources: v.optional(
+          v.array(
+            v.object({
+              id: v.string(),
+              name: v.string(),
+              type: v.optional(v.string()),
+              url: v.optional(v.string()),
+              reliability: v.optional(v.number()),
+              lastUpdated: v.optional(v.number()),
+              description: v.optional(v.string()),
+            })
+          )
+        ),
+        cves: v.optional(
+          v.array(
+            v.object({
+              id: v.string(),
+              cveId: v.string(),
+              description: v.optional(v.string()),
+              severity: v.optional(v.string()),
+              cvss: v.optional(v.number()),
+              publishedDate: v.optional(v.number()),
+              affectedProducts: v.optional(v.array(v.string())),
+              references: v.optional(v.array(v.string())),
+              patches: v.optional(v.array(v.string())),
+            })
+          )
+        ),
+        problems: v.optional(
+          v.array(
+            v.object({
+              id: v.string(),
+              name: v.string(),
+              description: v.optional(v.string()),
+              category: v.optional(v.string()),
+              impact: v.optional(v.string()),
+              priority: v.optional(v.string()),
+              affectedComponents: v.optional(v.array(v.string())),
+            })
+          )
+        ),
+        affected: v.optional(
+          v.array(
+            v.object({
+              id: v.string(),
+              name: v.string(),
+              type: v.optional(v.string()),
+              description: v.optional(v.string()),
+              impact: v.optional(v.string()),
+              systems: v.optional(v.array(v.string())),
+              users: v.optional(v.array(v.string())),
+            })
+          )
+        ),
+        risks: v.optional(
+          v.array(
+            v.object({
+              id: v.string(),
+              name: v.string(),
+              level: v.optional(v.string()),
+              probability: v.optional(v.number()),
+              impact: v.optional(v.string()),
+              description: v.optional(v.string()),
+              mitigation: v.optional(v.string()),
+              monitoring: v.optional(v.string()),
+            })
+          )
+        ),
+        relationships: v.optional(
+          v.array(
+            v.object({
+              id: v.string(),
+              sourceId: v.string(),
+              targetId: v.string(),
+              type: v.string(),
+              strength: v.optional(v.number()),
+              description: v.optional(v.string()),
+              evidence: v.optional(v.string()),
+              confidence: v.optional(v.number()),
+            })
+          )
+        ),
+      })
+    ),
   }).index("by_chatId", ["chatId"]),
 
   summaries: defineTable({
@@ -140,26 +256,9 @@ export default defineSchema({
     component: v.string(),
     line: v.number(),
     severity: v.string(),
-    tags: v.array(v.string()),
+    type: v.string(),
+    effort: v.string(),
+    debt: v.string(),
+    review_status: v.boolean(),
   }).index("by_staticScanId", ["staticScanId"]),
-
-  issueInfo: defineTable({
-    issueId: v.id("issueList"),
-    message: v.string(),
-    component: v.string(),
-    line: v.number(),
-    severity: v.string(),
-    rule: v.object({
-      key: v.string(),
-      name: v.string(),
-      remediationSteps: v.array(
-        v.object({
-          context: v.string(),
-          description: v.string(),
-          problemCodeSnippet: v.string(),
-          remediationCodeSnippet: v.string(),
-        })
-      ),
-    }),
-  }).index("by_issueId", ["issueId"]),
 });
