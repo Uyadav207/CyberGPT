@@ -104,8 +104,33 @@ export class ChatController {
   // Add a new endpoint for chat with jargon extraction
   async chatWithJargon(c: Context) {
     try {
-      const { message, agentPersonality } = await c.req.json();
-      console.log("DEBUG: Received agent personality:", agentPersonality);
+      const body = await c.req.json();
+      console.log("DEBUG: Received request body:", body);
+      const { message, agentPersonality, concept, question } = body;
+      console.log("DEBUG: Parsed parameters:", {
+        message,
+        agentPersonality,
+        concept,
+        question,
+      });
+      // Accept both 'message' and 'concept' or 'question' as input
+      const mainMessage = message || concept || question;
+      if (!mainMessage) {
+        console.error(
+          "DEBUG: Missing main message parameter (message/concept/question)"
+        );
+        return c.json(
+          {
+            status: "error",
+            message: "Expected parameter(s): message, concept, or question",
+          },
+          400
+        );
+      }
+      console.log("DEBUG: Calling graphRAGAnswer with:", {
+        mainMessage,
+        agentPersonality,
+      });
       const {
         answer,
         reasoningTrace,
@@ -114,7 +139,7 @@ export class ChatController {
         dynamicTag,
         contextData,
         sourceLinks,
-      } = await graphRAGAnswer(message, agentPersonality);
+      } = await graphRAGAnswer(mainMessage, agentPersonality);
       console.log("REASONING TRACE (narrative or array):", reasoningTrace);
       // Ensure trace is always an array with a narrative field if reasoningTrace is a string
       let trace = Array.isArray(reasoningTrace)
@@ -122,6 +147,15 @@ export class ChatController {
         : reasoningTrace
           ? [{ narrative: reasoningTrace }]
           : [];
+      console.log("DEBUG: Returning chat answer with jargons:", {
+        answer,
+        trace,
+        jargons,
+        cveDescriptionsMap,
+        dynamicTag,
+        contextData,
+        sourceLinks,
+      });
       return c.json({
         answer,
         trace,
@@ -132,6 +166,7 @@ export class ChatController {
         sourceLinks,
       });
     } catch (error) {
+      console.error("Controller error:", error, error?.stack);
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
       return c.json({ status: "error", message: errorMessage }, 500);
