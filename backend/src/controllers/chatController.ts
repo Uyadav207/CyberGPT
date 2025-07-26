@@ -1,9 +1,11 @@
 import type { Context } from "hono";
 import { ChatService } from "../services/chatService";
 import { graphRAGAnswer } from "../utils/neo4j-cve-fetch-ingest";
+import { ChatGraphIntegrationService } from "../services/chatGraphIntegrationService";
 
 export class ChatController {
   private chatService!: ChatService;
+  private chatGraphService = ChatGraphIntegrationService.getInstance();
 
   constructor() {
     this.init();
@@ -91,11 +93,18 @@ export class ChatController {
     }
   }
 
-  // Add a new endpoint for chat with jargon extraction
+  // Add a new endpoint for chat with jargon extraction and automatic graph generation
   async chatWithJargon(c: Context) {
     try {
       const body = await c.req.json();
-      const { message, agentPersonality, concept, question } = body;
+      const {
+        message,
+        agentPersonality,
+        concept,
+        question,
+        messageId,
+        chatId,
+      } = body;
       // Accept both 'message' and 'concept' or 'question' as input
       const mainMessage = message || concept || question;
       if (!mainMessage) {
@@ -122,6 +131,69 @@ export class ChatController {
         : reasoningTrace
           ? [{ narrative: reasoningTrace }]
           : [];
+
+      // Automatically generate graph visualization if messageId and chatId are provided
+      let graphData = null;
+      if (messageId && chatId) {
+        try {
+          console.log(
+            "🔄 [ChatController] Automatically generating graph for message:",
+            {
+              messageId,
+              chatId,
+              question: mainMessage.substring(0, 50) + "...",
+              hasAnswer: !!answer,
+              answerLength: answer.length,
+            }
+          );
+
+          const graphResult =
+            await this.chatGraphService.processChatMessageWithGraph({
+              messageId,
+              chatId,
+              question: mainMessage,
+              answer,
+              reasoningTrace: trace,
+              jargons,
+              cveDescriptionsMap,
+              sourceLinks,
+              contextData,
+            });
+
+          if (graphResult.success) {
+            graphData = graphResult.graphData;
+            console.log("✅ [ChatController] Graph generated successfully:", {
+              messageId,
+              nodes: graphData.nodes.length,
+              links: graphData.links.length,
+              mainProblemNode: graphData.nodes.find(n => n.id === 'main-problem'),
+              problemConnections: graphData.links.filter(l => l.source === 'main-problem' || l.target === 'main-problem').length
+            });
+          } else {
+            console.error(
+              "❌ [ChatController] Graph generation failed:",
+              graphResult.error
+            );
+          }
+        } catch (graphError) {
+          console.error(
+            "❌ [ChatController] Error in automatic graph generation:",
+            graphError
+          );
+          // Don't fail the entire request if graph generation fails
+        }
+      }
+
+      console.log("📤 [ChatController] Sending response with graph data:", {
+        hasAnswer: !!answer,
+        hasGraphData: !!graphData,
+        graphDataSummary: graphData ? {
+          nodes: graphData.nodes?.length || 0,
+          links: graphData.links?.length || 0,
+          hasMainProblem: !!graphData.nodes?.find(n => n.id === 'main-problem')
+        } : 'No graph data'
+      });
+
       return c.json({
         answer,
         trace,
@@ -130,6 +202,7 @@ export class ChatController {
         dynamicTag,
         contextData,
         sourceLinks,
+        graphData, // Include graph data in response if generated
       });
     } catch (error) {
       console.error("Controller error:", error, error?.stack);

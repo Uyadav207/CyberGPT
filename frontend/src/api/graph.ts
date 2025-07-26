@@ -36,9 +36,9 @@ export const graphApis = {
   /**
    * Get graph visualization by message ID
    */
-  getGraphByMessageId: async (messageId: string): Promise<GraphData | null> => {
+  getGraphByMessageId: async (messageId: string, chatId: string): Promise<GraphData | null> => {
     try {
-      const response = await fetch(`${BASE_URL}/graph/message/${messageId}`, {
+      const response = await fetch(`${BASE_URL}/graph/message/${messageId}?chatId=${chatId}`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",

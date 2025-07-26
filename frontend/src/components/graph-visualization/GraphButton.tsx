@@ -7,7 +7,7 @@ import GraphVisualization from './GraphVisualization';
 import { graphApis } from '../../api/graph';
 import { useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import type { GraphData, GraphGenerationRequest, GraphElements } from '../../types/graphVisualization';
+import type { GraphData, GraphGenerationRequest, GraphElements } from '../../types/graphVisualization.d';
 import type { Message } from '../../types/chats';
 
 // Helper function to convert graphVisualization to GraphData format
@@ -167,7 +167,7 @@ const convertGraphVisualizationToGraphData = (graphVisualization: GraphElements)
 };
 
 // Helper function to convert GraphData to graphVisualization format
-const convertGraphDataToGraphVisualization = (graphData: GraphData): GraphElements => {
+export const convertGraphDataToGraphVisualization = (graphData: GraphData): GraphElements => {
   const graphVisualization: GraphElements = {};
 
   // Group nodes by type
@@ -180,60 +180,107 @@ const convertGraphDataToGraphVisualization = (graphData: GraphData): GraphElemen
   const risks: any[] = [];
   const relationships: any[] = [];
 
-  // Convert nodes to graph elements
+  // Convert nodes to graph elements according to schema
   graphData.nodes.forEach((node, index) => {
-    const element = {
-      id: node.id,
-      name: node.label,
-      description: node.description,
-    };
-
     switch (node.type) {
       case 'vulnerability':
         vulnerabilities.push({
-          ...element,
+          id: node.id,
+          name: node.label,
+          description: node.description,
           severity: node.severity,
-          cvss: node.cvss,
+          cvss: node.cvss || 0.0, // Ensure cvss is never null
+          // Add optional fields from metadata if available
+          cveIds: node.metadata?.originalEntity?.cveIds || [],
+          affectedSystems: node.metadata?.kgData?.affected || [],
+          attackVectors: node.metadata?.originalEntity?.attackVectors || [],
+          references: node.metadata?.kgData?.sources?.map((s: any) => s.name) || [],
         });
         break;
       case 'mitigation':
-        mitigations.push(element);
+        mitigations.push({
+          id: node.id,
+          name: node.label,
+          description: node.description,
+          type: node.metadata?.originalEntity?.type || 'preventive',
+          effectiveness: node.metadata?.originalEntity?.effectiveness || 8.0,
+          implementation: node.metadata?.originalEntity?.implementation || '',
+          cost: node.metadata?.originalEntity?.cost || '',
+          references: node.metadata?.kgData?.sources?.map((s: any) => s.name) || [],
+        });
         break;
       case 'source':
-        sources.push(element);
+        sources.push({
+          id: node.id,
+          name: node.label,
+          type: node.metadata?.originalEntity?.type || 'standard',
+          url: node.metadata?.originalEntity?.url || '',
+          reliability: node.metadata?.originalEntity?.reliability || 8.0,
+          lastUpdated: Date.now() || 0,
+          description: node.description,
+        });
         break;
       case 'cve':
         cves.push({
-          ...element,
+          id: node.id,
           cveId: node.label,
+          description: node.description,
           severity: node.severity,
-          cvss: node.cvss,
+          cvss: node.cvss || 0.0, // Ensure cvss is never null
+          publishedDate: Date.now() || 0,
+          affectedProducts: node.metadata?.kgData?.affectedProducts || [],
+          references: node.metadata?.kgData?.references || [],
+          patches: node.metadata?.kgData?.patches || [],
         });
         break;
       case 'problem':
-        problems.push(element);
+        problems.push({
+          id: node.id,
+          name: node.label,
+          description: node.description,
+          category: node.metadata?.originalEntity?.category || 'security',
+          impact: node.metadata?.originalEntity?.impact || 'high',
+          priority: node.metadata?.originalEntity?.priority || 'high',
+          affectedComponents: node.metadata?.originalEntity?.affectedComponents || [],
+        });
         break;
       case 'affected':
-        affected.push(element);
+        affected.push({
+          id: node.id,
+          name: node.label,
+          type: node.metadata?.originalEntity?.type || 'system',
+          description: node.description,
+          impact: node.metadata?.originalEntity?.impact || 'critical',
+          systems: node.metadata?.originalEntity?.systems || [],
+          users: node.metadata?.originalEntity?.users || [],
+        });
         break;
       case 'risk':
         risks.push({
-          ...element,
+          id: node.id,
+          name: node.label,
           level: node.severity,
+          probability: node.metadata?.originalEntity?.probability || 8.0,
+          impact: node.metadata?.originalEntity?.impact || 'high',
+          description: node.description,
+          mitigation: node.metadata?.originalEntity?.mitigation || '',
+          monitoring: node.metadata?.originalEntity?.monitoring || '',
         });
         break;
     }
   });
 
-  // Convert links to relationships
+  // Convert links to relationships according to schema
   graphData.links.forEach((link, index) => {
     relationships.push({
       id: link.id,
       sourceId: link.source,
       targetId: link.target,
       type: link.type,
-      strength: link.strength,
-      description: link.description,
+      strength: link.strength || 8.0,
+      description: link.description || '',
+      evidence: link.metadata?.evidence || '',
+      confidence: link.metadata?.confidence || 0.8,
     });
   });
 
@@ -246,6 +293,17 @@ const convertGraphDataToGraphVisualization = (graphData: GraphData): GraphElemen
   if (affected.length > 0) graphVisualization.affected = affected;
   if (risks.length > 0) graphVisualization.risks = risks;
   if (relationships.length > 0) graphVisualization.relationships = relationships;
+
+  console.log('[GraphButton] Converted graph visualization:', {
+    vulnerabilities: vulnerabilities.length,
+    mitigations: mitigations.length,
+    sources: sources.length,
+    cves: cves.length,
+    problems: problems.length,
+    affected: affected.length,
+    risks: risks.length,
+    relationships: relationships.length,
+  });
 
   return graphVisualization;
 };
@@ -263,7 +321,6 @@ const GraphButton: React.FC<GraphButtonProps> = ({ message, chatId, className = 
   const [error, setError] = useState<string | null>(null);
 
   const saveGraphMutation = useMutation(api.graphVisualizations.saveGraphVisualization);
-  const getGraphMutation = useMutation(api.graphVisualizations.getGraphByMessageId);
 
   const handleGenerateGraph = async () => {
     if (message.sender !== 'ai') return;
@@ -272,13 +329,21 @@ const GraphButton: React.FC<GraphButtonProps> = ({ message, chatId, className = 
     setError(null);
 
     try {
-      // First, try to get existing graph from Convex
-      const existingGraph = await getGraphMutation({ 
-        messageId: message.id, 
-        chatId 
-      });
+      // Debug chatId value
+      console.log('[GraphButton] Received chatId:', { chatId, type: typeof chatId, length: chatId?.length });
+      
+      // Validate chatId before proceeding
+      if (!chatId || chatId === 'undefined' || chatId === 'null' || chatId.trim() === '') {
+        console.error('[GraphButton] Invalid chatId detected:', { chatId, type: typeof chatId });
+        throw new Error(`Invalid chat ID provided: "${chatId}"`);
+      }
+
+      // First, try to get existing graph from REST API
+      console.log('[GraphButton] Checking for existing graph:', { messageId: message.id, chatId });
+      const existingGraph = await graphApis.getGraphByMessageId(message.id, chatId);
       
       if (existingGraph) {
+        console.log('[GraphButton] Found existing graph:', existingGraph);
         // Convert graphVisualization to GraphData format for the visualization component
         const graphData = convertGraphVisualizationToGraphData(existingGraph);
         setGraphData(graphData);
@@ -287,21 +352,34 @@ const GraphButton: React.FC<GraphButtonProps> = ({ message, chatId, className = 
         return;
       }
 
+      console.log('[GraphButton] No existing graph found, generating new one...');
+
       // Generate new graph if none exists
       const request: GraphGenerationRequest = {
-        messageId: message.id,
+        messageId: message.id || message.humanInTheLoopId || '',
         chatId,
         question: message.message || '',
         answer: message.message || '',
-        reasoning: message.reasoningTrace,
-        sources: message.sources,
-        jargons: message.jargons,
-        cveInfo: message.cveInfo
+        reasoning: message.reasoningTrace ? JSON.stringify(message.reasoningTrace) : undefined,
+        sources: message.sourceLinks?.map(link => link.title) || [],
+        jargons: message.jargons?.reduce((acc, jargon) => {
+          acc[jargon.term] = jargon.description;
+          return acc;
+        }, {} as Record<string, string>) || {},
+        cveInfo: message.cveDescriptionsMap ? {
+          cve_id: Object.keys(message.cveDescriptionsMap)[0],
+          cve_desc: Object.values(message.cveDescriptionsMap)[0],
+          mitigation: undefined
+        } : undefined
       };
 
+      console.log('[GraphButton] Generating graph with request:', request);
       const response = await graphApis.generateGraph(request);
 
+      console.log('[GraphButton] Graph generation response:', response);
+      
       if (response.success && response.graphData) {
+        console.log('[GraphButton] Graph generated successfully, saving to Convex...');
         // Convert GraphData to graphVisualization format for storage
         const graphVisualization = convertGraphDataToGraphVisualization(response.graphData);
         
@@ -312,9 +390,11 @@ const GraphButton: React.FC<GraphButtonProps> = ({ message, chatId, className = 
           graphVisualization
         });
 
+        console.log('[GraphButton] Graph saved to Convex successfully');
         setGraphData(response.graphData);
         setShowGraph(true);
       } else {
+        console.error('[GraphButton] Graph generation failed:', response.error);
         throw new Error(response.error || 'Failed to generate graph');
       }
     } catch (err) {
@@ -334,7 +414,14 @@ const GraphButton: React.FC<GraphButtonProps> = ({ message, chatId, className = 
   };
 
   // Only show for AI messages
+  console.log('[GraphButton] Checking message sender:', {
+    messageId: message.id,
+    sender: message.sender,
+    shouldShow: message.sender === 'ai'
+  });
+  
   if (message.sender !== 'ai') {
+    console.log('[GraphButton] Not showing for non-AI message');
     return null;
   }
 

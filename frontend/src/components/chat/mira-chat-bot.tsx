@@ -69,7 +69,7 @@ import { agentApi } from "../../api/agent";
 import RoleButtonGroup from "./chatComponents/RoleButton/RoleButtonGroup";
 import { ReasoningTrace } from "./ReasoningTrace";
 import { SourceLinks } from "./SourceLinks";
-import GraphButton from "../graph-visualization/GraphButton";
+import GraphButton, { convertGraphDataToGraphVisualization } from "../graph-visualization/GraphButton";
 
 // Interactive Loading Messages
 const INTERACTIVE_LOADING_MESSAGES = [
@@ -979,16 +979,24 @@ const MiraChatBot: React.FC = () => {
 
 		if (hasNegation) {
 			// Use chatWithJargon for all questions, including negations
+			const graphChatId = createdChatId || chatId;
+			const botMessageId = uuidv4(); // Generate bot message ID for graph generation
+			
 			const graphRAGResponse = await chatWithJargon({
 				message: userMessage.message,
-				agentPersonality: selectedAgentMode
+				agentPersonality: selectedAgentMode,
+				messageId: botMessageId, // Pass message ID for graph generation
+				chatId: graphChatId // Pass chat ID for graph generation
 			});
 
 			const botMessage: Message = {
-				id: uuidv4(),
+				id: botMessageId, // Use the same ID that was passed to the API for graph generation
 				message: graphRAGResponse.answer,
 				sender: "ai",
 				reasoningTrace: graphRAGResponse.reasoningTrace,
+				jargons: graphRAGResponse.jargons,
+				cveDescriptionsMap: graphRAGResponse.cveDescriptionsMap,
+				sourceLinks: graphRAGResponse.sourceLinks || [],
 				durationSec: thinkingStartRef.current ? (Date.now() - thinkingStartRef.current) / 1000 : undefined,
 			};
 			// Reset start ref after computing
@@ -997,7 +1005,7 @@ const MiraChatBot: React.FC = () => {
 			// Add messages to UI
 			setMessages((prev) => [...prev, botMessage]);
 
-			// Save messages to database
+			// Save messages to database with graph visualization
 			if (!chatId && !createdChatId) {
 				await processManualMessages(userMessage, botMessage);
 			} else {
@@ -1010,14 +1018,80 @@ const MiraChatBot: React.FC = () => {
 					message: userMessage.message,
 				});
 
-				await saveChatMessage({
-					chatId: chatId
-						? (chatId as Id<"chats">)
-						: (createdChatId as Id<"chats">),
-					humanInTheLoopId: botMessage.id,
-					sender: botMessage.sender,
-					message: botMessage.message,
-				});
+				// Save AI response with enhanced data including graph visualization
+				try {
+					console.log("📊 [Frontend] Preparing to save negation chat message with graph visualization:", {
+						messageId: botMessage.id,
+						chatId: graphChatId,
+						hasGraphData: !!graphRAGResponse.graphData,
+						graphDataKeys: graphRAGResponse.graphData ? Object.keys(graphRAGResponse.graphData) : 'No graph data'
+					});
+
+					// Prepare enhanced data for AI response
+					const jargonsObject = graphRAGResponse.jargons ? 
+						graphRAGResponse.jargons.reduce((acc: Record<string, string>, jargon: { term: string; description: string }) => {
+							acc[jargon.term] = jargon.description;
+							return acc;
+						}, {}) : {};
+					
+					// Extract reasoning string
+					let reasoningString: string | undefined = undefined;
+					if (typeof graphRAGResponse.trace === 'string') {
+						reasoningString = graphRAGResponse.trace;
+					} else if (Array.isArray(graphRAGResponse.trace) && graphRAGResponse.trace[0]?.narrative) {
+						reasoningString = graphRAGResponse.trace[0].narrative;
+					} else if (graphRAGResponse.trace && typeof graphRAGResponse.trace.narrative === 'string') {
+						reasoningString = graphRAGResponse.trace.narrative;
+					}
+
+					// Convert graph data to schema-compliant format
+					console.log("🔍 [Frontend] Debug - graphRAGResponse.graphData:", {
+						hasGraphData: !!graphRAGResponse.graphData,
+						graphDataKeys: graphRAGResponse.graphData ? Object.keys(graphRAGResponse.graphData) : 'No graph data',
+						graphDataType: typeof graphRAGResponse.graphData,
+						graphDataPreview: graphRAGResponse.graphData ? JSON.stringify(graphRAGResponse.graphData).substring(0, 200) + '...' : 'No data'
+					});
+
+					const convertedGraphVisualization = graphRAGResponse.graphData ? 
+						convertGraphDataToGraphVisualization(graphRAGResponse.graphData) : null;
+
+					console.log("🔍 [Frontend] Debug - convertedGraphVisualization:", {
+						hasConvertedData: !!convertedGraphVisualization,
+						convertedKeys: convertedGraphVisualization ? Object.keys(convertedGraphVisualization) : 'No converted data',
+						convertedPreview: convertedGraphVisualization ? JSON.stringify(convertedGraphVisualization).substring(0, 200) + '...' : 'No converted data'
+					});
+
+					const enhancedDataWithGraph = {
+						humanInTheLoopId: botMessage.id,
+						chatId: graphChatId as Id<"chats">,
+						sender: botMessage.sender,
+						message: botMessage.message,
+						Answer: graphRAGResponse.answer,
+						Reasoning: reasoningString,
+						Sources: [],
+						SourceLinks: graphRAGResponse.sourceLinks || [],
+						Jargons: jargonsObject,
+						Info: undefined,
+						Severity: "Medium",
+						tags: [graphRAGResponse.dynamicTag || "cybersecurity_general"],
+						graphVisualization: convertedGraphVisualization // Use converted graph data
+					};
+
+					console.log("💾 [Frontend] Saving negation chat message with graph visualization to database...");
+					await saveEnhancedChatMessage(enhancedDataWithGraph);
+					console.log("✅ [Frontend] Negation chat message with graph visualization saved successfully");
+				} catch (saveError) {
+					console.error('Failed to save negation AI response with graph data:', saveError);
+					// Fallback to basic save
+					await saveChatMessage({
+						chatId: chatId
+							? (chatId as Id<"chats">)
+							: (createdChatId as Id<"chats">),
+						humanInTheLoopId: botMessage.id,
+						sender: botMessage.sender,
+						message: botMessage.message,
+					});
+				}
 			}
 
 			stopLoading(setIsLoading, setAgentButtonsDisabled, loadingIntervalRef, setLoadingMessage);
@@ -1034,9 +1108,14 @@ const MiraChatBot: React.FC = () => {
 				
 				// Use chatWithJargon for clarifications with agent personality
 				console.log('Sending clarification request with agent personality:', selectedAgentMode);
+				const graphChatId = createdChatId || chatId;
+				const botMessageId = uuidv4(); // Generate bot message ID for graph generation
+				
 				const response = await chatWithJargon({ 
 					message: userMessage.message,
-					agentPersonality: selectedAgentMode 
+					agentPersonality: selectedAgentMode,
+					messageId: botMessageId, // Pass message ID for graph generation
+					chatId: graphChatId // Pass chat ID for graph generation
 				});
 				
 				// Validate response structure
@@ -1048,7 +1127,7 @@ const MiraChatBot: React.FC = () => {
 				console.log('saveEnhancedChatMessage function:', typeof saveEnhancedChatMessage);
 				
 				const botMessage: Message = {
-					id: uuidv4(),
+					id: botMessageId, // Use the same ID that was passed to the API for graph generation
 					message: response.answer,
 					sender: 'ai',
 					reasoningTrace: response.reasoningTrace,
@@ -1145,7 +1224,39 @@ const MiraChatBot: React.FC = () => {
 						console.log('About to save with data:', enhancedData);
 						console.log('Tag being saved to database:', enhancedData.tags);
 						
-						await saveEnhancedChatMessage(enhancedData);
+						// Include graph visualization data if available from the response
+						console.log("📊 [Frontend] Preparing to save clarification chat message with graph visualization:", {
+							messageId: botMessage.id,
+							chatId: currentChatId,
+							hasGraphData: !!response.graphData,
+							graphDataKeys: response.graphData ? Object.keys(response.graphData) : 'No graph data'
+						});
+
+						// Convert graph data to schema-compliant format
+						console.log("🔍 [Frontend] Debug - response.graphData (clarification):", {
+							hasGraphData: !!response.graphData,
+							graphDataKeys: response.graphData ? Object.keys(response.graphData) : 'No graph data',
+							graphDataType: typeof response.graphData,
+							graphDataPreview: response.graphData ? JSON.stringify(response.graphData).substring(0, 200) + '...' : 'No data'
+						});
+
+						const convertedGraphVisualization = response.graphData ? 
+							convertGraphDataToGraphVisualization(response.graphData) : null;
+
+						console.log("🔍 [Frontend] Debug - convertedGraphVisualization (clarification):", {
+							hasConvertedData: !!convertedGraphVisualization,
+							convertedKeys: convertedGraphVisualization ? Object.keys(convertedGraphVisualization) : 'No converted data',
+							convertedPreview: convertedGraphVisualization ? JSON.stringify(convertedGraphVisualization).substring(0, 200) + '...' : 'No converted data'
+						});
+
+						const enhancedDataWithGraph = {
+							...enhancedData,
+							graphVisualization: convertedGraphVisualization // Use converted graph data
+						};
+						
+						console.log("💾 [Frontend] Saving clarification chat message with graph visualization to database...");
+						await saveEnhancedChatMessage(enhancedDataWithGraph);
+						console.log("✅ [Frontend] Clarification chat message with graph visualization saved successfully");
 						console.log('AI response saved successfully with enhanced data');
 					} catch (saveError) {
 						console.error('Failed to save AI response with enhanced data:', saveError);
@@ -1333,11 +1444,16 @@ const MiraChatBot: React.FC = () => {
 				// Add user message to UI first
 				setMessages((prev) => [...prev, userMessage]);
 				
-				// Use chatWithJargon for the main chat flow with agent personality
+				// Use chatWithJargon for the main chat flow with agent personality and automatic graph generation
 				console.log('Sending request with agent personality:', selectedAgentMode);
+				const graphChatId = createdChatId || chatId;
+				const botMessageId = uuidv4(); // Generate bot message ID for graph generation
+				
 				const response = await chatWithJargon({ 
 					message: userMessage.message,
-					agentPersonality: selectedAgentMode 
+					agentPersonality: selectedAgentMode,
+					messageId: botMessageId, // Pass message ID for graph generation
+					chatId: graphChatId // Pass chat ID for graph generation
 				});
 				console.log('Backend response received:', {
 					hasAnswer: !!response.answer,
@@ -1471,7 +1587,7 @@ const MiraChatBot: React.FC = () => {
 				});
 
 				const botMessage: Message = {
-					id: uuidv4(),
+					id: botMessageId, // Use the same ID that was passed to the API for graph generation
 					message: response.answer,
 					sender: 'ai',
 					reasoningTrace: reasoningTrace,
@@ -1584,7 +1700,39 @@ const MiraChatBot: React.FC = () => {
 						console.log('About to save with data:', enhancedData);
 						console.log('Tag being saved to database:', enhancedData.tags);
 						
-						await saveEnhancedChatMessage(enhancedData);
+						// Include graph visualization data if available from the response
+						console.log("📊 [Frontend] Preparing to save chat message with graph visualization:", {
+							messageId: botMessage.id,
+							chatId: currentChatId,
+							hasGraphData: !!response.graphData,
+							graphDataKeys: response.graphData ? Object.keys(response.graphData) : 'No graph data'
+						});
+
+						// Convert graph data to schema-compliant format
+						console.log("🔍 [Frontend] Debug - response.graphData (main flow):", {
+							hasGraphData: !!response.graphData,
+							graphDataKeys: response.graphData ? Object.keys(response.graphData) : 'No graph data',
+							graphDataType: typeof response.graphData,
+							graphDataPreview: response.graphData ? JSON.stringify(response.graphData).substring(0, 200) + '...' : 'No data'
+						});
+
+						const convertedGraphVisualization = response.graphData ? 
+							convertGraphDataToGraphVisualization(response.graphData) : null;
+
+						console.log("🔍 [Frontend] Debug - convertedGraphVisualization (main flow):", {
+							hasConvertedData: !!convertedGraphVisualization,
+							convertedKeys: convertedGraphVisualization ? Object.keys(convertedGraphVisualization) : 'No converted data',
+							convertedPreview: convertedGraphVisualization ? JSON.stringify(convertedGraphVisualization).substring(0, 200) + '...' : 'No converted data'
+						});
+
+						const enhancedDataWithGraph = {
+							...enhancedData,
+							graphVisualization: convertedGraphVisualization // Use converted graph data
+						};
+						
+						console.log("💾 [Frontend] Saving enhanced chat message with graph visualization to database...");
+						await saveEnhancedChatMessage(enhancedDataWithGraph);
+						console.log("✅ [Frontend] Enhanced chat message with graph visualization saved successfully");
 						console.log('AI response saved successfully with enhanced data');
 					} catch (saveError) {
 						console.error('Failed to save AI response with enhanced data:', saveError);
@@ -1676,6 +1824,13 @@ const MiraChatBot: React.FC = () => {
 							? response.reasoningTrace.map((step: { step: string; message: string }) => step.step).filter(Boolean)
 							: [];
 						
+						console.log("📊 [Frontend] Preparing to save new chat message with graph visualization:", {
+							messageId: botMessage.id,
+							chatId: newChatResult2,
+							hasGraphData: !!response.graphData,
+							graphDataKeys: response.graphData ? Object.keys(response.graphData) : 'No graph data'
+						});
+
 						await saveEnhancedChatMessage({
 							humanInTheLoopId: botMessage.id || uuidv4(),
 							chatId: newChatResult2 as Id<"chats">,
@@ -1696,8 +1851,11 @@ const MiraChatBot: React.FC = () => {
 								mitigation: mitigation
 							} : undefined,
 							Severity: "Medium",
-							tags: [response.dynamicTag || "cybersecurity_general"]
+							tags: [response.dynamicTag || "cybersecurity_general"],
+							graphVisualization: response.graphData || null // Include graph data from response
 						});
+						
+						console.log("✅ [Frontend] New chat message with graph visualization saved successfully");
 						console.log('AI response saved to new chat with enhanced data');
 						
 						// Update URL
@@ -3259,6 +3417,15 @@ const MiraChatBot: React.FC = () => {
 								questionCount: messageRelatedQuestions.length
 							});
 
+							console.log('[MiraChatBot] Rendering message:', {
+								index: idx,
+								messageId: message.id,
+								sender: message.sender,
+								isUser: message.sender === 'user',
+								isLastAiMessage,
+								messageLength: message.message.length
+							});
+
 							// Related questions generation is now handled in the useEffect hook above
 							// This prevents duplicate API calls and infinite loops
 
@@ -3397,37 +3564,45 @@ const MiraChatBot: React.FC = () => {
 														<SourceLinks sourceLinks={message.sourceLinks} />
 													)}
 													
-													{/* Graph Visualization Button */}
-													<div className="mt-3 flex items-center justify-between">
-														{/* Show related questions only for the last AI message */}
-														{isLastAiMessage && (
-															<div className="flex-1">
-																<div className="text-xs text-gray-500 mb-2 italic">Suggested follow-up questions:</div>
-																<div className="flex flex-wrap gap-2">
-																{messageRelatedQuestions.map((q: string, i: number) => (
-																	<motion.button
-																		key={`${message.id}-${q}-${i}`}
-																		onClick={() => handleSend(q, false, true)}
-																		className="rounded-lg px-3 py-1.5 bg-white border border-gray-300 text-gray-700 text-xs sm:text-sm font-medium hover:bg-gray-50 hover:shadow-sm transition-shadow focus:outline-none focus:ring-2 focus:ring-indigo-400"
-																		style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
-																		initial={{ opacity: 0, y: 20 }}
-																		animate={{ opacity: 1, y: 0 }}
-																		transition={{ delay: 0.15 * i, duration: 0.35, type: 'spring', stiffness: 200 }}
-																	>
-																		{q}
-																	</motion.button>
-																))}
-															</div>
+													{/* Graph Button - Positioned at extreme left */}
+													{(() => {
+														const graphChatId = chatId || createdChatId || '';
+														console.log('[MiraChatBot] Passing chatId to GraphButton:', {
+															chatId,
+															createdChatId,
+															graphChatId,
+															messageId: message.id
+														});
+														return (
+															<GraphButton 
+																message={message} 
+																chatId={graphChatId} 
+																className="mt-3 -ml-2"
+															/>
+														);
+													})()}
+
+													{/* Related Questions - Positioned below */}
+													{isLastAiMessage && (
+														<div className="mt-3">
+															<div className="text-xs text-gray-500 mb-2 italic">Suggested follow-up questions:</div>
+															<div className="flex flex-wrap gap-2">
+															{messageRelatedQuestions.map((q: string, i: number) => (
+																<motion.button
+																	key={`${message.id}-${q}-${i}`}
+																	onClick={() => handleSend(q, false, true)}
+																	className="rounded-lg px-3 py-1.5 bg-white border border-gray-300 text-gray-700 text-xs sm:text-sm font-medium hover:bg-gray-50 hover:shadow-sm transition-shadow focus:outline-none focus:ring-2 focus:ring-indigo-400"
+																	style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+																	initial={{ opacity: 0, y: 20 }}
+																	animate={{ opacity: 1, y: 0 }}
+																	transition={{ delay: 0.15 * i, duration: 0.35, type: 'spring', stiffness: 200 }}
+																>
+																	{q}
+																</motion.button>
+															))}
 														</div>
-														)}
-														
-														{/* Graph Button */}
-														<GraphButton 
-															message={message} 
-															chatId={chatId || ''} 
-															className="ml-4"
-														/>
 													</div>
+													)}
 												</div>
 											)}
 											{isUser && (

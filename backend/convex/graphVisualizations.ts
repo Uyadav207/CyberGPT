@@ -121,6 +121,13 @@ export const saveGraphVisualization = mutation({
     }),
   },
   handler: async (ctx, { messageId, chatId, graphVisualization }) => {
+    console.log("🔄 [GraphVisualizations] saveGraphVisualization called:", {
+      messageId,
+      chatId,
+      hasGraphVisualization: !!graphVisualization,
+      graphVisualizationKeys: graphVisualization ? Object.keys(graphVisualization) : []
+    });
+
     // Find the chat history entry by messageId
     const chatHistoryEntry = await ctx.db
       .query("chatHistory")
@@ -129,12 +136,35 @@ export const saveGraphVisualization = mutation({
       .first();
 
     if (chatHistoryEntry) {
+      console.log("📝 [GraphVisualizations] Found existing chat history entry, updating with graph visualization:", {
+        messageId,
+        databaseId: chatHistoryEntry._id,
+        graphVisualizationSummary: graphVisualization ? {
+          vulnerabilities: graphVisualization.vulnerabilities?.length || 0,
+          mitigations: graphVisualization.mitigations?.length || 0,
+          sources: graphVisualization.sources?.length || 0,
+          cves: graphVisualization.cves?.length || 0,
+          problems: graphVisualization.problems?.length || 0,
+          affected: graphVisualization.affected?.length || 0,
+          risks: graphVisualization.risks?.length || 0,
+          relationships: graphVisualization.relationships?.length || 0
+        } : 'No graph data'
+      });
+
       // Update existing chat history entry with graph visualization
       const result = await ctx.db.patch(chatHistoryEntry._id, {
         graphVisualization,
       });
+      
+      console.log("✅ [GraphVisualizations] Graph visualization updated successfully:", {
+        messageId,
+        databaseId: chatHistoryEntry._id,
+        result
+      });
+      
       return { success: true, updated: true, messageId: chatHistoryEntry._id };
     } else {
+      console.log("❌ [GraphVisualizations] Chat history entry not found for messageId:", messageId);
       return { success: false, error: "Chat history entry not found" };
     }
   },
