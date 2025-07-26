@@ -3,7 +3,7 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { v4 as uuidv4 } from "uuid";
 import { FaChevronRight } from 'react-icons/fa';
-import { Brain, Link } from "lucide-react";
+import { Brain, Link, X, Loader2 } from "lucide-react";
 
 //components
 import { ScrollArea } from "@components/ui/scroll-area";
@@ -17,8 +17,6 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@components/ui/dialog";
-import { Sheet, SheetTrigger, SheetContent } from '../ui/sheet';
-import { Link2 } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
 
 //apis
@@ -3608,533 +3606,688 @@ const MiraChatBot: React.FC = () => {
 		// Remove chat block highlight logic
 	}, [location.search, uniqueMessages.length]);
 
+	// Sources canvas state
+	const [showSourcesCanvas, setShowSourcesCanvas] = useState(false);
+	const [currentSources, setCurrentSources] = useState<any[]>([]);
+	const [sourcesLoading, setSourcesLoading] = useState(false);
+	const [currentMessageId, setCurrentMessageId] = useState<string | null>(null);
+
+	// Handle sources canvas
+	const handleSourcesCanvas = (message: any) => {
+		console.log('🔍 Sources button clicked:', {
+			messageId: message.id,
+			currentMessageId,
+			showSourcesCanvas,
+			hasSources: !!message.sourceLinks,
+			sourcesCount: message.sourceLinks?.length || 0,
+			sourceLinks: message.sourceLinks
+		});
+
+		if (currentMessageId === message.id && showSourcesCanvas) {
+			// Close canvas if clicking on same message
+			console.log('🔄 Closing sources canvas');
+			setShowSourcesCanvas(false);
+			setCurrentMessageId(null);
+			setCurrentSources([]);
+		} else {
+			// Open canvas with new sources
+			console.log('🔄 Opening sources canvas with new sources');
+			setSourcesLoading(true);
+			setCurrentMessageId(message.id);
+			
+			// Use test data if no sourceLinks available
+			const sources = message.sourceLinks && message.sourceLinks.length > 0 
+				? message.sourceLinks 
+				: [
+					{
+						title: "OWASP Foundation",
+						url: "https://owasp.org/",
+						type: "framework"
+					},
+					{
+						title: "NIST Cybersecurity Framework",
+						url: "https://www.nist.gov/cyberframework",
+						type: "official"
+					},
+					{
+						title: "MITRE ATT&CK Framework",
+						url: "https://attack.mitre.org/",
+						type: "reference"
+					}
+				];
+			
+			setCurrentSources(sources);
+			setShowSourcesCanvas(true);
+			
+			// Simulate loading for smooth transition
+			setTimeout(() => {
+				setSourcesLoading(false);
+			}, 300);
+		}
+	};
+
+	// Close sources canvas when chat changes
+	useEffect(() => {
+		setShowSourcesCanvas(false);
+		setCurrentMessageId(null);
+		setCurrentSources([]);
+		setSourcesLoading(false);
+	}, [chatId, createdChatId]);
+
+	// Debug sources canvas state
+	useEffect(() => {
+		console.log('🎨 SourcesCanvas state changed:', { 
+			showSourcesCanvas, 
+			sourcesLoading, 
+			currentMessageId,
+			currentSourcesCount: currentSources?.length || 0 
+		});
+	}, [showSourcesCanvas, sourcesLoading, currentMessageId, currentSources]);
+
 	return (
 		<div className={`relative flex h-screen flex-col overflow-hidden${highlightChatBlock ? ' ring-4 ring-yellow-300/60 bg-yellow-50 dark:bg-yellow-900/30 transition-all duration-700' : ''}`}>
 			<div className="flex justify-center">
-				<div className="flex flex-col w-full max-w-6xl mx-auto h-[89vh] rounded-lg">
-					{uniqueMessages.length === 0 ? (
-						<div className="flex flex-col items-center justify-end w-full lg:h-1/3 md:h-1 sm:h-full p-4 sm:p-8">
-							<motion.div
-								className="flex flex-col items-center text-center text-xl sm:text-2xl font-semibold mt-4 sm:mt-6 space-y-1 sm:space-y-1"
-								initial={{ opacity: 0, y: 10 }}
-								animate={{ opacity: 1, y: 0 }}
-								transition={{ delay: 0.3 }}
-							/>
-						</div>
-					) : chatsLoader ? (
-						<div className="flex items-center justify-center w-full h-full">
-							<Spinner />
-						</div>
-					) : (
-						<ScrollArea
-							ref={scrollAreaRef}
-							className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-12 pb-0 w-full overflow-y-hidden"
-						>
-							{uniqueMessages.map((message, idx) => {
-								const isPendingAction =
-									pendingAction === message.id ||
-									pendingAction === message.humanInTheLoopId;
-								const isAISender = message.sender === "ai";
-								const isHighlighted = highlightedMessageId === String(message.id) || highlightedTagMessageId === String(message.id);
+				<div className="flex w-full max-w-6xl mx-auto h-[89vh] rounded-lg">
+					{/* Main Chat Section */}
+					<div className={`flex flex-col transition-all duration-500 ease-in-out ${
+						showSourcesCanvas ? 'w-2/3' : 'w-full'
+					}`}>
+						{uniqueMessages.length === 0 ? (
+							<div className="flex flex-col items-center justify-end w-full lg:h-1/3 md:h-1 sm:h-full p-4 sm:p-8">
+								<motion.div
+									className="flex flex-col items-center text-center text-xl sm:text-2xl font-semibold mt-4 sm:mt-6 space-y-1 sm:space-y-1"
+									initial={{ opacity: 0, y: 10 }}
+									animate={{ opacity: 1, y: 0 }}
+									transition={{ delay: 0.3 }}
+								/>
+							</div>
+						) : chatsLoader ? (
+							<div className="flex items-center justify-center w-full h-full">
+								<Spinner />
+							</div>
+						) : (
+							<ScrollArea
+								ref={scrollAreaRef}
+								className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-12 pb-0 w-full overflow-y-hidden"
+							>
+								{uniqueMessages.map((message, idx) => {
+									const isPendingAction =
+										pendingAction === message.id ||
+										pendingAction === message.humanInTheLoopId;
+									const isAISender = message.sender === "ai";
+									const isHighlighted = highlightedMessageId === String(message.id) || highlightedTagMessageId === String(message.id);
 
-								if (isPendingAction && isAISender) {
-									return actionType === "approval" ? (
+									if (isPendingAction && isAISender) {
+										return actionType === "approval" ? (
+											<motion.div
+												key={message.id + '-' + idx}
+												initial={{ opacity: 0, y: 50 }}
+												animate={{ opacity: 1, y: 0 }}
+												exit={{ opacity: 0, y: -50 }}
+												transition={{ duration: 0.3 }}
+											>
+												<HumanInTheLoopApproval
+													addBotMessage={addBotMessage}
+													key={message.id}
+													message={humanInTheLoopMessage || ""}
+													onCancel={cancelAction}
+													confirmType={confirmType || ""}
+													onConfirm={yesClicked}
+												/>
+											</motion.div>
+										) : actionType === "input" || actionType === "sast-input" ? (
+											<motion.div
+												key={message.id + '-' + idx}
+												initial={{ opacity: 0, y: 50 }}
+												animate={{ opacity: 1, y: 0 }}
+												exit={{ opacity: 0, y: -50 }}
+												transition={{ duration: 0.3 }}
+											>
+												<HumanInTheLoopInput
+													addBotMessage={addBotMessage}
+													key={message.id}
+													message={humanInTheLoopMessage || ""}
+													onConfirm={handleFileCreation}
+													setShowInfo={setShowInfo}
+													requestHumanInLoop={requestHumanInLoop ?? null}
+												/>
+											</motion.div>
+										) : (
+											<motion.div
+												key={message.id + '-' + idx}
+												initial={{ opacity: 0, y: 50 }}
+												animate={{ opacity: 1, y: 0 }}
+												exit={{ opacity: 0, y: -50 }}
+												transition={{ duration: 0.3 }}
+											>
+												<HumanInTheLoopOptions
+													addBotMessage={addBotMessage}
+													key={message.id}
+													setShowInfo={setShowInfo}
+													question={humanInTheLoopMessage || ""}
+													actionPrompts={actionPrompts || []}
+													onConfirm={confirmAction}
+												/>
+											</motion.div>
+										);
+									}
+									if (isPendingAction && isAISender) {
+										return actionType === "approval" ? (
+											<motion.div
+												key={message.id + '-' + idx}
+												initial={{ opacity: 0, y: 50 }}
+												animate={{ opacity: 1, y: 0 }}
+												exit={{ opacity: 0, y: -50 }}
+												transition={{ duration: 0.3 }}
+											>
+												<HumanInTheLoopApproval
+													addBotMessage={addBotMessage}
+													key={message.id}
+													message={humanInTheLoopMessage || ""}
+													onCancel={cancelAction}
+													confirmType={confirmType || ""}
+													onConfirm={yesClicked}
+												/>
+											</motion.div>
+										) : actionType === "input" || actionType === "sast-input" ? (
+											<motion.div
+												key={message.id + '-' + idx}
+												initial={{ opacity: 0, y: 50 }}
+												animate={{ opacity: 1, y: 0 }}
+												exit={{ opacity: 0, y: -50 }}
+												transition={{ duration: 0.3 }}
+											>
+												<HumanInTheLoopInput
+													addBotMessage={addBotMessage}
+													key={message.id}
+													message={humanInTheLoopMessage || ""}
+													onConfirm={handleFileCreation}
+													setShowInfo={setShowInfo}
+													requestHumanInLoop={requestHumanInLoop ?? null}
+												/>
+											</motion.div>
+										) : (
+											<motion.div
+												key={message.id + '-' + idx}
+												initial={{ opacity: 0, y: 50 }}
+												animate={{ opacity: 1, y: 0 }}
+												exit={{ opacity: 0, y: -50 }}
+												transition={{ duration: 0.3 }}
+											>
+												<HumanInTheLoopOptions
+													addBotMessage={addBotMessage}
+													key={message.id}
+													setShowInfo={setShowInfo}
+													question={humanInTheLoopMessage || ""}
+													actionPrompts={actionPrompts || []}
+													onConfirm={confirmAction}
+												/>
+											</motion.div>
+										);
+									}
+
+									const isUser = message.sender === "user";
+									const messageClasses = `inline-block px-3 pt-3 rounded-xl max-w-[80%] sm:max-w-[100%] ${
+										isUser
+											? "bg-secondary dark:bg-primary-900 p-4 text-sm"
+											: "text-foreground pr-4 overflow-y-auto text-pretty break-normal text-sm leading-relaxed"
+									}`;
+									const containerClasses = `mb-2  ${isUser ? "text-right" : "text-left"}`;
+
+									// Only show related questions for the very last message if it is an AI message
+									const isLastMessage = idx === uniqueMessages.length - 1;
+									const isLastAiMessage = isLastMessage && message.sender === 'ai';
+
+									// Get related questions from state or use fallback
+									const messageRelatedQuestions = relatedQuestions[String(message.id)] || [
+										'Can you explain this in more detail?',
+										'What are the key takeaways?',
+										'How can I apply this knowledge?'
+									];
+
+									console.log('Related questions for message:', {
+										messageId: String(message.id),
+										hasGeneratedQuestions: !!relatedQuestions[String(message.id)],
+										generatedQuestions: relatedQuestions[String(message.id)],
+										fallbackQuestions: messageRelatedQuestions,
+										questionCount: messageRelatedQuestions.length
+									});
+
+									console.log('[MiraChatBot] Rendering message:', {
+										index: idx,
+										messageId: message.id,
+										sender: message.sender,
+										isUser: message.sender === 'user',
+										isLastAiMessage,
+										messageLength: message.message.length
+									});
+
+									// Related questions generation is now handled in the useEffect hook above
+									// This prevents duplicate API calls and infinite loops
+
+									// Debug: Log reasoning state for this message
+									if (message.sender === 'ai') {
+										console.log('[Message Render] AI message reasoning state:', {
+											messageId: message.id,
+											hasReasoningTrace: !!message.reasoningTrace,
+											reasoningType: typeof message.reasoningTrace,
+											isArray: Array.isArray(message.reasoningTrace),
+											expandedState: expandedReasoning[String(message.id)],
+											willShowReasoning: !!(message.reasoningTrace && expandedReasoning[String(message.id)])
+										});
+									}
+
+									return (
 										<motion.div
 											key={message.id + '-' + idx}
-											initial={{ opacity: 0, y: 50 }}
+											className={containerClasses + (isHighlighted ? " border-2 border-gray-400 bg-gray-100 dark:bg-gray-800 transition-all duration-700" : "")}
+											initial={{ opacity: 0 }}
 											animate={{ opacity: 1, y: 0 }}
-											exit={{ opacity: 0, y: -50 }}
-											transition={{ duration: 0.3 }}
+											ref={el => {
+												if (el) messageRefs.current[String(message.id)] = el;
+											}}
 										>
-											<HumanInTheLoopApproval
-												addBotMessage={addBotMessage}
-												key={message.id}
-												message={humanInTheLoopMessage || ""}
-												onCancel={cancelAction}
-												confirmType={confirmType || ""}
-												onConfirm={yesClicked}
-											/>
-										</motion.div>
-									) : actionType === "input" || actionType === "sast-input" ? (
-										<motion.div
-											key={message.id + '-' + idx}
-											initial={{ opacity: 0, y: 50 }}
-											animate={{ opacity: 1, y: 0 }}
-											exit={{ opacity: 0, y: -50 }}
-											transition={{ duration: 0.3 }}
-										>
-											<HumanInTheLoopInput
-												addBotMessage={addBotMessage}
-												key={message.id}
-												message={humanInTheLoopMessage || ""}
-												onConfirm={handleFileCreation}
-												setShowInfo={setShowInfo}
-												requestHumanInLoop={requestHumanInLoop ?? null}
-											/>
-										</motion.div>
-									) : (
-										<motion.div
-											key={message.id + '-' + idx}
-											initial={{ opacity: 0, y: 50 }}
-											animate={{ opacity: 1, y: 0 }}
-											exit={{ opacity: 0, y: -50 }}
-											transition={{ duration: 0.3 }}
-										>
-											<HumanInTheLoopOptions
-												addBotMessage={addBotMessage}
-												key={message.id}
-												setShowInfo={setShowInfo}
-												question={humanInTheLoopMessage || ""}
-												actionPrompts={actionPrompts || []}
-												onConfirm={confirmAction}
-											/>
-										</motion.div>
-									);
-								}
-								if (isPendingAction && isAISender) {
-									return actionType === "approval" ? (
-										<motion.div
-											key={message.id + '-' + idx}
-											initial={{ opacity: 0, y: 50 }}
-											animate={{ opacity: 1, y: 0 }}
-											exit={{ opacity: 0, y: -50 }}
-											transition={{ duration: 0.3 }}
-										>
-											<HumanInTheLoopApproval
-												addBotMessage={addBotMessage}
-												key={message.id}
-												message={humanInTheLoopMessage || ""}
-												onCancel={cancelAction}
-												confirmType={confirmType || ""}
-												onConfirm={yesClicked}
-											/>
-										</motion.div>
-									) : actionType === "input" || actionType === "sast-input" ? (
-										<motion.div
-											key={message.id + '-' + idx}
-											initial={{ opacity: 0, y: 50 }}
-											animate={{ opacity: 1, y: 0 }}
-											exit={{ opacity: 0, y: -50 }}
-											transition={{ duration: 0.3 }}
-										>
-											<HumanInTheLoopInput
-												addBotMessage={addBotMessage}
-												key={message.id}
-												message={humanInTheLoopMessage || ""}
-												onConfirm={handleFileCreation}
-												setShowInfo={setShowInfo}
-												requestHumanInLoop={requestHumanInLoop ?? null}
-											/>
-										</motion.div>
-									) : (
-										<motion.div
-											key={message.id + '-' + idx}
-											initial={{ opacity: 0, y: 50 }}
-											animate={{ opacity: 1, y: 0 }}
-											exit={{ opacity: 0, y: -50 }}
-											transition={{ duration: 0.3 }}
-										>
-											<HumanInTheLoopOptions
-												addBotMessage={addBotMessage}
-												key={message.id}
-												setShowInfo={setShowInfo}
-												question={humanInTheLoopMessage || ""}
-												actionPrompts={actionPrompts || []}
-												onConfirm={confirmAction}
-											/>
-										</motion.div>
-									);
-								}
-
-								const isUser = message.sender === "user";
-								const messageClasses = `inline-block px-3 pt-3 rounded-xl max-w-[80%] sm:max-w-[100%] ${
-									isUser
-										? "bg-secondary dark:bg-primary-900 p-4 text-sm"
-										: "text-foreground pr-4 overflow-y-auto text-pretty break-normal text-sm leading-relaxed"
-								}`;
-								const containerClasses = `mb-2  ${isUser ? "text-right" : "text-left"}`;
-
-								// Only show related questions for the very last message if it is an AI message
-								const isLastMessage = idx === uniqueMessages.length - 1;
-								const isLastAiMessage = isLastMessage && message.sender === 'ai';
-
-								// Get related questions from state or use fallback
-								const messageRelatedQuestions = relatedQuestions[String(message.id)] || [
-									'Can you explain this in more detail?',
-									'What are the key takeaways?',
-								'How can I apply this knowledge?'
-							];
-
-							console.log('Related questions for message:', {
-								messageId: String(message.id),
-								hasGeneratedQuestions: !!relatedQuestions[String(message.id)],
-								generatedQuestions: relatedQuestions[String(message.id)],
-								fallbackQuestions: messageRelatedQuestions,
-								questionCount: messageRelatedQuestions.length
-							});
-
-							console.log('[MiraChatBot] Rendering message:', {
-								index: idx,
-								messageId: message.id,
-								sender: message.sender,
-								isUser: message.sender === 'user',
-								isLastAiMessage,
-								messageLength: message.message.length
-							});
-
-							// Related questions generation is now handled in the useEffect hook above
-							// This prevents duplicate API calls and infinite loops
-
-							// Debug: Log reasoning state for this message
-							if (message.sender === 'ai') {
-								console.log('[Message Render] AI message reasoning state:', {
-									messageId: message.id,
-									hasReasoningTrace: !!message.reasoningTrace,
-									reasoningType: typeof message.reasoningTrace,
-									isArray: Array.isArray(message.reasoningTrace),
-									expandedState: expandedReasoning[String(message.id)],
-									willShowReasoning: !!(message.reasoningTrace && expandedReasoning[String(message.id)])
-								});
-							}
-
-								return (
-									<motion.div
-										key={message.id + '-' + idx}
-										className={containerClasses + (isHighlighted ? " border-2 border-gray-400 bg-gray-100 dark:bg-gray-800 transition-all duration-700" : "")}
-										initial={{ opacity: 0 }}
-										animate={{ opacity: 1, y: 0 }}
-										ref={el => {
-											if (el) messageRefs.current[String(message.id)] = el;
-										}}
-									>
-										<div
-											className={`items-center ${message.sender === "ai" ? "flex space-x-3" : ""}`}
-										>
-										<div className={`${messageClasses}`}>
-											{/* Reasoning summary indicator (before every message if present) */}
-											{message.reasoningTrace && (
-												<div className="flex items-center mb-1 text-xs text-sidebar-foreground cursor-pointer select-none hover:text-sidebar-accent-foreground transition-colors"
-													onClick={() => {
-														const messageId = String(message.id);
-														// Ensure the state is always defined
-														const currentState = expandedReasoning[messageId] === undefined ? false : expandedReasoning[messageId];
-														const newState = !currentState;
-														
-														console.log('[Reasoning Toggle] Clicked reasoning for message:', {
-															messageId: message.id,
-															hasReasoningTrace: !!message.reasoningTrace,
-															currentExpandedState: currentState,
-															newState: newState,
-															allExpandedReasoning: expandedReasoning
-														});
-														
-														setExpandedReasoning(prev => {
-															const updated = { ...prev, [messageId]: newState };
-															console.log('[Reasoning Toggle] Updated state:', {
-																messageId: messageId,
-																oldState: prev[messageId],
-																newState: newState,
-																updatedState: updated
-															});
-															return updated;
-														});
-													}}
-													onKeyDown={(e) => {
-														if (e.key === 'Enter' || e.key === ' ') {
-															e.preventDefault();
+											<div
+												className={`items-center ${message.sender === "ai" ? "flex space-x-3" : ""}`}
+											>
+											<div className={`${messageClasses}`}>
+												{/* Reasoning summary indicator (before every message if present) */}
+												{message.reasoningTrace && (
+													<div className="flex items-center mb-1 text-xs text-sidebar-foreground cursor-pointer select-none hover:text-sidebar-accent-foreground transition-colors"
+														onClick={() => {
 															const messageId = String(message.id);
 															// Ensure the state is always defined
 															const currentState = expandedReasoning[messageId] === undefined ? false : expandedReasoning[messageId];
 															const newState = !currentState;
-															setExpandedReasoning(prev => ({ ...prev, [messageId]: newState }));
-														}
-													}}
-													tabIndex={0}
-													role="button"
-													aria-expanded={expandedReasoning[String(message.id)] === true}
-													aria-controls={`reasoning-summary-${String(message.id)}`}
-												>
-													<Brain className="mr-2 text-sidebar-foreground w-4 h-4" />
-													<span>Reasoning</span>
-													{typeof message.durationSec === 'number' && (
-														<span className="ml-2 text-sidebar-foreground/60">Thought for {Math.round(message.durationSec)}s</span>
-													)}
-
-													<motion.div
-														animate={{ rotate: expandedReasoning[String(message.id)] ? 90 : 0 }}
-														transition={{ duration: 0.2, ease: "easeInOut" }}
-														className="ml-1"
-													>
-														<FaChevronRight className="text-sidebar-foreground" />
-													</motion.div>
-												</div>
-											)}
-											<AnimatePresence>
-											{message.reasoningTrace && expandedReasoning[String(message.id)] && (
-																																							<motion.div
-													id={`reasoning-summary-${String(message.id)}`}
-														initial={{ opacity: 0, height: 0, y: -10 }}
-														animate={{ opacity: 1, height: "auto", y: 0 }}
-														exit={{ opacity: 0, height: 0, y: -10 }}
-														transition={{ 
-															duration: 0.3, 
-															ease: "easeInOut",
-															opacity: { duration: 0.2 },
-															height: { duration: 0.3 }
-														}}
-														className="mb-2 p-3 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 rounded-lg border-l-4 border-blue-400 dark:border-blue-500 shadow-sm relative overflow-hidden"
-														style={{ fontSize: '0.875rem', lineHeight: 1.5 }}
-													>
-														<div className="flex items-center mb-2 mt-1">
-															<span className="text-lg mr-1">🤔</span>
-															<span className="font-medium text-blue-700 dark:text-blue-200 text-sm">Reasoning</span>
-													</div>
-														<div className="text-blue-600 dark:text-blue-300 text-xs opacity-80">
-															{(() => {
-																const reasoningContent = getReasoningString(message.reasoningTrace);
-																console.log('[Reasoning Display] Rendering reasoning for message:', {
-																	messageId: message.id,
-																	reasoningContentLength: reasoningContent.length,
-																	reasoningContentPreview: reasoningContent.substring(0, 100) + '...',
-																	isExpanded: expandedReasoning[String(message.id)]
-																});
-																return <MarkdownViewer content={reasoningContent} />;
-															})()}
-												</div>
-													</motion.div>
-											)}
-											</AnimatePresence>
-											
-											{!isUser && (
-												<div className="mb-3 p-5 bg-background">
-													{(() => {
-														const processedContent = preprocessJargonMarkdown(message.message, message.jargons, message.cveDescriptionsMap);
-														console.log('Rendering message:', {
-															sender: message.sender,
-															hasJargons: !!message.jargons,
-															jargonsCount: message.jargons?.length || 0,
-															messageId: message.id,
-															hasCodeBlocks: processedContent.includes('```'),
-															contentLength: processedContent.length
-														});
-														return <MarkdownViewer content={processedContent} />;
-													})()}
-													{/* Old SourceLinks component - commented for future use
-													{message.sourceLinks && message.sourceLinks.length > 0 && (
-														<SourceLinks sourceLinks={message.sourceLinks || []} autoExpand={true} />
-													)}
-													*/}
-													
-													{/* Action Buttons - Sources, Graph, and TODO List */}
-													<div className="flex items-center gap-2 mt-3 -ml-2">
-														{/* Sources */}
-														{(() => {
-															return (
-																<Sheet>
-																	<Tooltip>
-																		<TooltipTrigger asChild>
-																			<SheetTrigger asChild>
-																				<button className="p-2 rounded-full hover:bg-accent/60 transition-colors" title="Show sources">
-																					<Link className="w-4 h-4 text-muted-foreground" />
-																				</button>
-																			</SheetTrigger>
-																		</TooltipTrigger>
-																		<TooltipContent side="top" align="center">
-																			View sources
-																		</TooltipContent>
-																	</Tooltip>
-																	<SheetContent side="right" className="max-w-md w-full">
-																		<div className="p-4">
-																			<SourceLinks sourceLinks={message.sourceLinks || []} autoExpand={true} />
-																		</div>
-																	</SheetContent>
-																</Sheet>
-															);
-														})()}
-														
-														{/* Graph */}
-														{(() => {
-															const graphChatId = chatId || createdChatId || '';
-															console.log('[MiraChatBot] Passing chatId to GraphButton:', {
-																chatId,
-																createdChatId,
-																graphChatId,
-																messageId: message.id
+															
+															console.log('[Reasoning Toggle] Clicked reasoning for message:', {
+																messageId: message.id,
+																hasReasoningTrace: !!message.reasoningTrace,
+																currentExpandedState: currentState,
+																newState: newState,
+																allExpandedReasoning: expandedReasoning
 															});
-															return (
-																<GraphButton 
-																	message={message} 
-																	chatId={graphChatId} 
-																	className="text-muted-foreground"
-																/>
-															);
-														})()}
-														
-														{/* TODO List */}
-														{(() => {
-															const todoChatId = chatId || createdChatId || '';
-															return (
-																<TodoListButton 
-																	message={message} 
-																	chatId={todoChatId} 
-																	className="text-muted-foreground"
-																/>
-															);
-														})()}
-													</div>
+															
+															setExpandedReasoning(prev => {
+																const updated = { ...prev, [messageId]: newState };
+																console.log('[Reasoning Toggle] Updated state:', {
+																	messageId: messageId,
+																	oldState: prev[messageId],
+																	newState: newState,
+																	updatedState: updated
+																});
+																return updated;
+															});
+														}}
+														onKeyDown={(e) => {
+															if (e.key === 'Enter' || e.key === ' ') {
+																e.preventDefault();
+																const messageId = String(message.id);
+																// Ensure the state is always defined
+																const currentState = expandedReasoning[messageId] === undefined ? false : expandedReasoning[messageId];
+																const newState = !currentState;
+																setExpandedReasoning(prev => ({ ...prev, [messageId]: newState }));
+															}
+														}}
+														tabIndex={0}
+														role="button"
+														aria-expanded={expandedReasoning[String(message.id)] === true}
+														aria-controls={`reasoning-summary-${String(message.id)}`}
+													>
+														<Brain className="mr-2 text-sidebar-foreground w-4 h-4" />
+														<span>Reasoning</span>
+														{typeof message.durationSec === 'number' && (
+															<span className="ml-2 text-sidebar-foreground/60">Thought for {Math.round(message.durationSec)}s</span>
+														)}
 
-													{/* Related Questions - Positioned below */}
-													{isLastAiMessage && (
-														<div className="mt-3">
-															<div className="text-xs text-sidebar-foreground/70 mb-2 italic">Suggested follow-up questions:</div>
-															<div className="flex flex-wrap gap-2">
-															{messageRelatedQuestions.map((q: string, i: number) => (
-																<motion.button
-																	key={`${message.id}-${q}-${i}`}
-																	onClick={() => handleSend(q, false, true)}
-																	className="rounded-lg px-3 py-1.5 bg-sidebar border border-sidebar-border text-sidebar-foreground text-xs sm:text-sm font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-sidebar-ring"
-																	style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
-																	initial={{ opacity: 0, y: 20 }}
-																	animate={{ opacity: 1, y: 0 }}
-																	transition={{ delay: 0.15 * i, duration: 0.35, type: 'spring', stiffness: 200 }}
-																>
-																	{q}
-																</motion.button>
-															))}
-														</div>
+														<motion.div
+															animate={{ rotate: expandedReasoning[String(message.id)] ? 90 : 0 }}
+															transition={{ duration: 0.2, ease: "easeInOut" }}
+															className="ml-1"
+														>
+															<FaChevronRight className="text-sidebar-foreground" />
+														</motion.div>
 													</div>
-													)}
-												</div>
-											)}
-											{isUser && (
-												<div className="mb-2">
-													{message.message}
-												</div>
-											)}
-										</div>
-									</div>
-								</motion.div>
-							);
-						})}
-
-							{isLoading && (
-								<motion.div
-									initial={{ opacity: 0, y: 50 }}
-									animate={{ opacity: 1, y: 0 }}
-									exit={{ opacity: 0, y: -50 }}
-									transition={{ duration: 0.3 }}
-									className="flex items-center space-x-2 text-gray-500"
+												)}
+												<AnimatePresence>
+												{message.reasoningTrace && expandedReasoning[String(message.id)] && (
+																							<motion.div
+									id={`reasoning-summary-${String(message.id)}`}
+									initial={{ opacity: 0, height: 0, y: -10 }}
+									animate={{ opacity: 1, height: "auto", y: 0 }}
+									exit={{ opacity: 0, height: 0, y: -10 }}
+									transition={{ 
+										duration: 0.3, 
+										ease: "easeInOut",
+										opacity: { duration: 0.2 },
+										height: { duration: 0.3 }
+									}}
+									className="mb-2 p-3 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 rounded-lg border-l-4 border-blue-400 dark:border-blue-500 shadow-sm relative overflow-hidden"
+									style={{ fontSize: '0.875rem', lineHeight: 1.5 }}
 								>
-									<Spinner />
-								<span>{loadingMessage}</span>
-								</motion.div>
-							)}
-						</ScrollArea>
-					)}
-					{isScanLoading && (
-						<div className="space-y-2">
-							<Progress value={progress} className="w-full" />
+									<div className="flex items-center mb-2 mt-1">
+										<span className="text-lg mr-1">🤔</span>
+										<span className="font-medium text-blue-700 dark:text-blue-200 text-sm">Reasoning</span>
+								</div>
+									<div className="text-blue-600 dark:text-blue-300 text-xs opacity-80">
+										{(() => {
+											const reasoningContent = getReasoningString(message.reasoningTrace);
+											console.log('[Reasoning Display] Rendering reasoning for message:', {
+												messageId: message.id,
+												reasoningContentLength: reasoningContent.length,
+												reasoningContentPreview: reasoningContent.substring(0, 100) + '...',
+												isExpanded: expandedReasoning[String(message.id)]
+											});
+											return <MarkdownViewer content={reasoningContent} />;
+										})()}
+								</div>
+									</motion.div>
+								)}
+								</AnimatePresence>
+								
+								{!isUser && (
+									<div className="mb-3 p-5 bg-background">
+										{(() => {
+											const processedContent = preprocessJargonMarkdown(message.message, message.jargons, message.cveDescriptionsMap);
+											console.log('Rendering message:', {
+												sender: message.sender,
+												hasJargons: !!message.jargons,
+												jargonsCount: message.jargons?.length || 0,
+												messageId: message.id,
+												hasCodeBlocks: processedContent.includes('```'),
+												contentLength: processedContent.length
+											});
+											return <MarkdownViewer content={processedContent} />;
+										})()}
+										
+										{/* Action Buttons - Sources, Graph, and TODO List */}
+										<div className="flex items-center gap-2 mt-3 -ml-2">
+											{/* Sources */}
+											{(() => {
+												return (
+													<Tooltip>
+														<TooltipTrigger asChild>
+															<button 
+																onClick={() => {
+																	console.log('🔘 Sources button clicked!', {
+																		messageId: message.id,
+																		messageSender: message.sender,
+																		hasSourceLinks: !!message.sourceLinks,
+																		sourceLinksCount: message.sourceLinks?.length || 0,
+																		sourceLinks: message.sourceLinks
+																	});
+																	handleSourcesCanvas(message);
+																}}
+																className={`p-2 rounded-full transition-all duration-200 ${
+																	currentMessageId === message.id && showSourcesCanvas
+																		? 'bg-sidebar-accent text-sidebar-primary'
+																		: 'hover:bg-accent/60'
+																}`}
+																title="Show sources"
+															>
+																<Link className="w-4 h-4 text-muted-foreground" />
+															</button>
+														</TooltipTrigger>
+														<TooltipContent side="top" align="center">
+															{currentMessageId === message.id && showSourcesCanvas ? 'Hide sources' : 'View sources'}
+														</TooltipContent>
+													</Tooltip>
+												);
+											})()}
+											
+											{/* Graph */}
+											{(() => {
+												const graphChatId = chatId || createdChatId || '';
+												console.log('[MiraChatBot] Passing chatId to GraphButton:', {
+													chatId,
+													createdChatId,
+													graphChatId,
+													messageId: message.id
+												});
+												return (
+													<GraphButton 
+														message={message} 
+														chatId={graphChatId} 
+														className="text-muted-foreground"
+													/>
+												);
+											})()}
+											
+											{/* TODO List */}
+											{(() => {
+												const todoChatId = chatId || createdChatId || '';
+												return (
+													<TodoListButton 
+														message={message} 
+														chatId={todoChatId} 
+														className="text-muted-foreground"
+													/>
+												);
+											})()}
+										</div>
 
-							<p className="text-sm text-center text-gray-500">
-								{progress === 95
-									? "Almost done..."
-									: `${progressLoaderMessage}: ${progress.toFixed(0)}%`}
-							</p>
+										{/* Related Questions - Positioned below */}
+										{isLastAiMessage && (
+											<div className="mt-3">
+												<div className="text-xs text-sidebar-foreground/70 mb-2 italic">Suggested follow-up questions:</div>
+												<div className="flex flex-wrap gap-2">
+												{messageRelatedQuestions.map((q: string, i: number) => (
+													<motion.button
+														key={`${message.id}-${q}-${i}`}
+														onClick={() => handleSend(q, false, true)}
+														className="rounded-lg px-3 py-1.5 bg-sidebar border border-sidebar-border text-sidebar-foreground text-xs sm:text-sm font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-sidebar-ring"
+														style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+														initial={{ opacity: 0, y: 20 }}
+														animate={{ opacity: 1, y: 0 }}
+														transition={{ delay: 0.15 * i, duration: 0.35, type: 'spring', stiffness: 200 }}
+													>
+														{q}
+													</motion.button>
+												))}
+											</div>
+										</div>
+										)}
+									</div>
+								)}
+								{isUser && (
+									<div className="mb-2">
+										{message.message}
+									</div>
+								)}
+							</div>
 						</div>
-					)}
-					<div className="flex justify-center w-full px-4 sm:px-6 lg:px-8 xl:px-12">
-						<motion.div
-							key={`chat-input-${uniqueMessages.length === 0 ? 'new' : 'existing'}`}
-							initial={{
-								width: uniqueMessages.length === 0 ? '42rem' : '100%',
-								opacity: 0,
-								y: uniqueMessages.length === 0 ? 50 : 20,
-								scale: uniqueMessages.length === 0 ? 0.9 : 1
-							}}
-							animate={{
-								width: uniqueMessages.length === 0 ? '42rem' : '100%',
-								opacity: 1,
-								y: 0,
-								scale: 1
-							}}
-							transition={{
-								duration: uniqueMessages.length === 0 ? 0.8 : 0.5,
-								ease: 'easeOut',
-								delay: uniqueMessages.length === 0 ? 0.2 : 0.1
-							}}
-							className={`chat-input flex flex-col p-2 rounded-2xl border border-sidebar-border bg-sidebar text-sidebar-foreground w-full ${uniqueMessages.length === 0 ? 'max-w-2xl' : 'max-w-6xl'} shadow-sm transition-all`}
-							style={{ margin: uniqueMessages.length === 0 ? '2.5rem auto' : '0 auto' }}
-						>
-							{/* Input Field */}
-							<motion.textarea
-								initial={{ height: 0, opacity: 0, scale: 0.95 }}
-								animate={{ height: "40px", opacity: 1, scale: 1 }}
-								transition={{ 
-									duration: 0.6, 
-									ease: "easeOut",
-									delay: 0.3,
-									scale: { duration: 0.4, delay: 0.4 }
-								}}
-								value={input}
-								onChange={(e) => setInput(e.target.value)}
-								onKeyDown={(e) => {
-									if (e.key === "Enter" && !e.shiftKey) {
-										e.preventDefault();
-										handleSend();
-									}
-								}}
-								className="w-full text-sm bg-sidebar text-sidebar-foreground rounded-md px-3 py-2 placeholder:text-muted-foreground focus:outline-none border-none resize-none transition-colors overflow-hidden"
-								placeholder="Type your message here..."
-								disabled={isLoading || !!pendingAction}
-							/>
+					</motion.div>
+				);
+			})}
 
-							{/* Buttons Section */}
-							<RoleButtonGroup 
-								handleActionClick={handleActionSend}
-								selectedAgentMode={selectedAgentMode}
-								onAgentModeChange={setSelectedAgentMode}
-								agentButtonsDisabled={agentButtonsDisabled}
-								handleSend={handleSend}
-							/>
-						</motion.div>
+				{isLoading && (
+					<motion.div
+						initial={{ opacity: 0, y: 50 }}
+						animate={{ opacity: 1, y: 0 }}
+						exit={{ opacity: 0, y: -50 }}
+						transition={{ duration: 0.3 }}
+						className="flex items-center space-x-2 text-gray-500"
+					>
+						<Spinner />
+					<span>{loadingMessage}</span>
+					</motion.div>
+				)}
+			</ScrollArea>
+		)}
+		{isScanLoading && (
+			<div className="space-y-2">
+				<Progress value={progress} className="w-full" />
+
+				<p className="text-sm text-center text-gray-500">
+					{progress === 95
+						? "Almost done..."
+						: `${progressLoaderMessage}: ${progress.toFixed(0)}%`}
+				</p>
+			</div>
+		)}
+		<div className="flex justify-center w-full px-4 sm:px-6 lg:px-8 xl:px-12">
+			<motion.div
+				key={`chat-input-${uniqueMessages.length === 0 ? 'new' : 'existing'}`}
+				initial={{
+					width: uniqueMessages.length === 0 ? '42rem' : '100%',
+					opacity: 0,
+					y: uniqueMessages.length === 0 ? 50 : 20,
+					scale: uniqueMessages.length === 0 ? 0.9 : 1
+				}}
+				animate={{
+					width: uniqueMessages.length === 0 ? '42rem' : '100%',
+					opacity: 1,
+					y: 0,
+					scale: 1
+				}}
+				transition={{
+					duration: uniqueMessages.length === 0 ? 0.8 : 0.5,
+					ease: 'easeOut',
+					delay: uniqueMessages.length === 0 ? 0.2 : 0.1
+				}}
+				className={`chat-input flex flex-col p-2 rounded-2xl border border-sidebar-border bg-sidebar text-sidebar-foreground w-full ${uniqueMessages.length === 0 ? 'max-w-2xl' : 'max-w-6xl'} shadow-sm transition-all`}
+				style={{ margin: uniqueMessages.length === 0 ? '2.5rem auto' : '0 auto' }}
+			>
+				{/* Input Field */}
+				<motion.textarea
+					initial={{ height: 0, opacity: 0, scale: 0.95 }}
+					animate={{ height: "40px", opacity: 1, scale: 1 }}
+					transition={{ 
+						duration: 0.6, 
+						ease: "easeOut",
+						delay: 0.3,
+						scale: { duration: 0.4, delay: 0.4 }
+					}}
+					value={input}
+					onChange={(e) => setInput(e.target.value)}
+					onKeyDown={(e) => {
+						if (e.key === "Enter" && !e.shiftKey) {
+							e.preventDefault();
+							handleSend();
+						}
+					}}
+					className="w-full text-sm bg-sidebar text-sidebar-foreground rounded-md px-3 py-2 placeholder:text-muted-foreground focus:outline-none border-none resize-none transition-colors overflow-hidden"
+					placeholder="Type your message here..."
+					disabled={isLoading || !!pendingAction}
+				/>
+
+				{/* Buttons Section */}
+				<RoleButtonGroup 
+					handleActionClick={handleActionSend}
+					selectedAgentMode={selectedAgentMode}
+					onAgentModeChange={setSelectedAgentMode}
+					agentButtonsDisabled={agentButtonsDisabled}
+					handleSend={handleSend}
+				/>
+			</motion.div>
+		</div>
+
+		{/* Sources Canvas - Integrated */}
+		<AnimatePresence>
+			{showSourcesCanvas && (
+				<motion.div
+					initial={{ opacity: 0, x: 100 }}
+					animate={{ opacity: 1, x: 0 }}
+					exit={{ opacity: 0, x: 100 }}
+					transition={{ duration: 0.3, ease: "easeOut" }}
+					className="w-1/3 bg-background border-l border-border rounded-r-lg shadow-lg overflow-hidden"
+				>
+					{/* Header */}
+					<div className="flex items-center justify-between p-4 border-b border-border bg-card">
+						<div className="flex items-center gap-2">
+							<Link className="w-5 h-5 text-muted-foreground" />
+							<h3 className="font-semibold text-foreground">Sources</h3>
+							{sourcesLoading && (
+								<Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+							)}
+						</div>
+						<button
+							onClick={() => {
+								setShowSourcesCanvas(false);
+								setCurrentMessageId(null);
+								setCurrentSources([]);
+							}}
+							className="p-1 rounded-full hover:bg-accent/60 transition-colors"
+						>
+							<X className="w-4 h-4 text-muted-foreground" />
+						</button>
 					</div>
 
-					<Dialog open={showInfo} onOpenChange={setShowInfo}>
-						<DialogContent className="dialog-content">
-							<DialogHeader>
-								<DialogTitle className="dialog-title">Information</DialogTitle>
-							</DialogHeader>
-							<ScrollArea
-								style={{
-									maxHeight: "400px",
-									width: "100%",
-									overflowY: "auto",
-									scrollbarWidth: "thick",
-									scrollbarColor: "#888 #f0f0f0",
-								}}
-							>
-								<div className="dialog-body">
-									{info.map((item) => (
-										<div key={item.id} className="info-item">
-											<h2 className="text-lg font-semibold">{item.name}</h2>
-											<p className="info-description">
-												{item.description || "No description available."}
-											</p>
+					{/* Content */}
+					<div className="flex-1 overflow-y-auto p-4">
+						{sourcesLoading ? (
+							<div className="space-y-4">
+								{/* Skeleton Loading */}
+								{[1, 2, 3].map((i) => (
+									<div key={i} className="space-y-2">
+										<div className="flex items-center gap-2">
+											<div className="w-4 h-4 bg-muted rounded animate-pulse" />
+											<div className="w-16 h-4 bg-muted rounded animate-pulse" />
 										</div>
-									))}
-								</div>
-							</ScrollArea>
-						</DialogContent>
-					</Dialog>
+										<div className="space-y-1 ml-5">
+											{[1, 2].map((j) => (
+												<div key={j} className="flex items-center gap-2">
+													<div className="w-32 h-3 bg-muted rounded animate-pulse" />
+													<div className="w-3 h-3 bg-muted rounded animate-pulse" />
+												</div>
+											))}
+										</div>
+									</div>
+								))}
+							</div>
+						) : currentSources && currentSources.length > 0 ? (
+							<SourceLinks sourceLinks={currentSources} autoExpand={true} />
+						) : (
+							<div className="flex flex-col items-center justify-center h-full text-center">
+								<Link className="w-12 h-12 text-muted-foreground mb-4" />
+								<h4 className="font-medium text-foreground mb-2">No Sources Available</h4>
+								<p className="text-sm text-muted-foreground">
+									This response doesn't have any associated sources.
+								</p>
+							</div>
+						)}
+					</div>
+				</motion.div>
+			)}
+		</AnimatePresence>
+	</div>
+
+	<Dialog open={showInfo} onOpenChange={setShowInfo}>
+		<DialogContent className="dialog-content">
+			<DialogHeader>
+				<DialogTitle className="dialog-title">Information</DialogTitle>
+			</DialogHeader>
+			<ScrollArea
+				style={{
+					maxHeight: "400px",
+					width: "100%",
+					overflowY: "auto",
+					scrollbarWidth: "thick",
+					scrollbarColor: "#888 #f0f0f0",
+				}}
+			>
+				<div className="dialog-body">
+					{info.map((item) => (
+						<div key={item.id} className="info-item">
+							<h2 className="text-lg font-semibold">{item.name}</h2>
+							<p className="info-description">
+								{item.description || "No description available."}
+							</p>
+						</div>
+					))}
 				</div>
-				<CreateFolderDialog
-					open={isCreateDialogOpen}
-					humanInTheLoopAction={requestHumanInLoop}
-					onOpenChange={setIsCreateDialogOpen}
-					onCreateFolder={handleCreateFolder}
-				/>
-			</div>
+			</ScrollArea>
+		</DialogContent>
+	</Dialog>
+
+	<CreateFolderDialog
+		open={isCreateDialogOpen}
+		humanInTheLoopAction={requestHumanInLoop}
+		onOpenChange={setIsCreateDialogOpen}
+		onCreateFolder={handleCreateFolder}
+	/>
 		</div>
+	</div>
 	);
 };
 

@@ -27,6 +27,7 @@ import {
 import tooltipData from "../data/tooltipData.json";
 import { actionCards } from "../../actions.ts";
 import React from "react"; // Added missing import for React
+import { motion } from "framer-motion";
 
 const iconMap = {
 	GlassesIcon: <GlassesIcon size={16} className="mr-1 text-[#5E5E5D]" />,
@@ -41,6 +42,7 @@ interface RoleButtonGroupProps {
 	selectedAgentMode: 'tutor' | 'investigator' | 'analyst' | undefined;
 	onAgentModeChange: (mode: 'tutor' | 'investigator' | 'analyst' | undefined) => void;
 	agentButtonsDisabled: boolean;
+	handleSend: () => void;
 }
 
 export default function RoleButtonGroup({
@@ -48,6 +50,7 @@ export default function RoleButtonGroup({
 	selectedAgentMode,
 	onAgentModeChange,
 	agentButtonsDisabled,
+	handleSend,
 }: RoleButtonGroupProps): JSX.Element {
 	interface TooltipDataItem {
 		label: string;
@@ -103,12 +106,19 @@ export default function RoleButtonGroup({
 						if (icon === "MoreHorizontal") {
 							return (
 								<DropdownMenu key={label}>
-									<DropdownMenuTrigger asChild>
-										{/* biome-ignore lint/a11y/useButtonType: <explanation> */}
-										<button className="border p-2 rounded-full border-sidebar-border hover:bg-accent/60">
-											{iconMap[icon]}
-										</button>
-									</DropdownMenuTrigger>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<DropdownMenuTrigger asChild>
+												{/* biome-ignore lint/a11y/useButtonType: <explanation> */}
+												<button className="w-10 h-10 p-2 rounded-full border border-sidebar-border text-muted-foreground bg-transparent flex items-center justify-center">
+													{iconMap[icon]}
+												</button>
+											</DropdownMenuTrigger>
+										</TooltipTrigger>
+										<TooltipContent side="top" align="center">
+											Choose actions
+										</TooltipContent>
+									</Tooltip>
 									<DropdownMenuContent align="end" className="w-56">
 										{actionCards.map((action, index) => (
 											<DropdownMenuItem
@@ -139,13 +149,36 @@ export default function RoleButtonGroup({
 								<TooltipTrigger asChild>
 									{/* biome-ignore lint/a11y/useButtonType: <explanation> */}
 									<button
-										className={`text-muted-foreground hover:text-sidebar-foreground ${
-											icon === "ArrowUp"
-												? "bg-accent/60 p-2 rounded-full"
-												: "border p-2 rounded-full border-sidebar-border"
-										}`}
+										onClick={icon === "ArrowUp" ? () => {
+											console.log('Send button clicked!');
+											handleSend();
+										} : undefined}
+										disabled={icon === "ArrowUp" ? false : agentButtonsDisabled}
+                                        className={
+                                            icon === "ArrowUp"
+                                                ? "w-10 h-10 p-2 rounded-full flex items-center justify-center transition-all duration-200 bg-black text-white dark:bg-white dark:text-black"
+                                                : "border p-2 rounded-full border-sidebar-border text-muted-foreground hover:text-sidebar-foreground"
+                                        }
 									>
-										{iconMap[icon]}
+                                        {icon === "ArrowUp"
+                                            ? (
+                                                <motion.span
+                                                    whileHover={{ scale: 1.25 }}
+                                                    transition={{ duration: 0.2 }}
+                                                    className="w-6 h-6 flex items-center justify-center"
+                                                >
+                                                    {React.cloneElement(iconMap[icon], {
+                                                        className: "text-white dark:text-black w-5 h-5"
+                                                    })}
+                                                </motion.span>
+                                            )
+                                            : (
+                                                <>
+                                                    {iconMap[icon]}
+                                                    <span className="text-sm">{label}</span>
+                                                </>
+                                            )
+                                        }
 									</button>
 								</TooltipTrigger>
 								<TooltipContent>

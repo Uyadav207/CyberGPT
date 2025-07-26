@@ -22,7 +22,7 @@ export function NewChat() {
 							<TooltipTrigger asChild>
 								<SidebarMenuButton
 									onClick={handleNewChat}
-									className="flex items-center justify-center gap-2 rounded-lg bg-black text-white dark:bg-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100 transition-all duration-200 px-4 py-2.5 font-medium text-sm shadow-sm hover:shadow-md"
+									className="flex items-center justify-center gap-2 rounded-lg bg-black text-white dark:bg-white dark:text-black px-4 py-2.5 font-medium text-sm shadow-sm hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black"
 								>
 									<Plus className="h-4 w-4 text-white dark:text-black" />
 									<span>New chat</span>

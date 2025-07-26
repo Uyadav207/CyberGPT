@@ -345,7 +345,7 @@ const GraphButton: React.FC<GraphButtonProps> = ({ message, chatId, className = 
       if (existingGraph) {
         console.log('[GraphButton] Found existing graph:', existingGraph);
         // Convert graphVisualization to GraphData format for the visualization component
-        const graphData = convertGraphVisualizationToGraphData(existingGraph);
+        const graphData = convertGraphVisualizationToGraphData(existingGraph as any);
         setGraphData(graphData);
         setShowGraph(true);
         setIsGenerating(false);
