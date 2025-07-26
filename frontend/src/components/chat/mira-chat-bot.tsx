@@ -28,6 +28,7 @@ import { chatApis } from "../../api/chat";
 import { chatWithJargon } from '../../api/chat';
 import { BASE_URL } from '../../api/config.backend';
 import type { Id } from "../../convex/_generated/dataModel";
+import convexClient from "../../lib/convexClient";
 
 //store
 import useStore from "../../store/store";
@@ -73,6 +74,7 @@ import { ReasoningTrace } from "./ReasoningTrace";
 import { SourceLinks } from "./SourceLinks";
 import { ChatSearch } from "./chat-search";
 import GraphButton, { convertGraphDataToGraphVisualization } from "../graph-visualization/GraphButton";
+import TodoListButton from "./TodoListButton";
 
 // Interactive Loading Messages
 const INTERACTIVE_LOADING_MESSAGES = [
@@ -954,6 +956,8 @@ const MiraChatBot: React.FC = () => {
 	};
 
 	const processPrompt = async (userMessage: Message, useRAG?: boolean) => {
+		console.log("🚨 [Frontend] PROCESS PROMPT CALLED - This should appear for every message!");
+		console.log("🚨 [Frontend] User message:", userMessage);
 		setIsLoading(true);
 		setAgentButtonsDisabled(true); // Disable agent buttons during processing
 		
@@ -1441,6 +1445,7 @@ const MiraChatBot: React.FC = () => {
 		} else {
 			try {
 				console.log('🚀 ENTERING MAIN CHAT FLOW');
+				console.log("🚀 [Frontend] MAIN CHAT FLOW STARTED - This should appear for every message!");
 				console.log('UserMessage:', userMessage);
 				setIsLoading(true);
 				
@@ -1449,9 +1454,74 @@ const MiraChatBot: React.FC = () => {
 				
 				// Use chatWithJargon for the main chat flow with agent personality and automatic graph generation
 				console.log('Sending request with agent personality:', selectedAgentMode);
-				const graphChatId = createdChatId || chatId;
+				
+				// Create a new chat if none exists, so we have a chatId for graph generation
+				let graphChatId = createdChatId || chatId;
+				console.log('🔄 [Frontend] Initial chatId check:', {
+					createdChatId,
+					chatId,
+					graphChatId,
+					hasCreatedChatId: !!createdChatId,
+					hasChatId: !!chatId,
+					hasGraphChatId: !!graphChatId
+				});
+				
+				if (!graphChatId) {
+					console.log('🔄 [Frontend] No chatId available, creating new chat first...');
+					try {
+						const titleResponse = await generateTitle(userMessage.message);
+						const chatTitle = (titleResponse as { title: string })?.title || "Chat";
+						const newChatResult = await saveChat({
+							userId: String(user?.id || "anonymous"),
+							title: chatTitle,
+						});
+						setCreatedChatId(newChatResult);
+						graphChatId = newChatResult;
+						console.log('✅ [Frontend] New chat created with ID:', newChatResult);
+						
+						// Save the user message to the new chat
+						await saveChatMessage({
+							humanInTheLoopId: userMessage.id || uuidv4(),
+							chatId: newChatResult as Id<"chats">,
+							sender: userMessage.sender,
+							message: userMessage.message,
+						});
+						console.log('✅ [Frontend] User message saved to new chat');
+					} catch (error) {
+						console.error('❌ [Frontend] Failed to create new chat:', error);
+						// Continue without chatId if creation fails
+					}
+				}
+				
+				// Final validation - ensure we have a chatId
+				if (!graphChatId) {
+					console.error('❌ [Frontend] CRITICAL: No chatId available after all attempts!');
+					throw new Error('Failed to create or obtain chatId for graph generation');
+				}
+				
+				console.log('✅ [Frontend] Final chatId validation:', {
+					graphChatId,
+					graphChatIdType: typeof graphChatId,
+					hasGraphChatId: !!graphChatId
+				});
+				
 				const botMessageId = uuidv4(); // Generate bot message ID for graph generation
 				
+				console.log('🔄 [Frontend] Sending request to backend with graph generation params:', {
+					message: userMessage.message.substring(0, 50) + '...',
+					agentPersonality: selectedAgentMode,
+					messageId: botMessageId,
+					chatId: graphChatId,
+					hasMessageId: !!botMessageId,
+					hasChatId: !!graphChatId
+				});
+
+				// Final validation before API call
+				if (!graphChatId) {
+					console.error('❌ [Frontend] CRITICAL: chatId is undefined before API call!');
+					throw new Error('chatId is required for graph generation');
+				}
+
 				const response = await chatWithJargon({ 
 					message: userMessage.message,
 					agentPersonality: selectedAgentMode,
@@ -1466,6 +1536,8 @@ const MiraChatBot: React.FC = () => {
 					hasCveDescriptionsMap: !!response.cveDescriptionsMap,
 					hasSourceLinks: !!response.sourceLinks,
 					hasReasoningTrace: !!response.reasoningTrace,
+					hasGraphData: !!response.graphData,
+					graphDataKeys: response.graphData ? Object.keys(response.graphData) : 'No graph data',
 					responseKeys: Object.keys(response)
 				});
 				console.log('Full backend response:', response);
@@ -1617,9 +1689,15 @@ const MiraChatBot: React.FC = () => {
 					hasReasoningTrace: !!botMessage.reasoningTrace
 				});
 				
-				// Save AI response to database
-				const currentChatId = createdChatId || chatId;
-				console.log('Debug - Chat IDs:', { createdChatId, chatId, currentChatId });
+				// Save AI response to database - use the same graphChatId that was used for the API call
+				const currentChatId = graphChatId; // Use the same chatId that was validated and used for the API call
+				console.log('Debug - Chat IDs:', { 
+					createdChatId, 
+					chatId, 
+					graphChatId,
+					currentChatId,
+					usingGraphChatId: currentChatId === graphChatId
+				});
 				console.log('Will save to database:', !!currentChatId, 'or create new chat:', !currentChatId);
 				
 				if (currentChatId) {
@@ -1734,9 +1812,78 @@ const MiraChatBot: React.FC = () => {
 						};
 						
 						console.log("💾 [Frontend] Saving enhanced chat message with graph visualization to database...");
-						await saveEnhancedChatMessage(enhancedDataWithGraph);
+						const saveResult = await saveEnhancedChatMessage(enhancedDataWithGraph);
 						console.log("✅ [Frontend] Enhanced chat message with graph visualization saved successfully");
+						console.log("🚀 [Frontend] GRAPH SAVE COMPLETED - TODO generation should start now!");
+						console.log("📊 [Frontend] Save result:", saveResult);
 						console.log('AI response saved successfully with enhanced data');
+						console.log("🚀 [Frontend] ABOUT TO START TODO GENERATION - This should appear!");
+						console.log("🔍 [Frontend] CHECKING IF WE REACH TODO GENERATION - This should appear!");
+						
+						// Generate TODO list after chat history is saved
+						try {
+							console.log("🚀 [Frontend] TODO GENERATION STARTED - This should appear!");
+							console.log("🔍 [Frontend] ENTERED TODO GENERATION TRY BLOCK - This should appear!");
+							console.log("🔄 [Frontend] Generating TODO list for saved chat message...");
+							console.log("📊 [Frontend] TODO generation params:", {
+								chatId: currentChatId,
+								messageId: botMessage.id,
+								aiResponseLength: response.answer?.length,
+								hasKGContext: !!response.contextData,
+								hasCveInfo: !!response.cveDescriptionsMap,
+								hasReasoningTrace: !!response.reasoningTrace,
+								hasSourceLinks: !!response.sourceLinks,
+								hasJargons: !!response.jargons
+							});
+							
+							console.log("🔍 [Frontend] TODO generation parameter validation:", {
+								chatIdType: typeof currentChatId,
+								messageIdType: typeof botMessage.id,
+								chatIdValid: !!currentChatId,
+								messageIdValid: !!botMessage.id,
+								chatIdLength: currentChatId?.length || 0,
+								messageIdLength: botMessage.id?.length || 0,
+								chatIdValue: currentChatId,
+								messageIdValue: botMessage.id,
+							});
+							console.log("🚨 [Frontend] CRITICAL DEBUG - botMessage object:", {
+								id: botMessage.id,
+								sender: botMessage.sender,
+								message: botMessage.message?.substring(0, 100) + '...',
+								hasId: !!botMessage.id,
+								idType: typeof botMessage.id
+							});
+							
+							console.log("🚀 [Frontend] ABOUT TO CALL TODO GENERATION ACTION - This should appear!");
+							await convexClient.action(api.generateTodoTasks.generateTodoTasks, {
+								chatId: currentChatId as Id<"chats">,
+								messageId: botMessage.id,
+								aiResponse: response.answer,
+								kgContext: response.contextData ? JSON.stringify(response.contextData) : undefined,
+								cveInfo: response.cveDescriptionsMap ? Object.keys(response.cveDescriptionsMap).map(cveId => ({
+									cve_id: cveId,
+									cve_desc: response.cveDescriptionsMap[cveId],
+									mitigation: "Apply security patches and follow vendor recommendations"
+								})) : undefined,
+								reasoningTrace: response.reasoningTrace,
+								sourceLinks: response.sourceLinks,
+								jargons: response.jargons?.reduce((acc: Record<string, string>, jargon: { term: string; description: string }) => {
+									acc[jargon.term] = jargon.description;
+									return acc;
+								}, {}) || {}
+							});
+							console.log("✅ [Frontend] TODO list generation initiated successfully");
+							console.log("🎉 [Frontend] TODO GENERATION ACTION COMPLETED SUCCESSFULLY!");
+						} catch (todoError) {
+							console.error("❌ [Frontend] Failed to generate TODO list:", todoError);
+							console.error("❌ [Frontend] TODO error details:", {
+								error: todoError,
+								errorMessage: todoError instanceof Error ? todoError.message : 'Unknown error',
+								chatId: currentChatId,
+								messageId: botMessage.id
+							});
+							// Don't fail the entire request if TODO list generation fails
+						}
 					} catch (saveError) {
 						console.error('Failed to save AI response with enhanced data:', saveError);
 						console.error('Save error details:', saveError);
@@ -1767,12 +1914,11 @@ const MiraChatBot: React.FC = () => {
 						}
 					}
 				} else {
-					console.log('No chatId available, creating new chat first...');
-					console.log('User ID for new chat:', user?.id);
-					
-					// Try to create a new chat if none exists
+					console.log('❌ [Frontend] No chatId available after API call - this should not happen since we create chat before API call');
+					// This should not happen since we now create the chat before the API call
+					// But if it does, we'll handle it gracefully
 					try {
-						console.log('Creating new chat with default title...');
+						console.log('🔄 [Frontend] Creating emergency chat...');
 						const titleResponse2 = await generateTitle(userMessage.message || response.answer);
 						const chatTitle2 = (titleResponse2 as { title: string })?.title || "Chat";
 						const newChatResult2 = await saveChat({
@@ -1780,7 +1926,7 @@ const MiraChatBot: React.FC = () => {
 							title: chatTitle2,
 						});
 						setCreatedChatId(newChatResult2);
-						console.log('New chat created with ID:', newChatResult2);
+						console.log('✅ [Frontend] Emergency chat created with ID:', newChatResult2);
 						
 						// Now save the user message (if not already saved)
 						await saveChatMessage({
@@ -1789,7 +1935,7 @@ const MiraChatBot: React.FC = () => {
 							sender: userMessage.sender,
 							message: userMessage.message,
 						});
-						console.log('User message saved to new chat');
+						console.log('✅ [Frontend] User message saved to emergency chat');
 						
 						// Save the AI response with enhanced data
 						const jargonsObject = response.jargons ? 
@@ -1827,7 +1973,7 @@ const MiraChatBot: React.FC = () => {
 							? response.reasoningTrace.map((step: { step: string; message: string }) => step.step).filter(Boolean)
 							: [];
 						
-						console.log("📊 [Frontend] Preparing to save new chat message with graph visualization:", {
+						console.log("📊 [Frontend] Preparing to save emergency chat message with graph visualization:", {
 							messageId: botMessage.id,
 							chatId: newChatResult2,
 							hasGraphData: !!response.graphData,
@@ -1860,6 +2006,52 @@ const MiraChatBot: React.FC = () => {
 						
 						console.log("✅ [Frontend] New chat message with graph visualization saved successfully");
 						console.log('AI response saved to new chat with enhanced data');
+						
+						// Generate TODO list after new chat message is saved with a small delay to ensure database commit
+						try {
+							console.log("🔄 [Frontend] Waiting 1 second before generating TODO list to ensure database commit...");
+							await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+							
+							console.log("🔄 [Frontend] Generating TODO list for new chat message...");
+							console.log("📊 [Frontend] TODO generation params:", {
+								chatId: newChatResult2,
+								messageId: botMessage.id,
+								aiResponseLength: response.answer?.length,
+								hasKGContext: !!response.contextData,
+								hasCveInfo: !!response.cveDescriptionsMap,
+								hasReasoningTrace: !!response.reasoningTrace,
+								hasSourceLinks: !!response.sourceLinks,
+								hasJargons: !!response.jargons
+							});
+							
+							await convexClient.action(api.generateTodoTasks.generateTodoTasks, {
+								chatId: newChatResult2 as Id<"chats">,
+								messageId: botMessage.id,
+								aiResponse: response.answer,
+								kgContext: response.contextData ? JSON.stringify(response.contextData) : undefined,
+								cveInfo: response.cveDescriptionsMap ? Object.keys(response.cveDescriptionsMap).map(cveId => ({
+									cve_id: cveId,
+									cve_desc: response.cveDescriptionsMap[cveId],
+									mitigation: "Apply security patches and follow vendor recommendations"
+								})) : undefined,
+								reasoningTrace: response.reasoningTrace,
+								sourceLinks: response.sourceLinks,
+								jargons: response.jargons?.reduce((acc: Record<string, string>, jargon: { term: string; description: string }) => {
+									acc[jargon.term] = jargon.description;
+									return acc;
+								}, {}) || {}
+							});
+							console.log("✅ [Frontend] TODO list generation for new chat initiated successfully");
+						} catch (todoError) {
+							console.error("❌ [Frontend] Failed to generate TODO list for new chat:", todoError);
+							console.error("❌ [Frontend] TODO error details:", {
+								error: todoError,
+								errorMessage: todoError instanceof Error ? todoError.message : 'Unknown error',
+								chatId: newChatResult2,
+								messageId: botMessage.id
+							});
+							// Don't fail the entire request if TODO list generation fails
+						}
 						
 						// Update URL
 						window.history.pushState(
@@ -3689,23 +3881,36 @@ const MiraChatBot: React.FC = () => {
 														<SourceLinks sourceLinks={message.sourceLinks} />
 													)}
 													
-													{/* Graph Button - Positioned at extreme left */}
-													{(() => {
-														const graphChatId = chatId || createdChatId || '';
-														console.log('[MiraChatBot] Passing chatId to GraphButton:', {
-															chatId,
-															createdChatId,
-															graphChatId,
-															messageId: message.id
-														});
-														return (
-															<GraphButton 
-																message={message} 
-																chatId={graphChatId} 
-																className="mt-3 -ml-2"
-															/>
-														);
-													})()}
+													{/* Action Buttons - Graph and TODO List */}
+													<div className="flex items-center gap-2 mt-3 -ml-2">
+														{(() => {
+															const graphChatId = chatId || createdChatId || '';
+															console.log('[MiraChatBot] Passing chatId to GraphButton:', {
+																chatId,
+																createdChatId,
+																graphChatId,
+																messageId: message.id
+															});
+															return (
+																<GraphButton 
+																	message={message} 
+																	chatId={graphChatId} 
+																	className=""
+																/>
+															);
+														})()}
+														
+														{(() => {
+															const todoChatId = chatId || createdChatId || '';
+															return (
+																<TodoListButton 
+																	message={message} 
+																	chatId={todoChatId} 
+																	className=""
+																/>
+															);
+														})()}
+													</div>
 
 													{/* Related Questions - Positioned below */}
 													{isLastAiMessage && (

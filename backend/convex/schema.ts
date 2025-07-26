@@ -141,7 +141,7 @@ export default defineSchema({
         relationships: v.optional(
           v.array(
             v.object({
-              id: v.string(),
+              id: v.optional(v.string()),
               sourceId: v.string(),
               targetId: v.string(),
               type: v.string(),
@@ -152,6 +152,44 @@ export default defineSchema({
             })
           )
         ),
+      })
+    ),
+    // TODO list data for actionable security tasks
+    todoList: v.optional(
+      v.object({
+        id: v.string(),
+        title: v.string(),
+        description: v.string(),
+        items: v.array(
+          v.object({
+            id: v.string(),
+            task: v.string(),
+            priority: v.union(
+              v.literal("high"),
+              v.literal("medium"),
+              v.literal("low")
+            ),
+            category: v.string(),
+            description: v.optional(v.string()),
+            completed: v.boolean(),
+            riskLevel: v.union(
+              v.literal("critical"),
+              v.literal("high"),
+              v.literal("medium"),
+              v.literal("low")
+            ),
+            cvssScore: v.number(),
+            confidence: v.number(),
+            cveIds: v.optional(v.array(v.string())),
+            affectedSystems: v.optional(v.array(v.string())),
+
+            emoji: v.optional(v.string()),
+            createdAt: v.number(),
+            lastModified: v.optional(v.number()),
+          })
+        ),
+        createdAt: v.number(),
+        lastModified: v.optional(v.number()),
       })
     ),
   }).index("by_chatId", ["chatId"]),
@@ -261,4 +299,15 @@ export default defineSchema({
     debt: v.string(),
     review_status: v.boolean(),
   }).index("by_staticScanId", ["staticScanId"]),
+
+  todoLists: defineTable({
+    chatId: v.string(),
+    messageId: v.string(),
+    todoList: v.any(), // TodoList object with all items and metadata
+    lastModified: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_message_chat", ["messageId", "chatId"])
+    .index("by_chat", ["chatId"]),
 });
