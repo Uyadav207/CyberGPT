@@ -236,12 +236,12 @@ export class GraphController {
       }
 
       console.log(
-        `[GraphController] Getting graph for messageId: ${messageId}, chatId: ${chatId}`
+        `🔍 [GraphController] Getting graph for messageId: ${messageId}, chatId: ${chatId}`
       );
 
       // Query Convex database for the graph visualization
       console.log(
-        `[GraphController] Querying Convex with messageId: ${messageId}, chatId: ${chatId}`
+        `🔄 [GraphController] Querying Convex with messageId: ${messageId}, chatId: ${chatId}`
       );
 
       const graphVisualization = await convexClient.query(
@@ -252,7 +252,13 @@ export class GraphController {
         }
       );
 
-      console.log(`[GraphController] Convex query result:`, graphVisualization);
+      console.log(`📊 [GraphController] Convex query result:`, {
+        hasGraphData: !!graphVisualization,
+        graphDataKeys: graphVisualization ? Object.keys(graphVisualization) : 'No graph data',
+        graphDataType: typeof graphVisualization,
+        messageId,
+        chatId
+      });
 
       if (!graphVisualization) {
         console.log(

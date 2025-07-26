@@ -46,12 +46,17 @@ export class ChatGraphIntegrationService {
   }> {
     try {
       console.log(
-        "[ChatGraphIntegrationService] Processing chat message with graph generation:",
+        "🔄 [ChatGraphIntegrationService] Processing chat message with graph generation:",
         {
           messageId: data.messageId,
           chatId: data.chatId,
           questionLength: data.question.length,
           answerLength: data.answer.length,
+          hasReasoningTrace: !!data.reasoningTrace,
+          hasJargons: !!data.jargons,
+          hasCveDescriptionsMap: !!data.cveDescriptionsMap,
+          hasSourceLinks: !!data.sourceLinks,
+          hasContextData: !!data.contextData
         }
       );
 
@@ -101,29 +106,19 @@ export class ChatGraphIntegrationService {
         }
       );
 
-      // Save graph visualization to Convex database
+      // Note: Graph visualization will be saved by the frontend along with chat history
       console.log(
-        "💾 [ChatGraphIntegration] Saving graph visualization to Convex database..."
-      );
-      await convexClient.mutation(
-        api.graphVisualizations.saveGraphVisualization,
-        {
-          messageId: data.messageId,
-          chatId: data.chatId as any,
-          graphVisualization,
-        }
+        "📊 [ChatGraphIntegration] Graph visualization generated successfully, will be saved by frontend"
       );
 
       console.log(
-        "✅ [ChatGraphIntegration] Graph visualization saved to Convex database successfully"
-      );
-
-      console.log(
-        "[ChatGraphIntegrationService] Graph generated and saved successfully:",
+        "✅ [ChatGraphIntegrationService] Graph generated and saved successfully:",
         {
           messageId: data.messageId,
           nodes: graphData.nodes.length,
           links: graphData.links.length,
+          hasGraphData: !!graphData,
+          graphDataKeys: graphData ? Object.keys(graphData) : 'No graph data'
         }
       );
 
@@ -133,7 +128,7 @@ export class ChatGraphIntegrationService {
       };
     } catch (error) {
       console.error(
-        "[ChatGraphIntegrationService] Error processing chat message with graph:",
+        "❌ [ChatGraphIntegrationService] Error processing chat message with graph:",
         error
       );
       return {

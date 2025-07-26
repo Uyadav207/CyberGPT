@@ -134,6 +134,13 @@ export class ChatController {
 
       // Automatically generate graph visualization if messageId and chatId are provided
       let graphData = null;
+      console.log("🔍 [ChatController] Checking graph generation conditions:", {
+        messageId,
+        chatId,
+        hasMessageId: !!messageId,
+        hasChatId: !!chatId,
+        willGenerateGraph: !!(messageId && chatId),
+      });
       if (messageId && chatId) {
         try {
           console.log(
@@ -144,6 +151,21 @@ export class ChatController {
               question: mainMessage.substring(0, 50) + "...",
               hasAnswer: !!answer,
               answerLength: answer.length,
+            }
+          );
+
+          console.log(
+            "🔄 [ChatController] Calling graph generation service with data:",
+            {
+              messageId,
+              chatId,
+              questionLength: mainMessage.length,
+              answerLength: answer.length,
+              hasReasoningTrace: !!trace,
+              hasJargons: !!jargons,
+              hasCveDescriptionsMap: !!cveDescriptionsMap,
+              hasSourceLinks: !!sourceLinks,
+              hasContextData: !!contextData,
             }
           );
 
@@ -166,8 +188,13 @@ export class ChatController {
               messageId,
               nodes: graphData.nodes.length,
               links: graphData.links.length,
-              mainProblemNode: graphData.nodes.find(n => n.id === 'main-problem'),
-              problemConnections: graphData.links.filter(l => l.source === 'main-problem' || l.target === 'main-problem').length
+              mainProblemNode: graphData.nodes.find(
+                (n) => n.id === "main-problem"
+              ),
+              problemConnections: graphData.links.filter(
+                (l) =>
+                  l.source === "main-problem" || l.target === "main-problem"
+              ).length,
             });
           } else {
             console.error(
@@ -187,11 +214,15 @@ export class ChatController {
       console.log("📤 [ChatController] Sending response with graph data:", {
         hasAnswer: !!answer,
         hasGraphData: !!graphData,
-        graphDataSummary: graphData ? {
-          nodes: graphData.nodes?.length || 0,
-          links: graphData.links?.length || 0,
-          hasMainProblem: !!graphData.nodes?.find(n => n.id === 'main-problem')
-        } : 'No graph data'
+        graphDataSummary: graphData
+          ? {
+              nodes: graphData.nodes?.length || 0,
+              links: graphData.links?.length || 0,
+              hasMainProblem: !!graphData.nodes?.find(
+                (n) => n.id === "main-problem"
+              ),
+            }
+          : "No graph data",
       });
 
       return c.json({

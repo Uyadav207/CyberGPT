@@ -117,7 +117,8 @@ export const saveEnhancedChatMessage = mutation({
         : "No graph data",
     });
 
-    const result = await ctx.db.insert("chatHistory", {
+    // Prepare the insert data, only including graphVisualization if it's valid
+    const insertData: any = {
       chatId,
       humanInTheLoopId,
       sender,
@@ -131,8 +132,18 @@ export const saveEnhancedChatMessage = mutation({
       Info,
       Severity,
       tags: tags || [], // Default to empty array if not provided
-      graphVisualization, // Include graph visualization data
-    });
+    };
+
+    // Only include graphVisualization if it's not null/undefined and has content
+    if (
+      graphVisualization &&
+      typeof graphVisualization === "object" &&
+      Object.keys(graphVisualization).length > 0
+    ) {
+      insertData.graphVisualization = graphVisualization;
+    }
+
+    const result = await ctx.db.insert("chatHistory", insertData);
 
     console.log(
       "✅ [Convex] Chat message stored successfully with graph visualization:",

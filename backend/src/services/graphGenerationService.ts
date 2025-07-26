@@ -36,13 +36,26 @@ export class GraphGenerationService {
       mitigation?: string;
     }
   ): Promise<GraphData> {
-    try {
-      console.log(
-        "[GraphGenerationService] Generating enhanced graph for message:",
-        messageId
-      );
+    console.log(
+      "[GraphGenerationService] Generating enhanced graph for message:",
+      messageId
+    );
+    console.log("[GraphGenerationService] Input validation:", {
+      hasQuestion: !!question,
+      hasAnswer: !!answer,
+      questionLength: question?.length || 0,
+      answerLength: answer?.length || 0,
+      hasReasoning: !!reasoning,
+      hasSources: !!sources,
+      sourcesCount: sources?.length || 0,
+      hasJargons: !!jargons,
+      jargonsCount: Object.keys(jargons || {}).length,
+      hasCveInfo: !!cveInfo,
+    });
 
-      // Extract entities and relationships from the answer using enhanced LLM
+    try {
+      // Step 1: Extract entities with enhanced LLM processing
+      console.log("[GraphGenerationService] Step 1: Extracting entities...");
       const entities = await this.extractEntitiesEnhanced(
         answer,
         reasoning,
@@ -51,51 +64,77 @@ export class GraphGenerationService {
         question
       );
 
-      // Validate and clean entity data
-      const cleanedEntities = this.validateEntityData(entities);
+      console.log("[GraphGenerationService] Entities extracted:", {
+        vulnerabilitiesCount: entities.vulnerabilities?.length || 0,
+        mitigationsCount: entities.mitigations?.length || 0,
+        sourcesCount: entities.sources?.length || 0,
+        cvesCount: entities.cves?.length || 0,
+        affectedCount: entities.affected?.length || 0,
+        risksCount: entities.risks?.length || 0,
+      });
 
-      // Query knowledge graph for comprehensive related data
+      // Step 2: Query knowledge graph for comprehensive data
+      console.log(
+        "[GraphGenerationService] Step 2: Querying knowledge graph..."
+      );
       const kgData = await this.queryKnowledgeGraphEnhanced(
-        cleanedEntities,
+        entities,
         sources,
         cveInfo
       );
 
-      // Generate relationships between entities
+      console.log("[GraphGenerationService] Knowledge graph data retrieved:", {
+        hasVulnerabilities: !!kgData?.vulnerabilities,
+        hasMitigations: !!kgData?.mitigations,
+        hasCves: !!kgData?.cves,
+        vulnerabilitiesCount: kgData?.vulnerabilities?.length || 0,
+        mitigationsCount: kgData?.mitigations?.length || 0,
+        cvesCount: kgData?.cves?.length || 0,
+      });
+
+      // Step 3: Generate relationships between entities
+      console.log(
+        "[GraphGenerationService] Step 3: Generating relationships..."
+      );
       const relationships = await this.generateRelationships(
-        cleanedEntities,
+        entities,
         kgData,
         answer,
         question
       );
 
-      // Build comprehensive graph structure optimized for D3
+      console.log("[GraphGenerationService] Relationships generated:", {
+        relationshipsCount: relationships?.length || 0,
+      });
+
+      // Step 4: Build the final graph structure
+      console.log(
+        "[GraphGenerationService] Step 4: Building graph structure..."
+      );
       const graphData = await this.buildGraphStructureEnhanced(
         messageId,
         chatId,
-        cleanedEntities,
+        entities,
         kgData,
         relationships,
         question,
         answer
       );
 
-      // Log comprehensive graph summary
-      console.log(this.generateGraphSummary(graphData));
-
       console.log(
-        "[GraphGenerationService] Generated enhanced graph with",
-        graphData.nodes.length,
-        "nodes and",
-        graphData.links.length,
-        "links"
+        "[GraphGenerationService] Graph generation completed successfully:",
+        {
+          nodesCount: graphData.nodes?.length || 0,
+          linksCount: graphData.links?.length || 0,
+          hasMetadata: !!graphData.metadata,
+        }
       );
 
       return graphData;
     } catch (error) {
       console.error("[GraphGenerationService] Error generating graph:", error);
       throw new Error(
-        `Failed to generate graph: ${error instanceof Error ? error.message : "Unknown error"}`
+        `Failed to generate graph: ${error instanceof Error ? error.message : String(error)}`
       );
     }
   }
@@ -575,6 +614,15 @@ Only include relationships that are clearly supported by the context or knowledg
     question: string,
     answer: string
   ): Promise<GraphData> {
+    console.log("[GraphGenerationService] KG Data structure:", {
+      hasVulnerabilities: !!kgData?.vulnerabilities,
+      hasMitigations: !!kgData?.mitigations,
+      hasCves: !!kgData?.cves,
+      vulnerabilitiesCount: kgData?.vulnerabilities?.length || 0,
+      mitigationsCount: kgData?.mitigations?.length || 0,
+      cvesCount: kgData?.cves?.length || 0,
+    });
+
     const nodes: GraphNode[] = [];
     const links: GraphLink[] = [];
     const nodeMap = new Map<string, GraphNode>();
@@ -623,164 +671,278 @@ Return only the topic, no quotes or extra text. Examples:
     nodeMap.set("main-problem", problemNode);
     nodeMap.set("User Question", problemNode); // Also map to the relationship target name
 
-    // Add vulnerability nodes
-    entities.vulnerabilities.forEach((vuln: any, index: number) => {
-      const nodeId = `vuln-${index}`;
-      const node: GraphNode = {
-        id: nodeId,
-        label: vuln.name,
-        type: "vulnerability",
-        description: vuln.description,
-        severity: vuln.severity as any,
-        cvss: vuln.cvss,
-        metadata: {
-          originalEntity: vuln,
-          source: "extracted",
-          kgData: kgData.vulnerabilities?.find((kg: any) =>
-            kg.vulnerability.name
-              .toLowerCase()
-              .includes(vuln.name.toLowerCase())
-          ),
-        },
-      };
-      nodes.push(node);
-      nodeMap.set(vuln.name, node);
-    });
+    // Add vulnerability nodes with safe null checks
+    if (entities.vulnerabilities && Array.isArray(entities.vulnerabilities)) {
+      entities.vulnerabilities.forEach((vuln: any, index: number) => {
+        if (!vuln || !vuln.name) {
+          console.log(
+            `[GraphGenerationService] Skipping invalid vulnerability at index ${index}:`,
+            vuln
+          );
+          return;
+        }
 
-    // Add CVE nodes
-    entities.cves.forEach((cve: any, index: number) => {
-      const nodeId = `cve-${index}`;
-      const node: GraphNode = {
-        id: nodeId,
-        label: cve.cveId,
-        type: "cve",
-        description: cve.description,
-        severity: cve.severity as any,
-        cvss: cve.cvss,
-        metadata: {
-          originalEntity: cve,
-          source: "NVD",
-          kgData: kgData.cves?.find((kg: any) => kg.cve.cveId === cve.cveId),
-        },
-      };
-      nodes.push(node);
-      nodeMap.set(cve.cveId, node);
-    });
-
-    // Add mitigation nodes
-    entities.mitigations.forEach((mit: any, index: number) => {
-      const nodeId = `mit-${index}`;
-      const node: GraphNode = {
-        id: nodeId,
-        label: mit.name,
-        type: "mitigation",
-        description: mit.description,
-        metadata: {
-          originalEntity: mit,
-          source: "extracted",
-          kgData: kgData.mitigations?.find((kg: any) =>
-            kg.mitigation.name.toLowerCase().includes(mit.name.toLowerCase())
-          ),
-        },
-      };
-      nodes.push(node);
-      nodeMap.set(mit.name, node);
-    });
-
-    // Add source nodes
-    entities.sources.forEach((src: any, index: number) => {
-      const nodeId = `src-${index}`;
-      const node: GraphNode = {
-        id: nodeId,
-        label: src.name,
-        type: "source",
-        description: src.description,
-        metadata: {
-          originalEntity: src,
-          source: "extracted",
-        },
-      };
-      nodes.push(node);
-      nodeMap.set(src.name, node);
-    });
-
-    // Add affected nodes
-    entities.affected.forEach((aff: any, index: number) => {
-      const nodeId = `aff-${index}`;
-      const node: GraphNode = {
-        id: nodeId,
-        label: aff.name,
-        type: "affected",
-        description: aff.description,
-        metadata: {
-          originalEntity: aff,
-          source: "extracted",
-          kgData: kgData.affected?.find((kg: any) =>
-            kg.affected.name.toLowerCase().includes(aff.name.toLowerCase())
-          ),
-        },
-      };
-      nodes.push(node);
-      nodeMap.set(aff.name, node);
-    });
-
-    // Add risk nodes
-    entities.risks.forEach((risk: any, index: number) => {
-      const nodeId = `risk-${index}`;
-      const node: GraphNode = {
-        id: nodeId,
-        label: risk.name,
-        type: "risk",
-        description: risk.impact,
-        severity: risk.level as any,
-        metadata: {
-          originalEntity: risk,
-          source: "extracted",
-        },
-      };
-      nodes.push(node);
-      nodeMap.set(risk.name, node);
-    });
-
-    // Add relationships as links
-    relationships.forEach((rel, index) => {
-      const sourceNode = nodeMap.get(rel.source);
-      const targetNode = nodeMap.get(rel.target);
-
-      if (sourceNode && targetNode) {
-        const link: GraphLink = {
-          id: `link-${index}`,
-          source: sourceNode.id,
-          target: targetNode.id,
-          type: rel.type as any,
-          description: rel.description,
-          strength: rel.strength,
+        const nodeId = `vuln-${index}`;
+        const node: GraphNode = {
+          id: nodeId,
+          label: vuln.name,
+          type: "vulnerability",
+          description:
+            vuln.description || "Vulnerability description not available",
+          severity: vuln.severity as any,
+          cvss: vuln.cvss || 0.0,
+          metadata: {
+            originalEntity: vuln,
+            source: "extracted",
+            kgData: kgData?.vulnerabilities?.find((kg: any) =>
+              kg?.vulnerability?.name
+                ?.toLowerCase()
+                .includes(vuln.name.toLowerCase())
+            ),
+          },
         };
-        links.push(link);
-      }
-    });
+        nodes.push(node);
+        nodeMap.set(vuln.name, node);
+      });
+    }
+
+    // Add CVE nodes with safe null checks
+    if (entities.cves && Array.isArray(entities.cves)) {
+      entities.cves.forEach((cve: any, index: number) => {
+        if (!cve || !cve.cveId) {
+          console.log(
+            `[GraphGenerationService] Skipping invalid CVE at index ${index}:`,
+            cve
+          );
+          return;
+        }
+
+        const nodeId = `cve-${index}`;
+        const node: GraphNode = {
+          id: nodeId,
+          label: cve.cveId,
+          type: "cve",
+          description: cve.description || "CVE description not available",
+          severity: cve.severity as any,
+          cvss: cve.cvss || 0.0,
+          metadata: {
+            originalEntity: cve,
+            source: "NVD",
+            kgData: kgData?.cves?.find(
+              (kg: any) => kg?.cve?.cveId === cve.cveId
+            ),
+          },
+        };
+        nodes.push(node);
+        nodeMap.set(cve.cveId, node);
+      });
+    }
+
+    // Add mitigation nodes with safe null checks
+    if (entities.mitigations && Array.isArray(entities.mitigations)) {
+      entities.mitigations.forEach((mit: any, index: number) => {
+        if (!mit || !mit.name) {
+          console.log(
+            `[GraphGenerationService] Skipping invalid mitigation at index ${index}:`,
+            mit
+          );
+          return;
+        }
+
+        const nodeId = `mit-${index}`;
+        const node: GraphNode = {
+          id: nodeId,
+          label: mit.name,
+          type: "mitigation",
+          description:
+            mit.description || "Mitigation description not available",
+          metadata: {
+            originalEntity: mit,
+            source: "extracted",
+            kgData: kgData?.mitigations?.find((kg: any) =>
+              kg?.mitigation?.name
+                ?.toLowerCase()
+                .includes(mit.name.toLowerCase())
+            ),
+          },
+        };
+        nodes.push(node);
+        nodeMap.set(mit.name, node);
+      });
+    }
+
+    // Add source nodes with safe null checks
+    if (entities.sources && Array.isArray(entities.sources)) {
+      entities.sources.forEach((src: any, index: number) => {
+        if (!src || !src.name) {
+          console.log(
+            `[GraphGenerationService] Skipping invalid source at index ${index}:`,
+            src
+          );
+          return;
+        }
+
+        const nodeId = `src-${index}`;
+        const node: GraphNode = {
+          id: nodeId,
+          label: src.name,
+          type: "source",
+          description: src.description || "Source description not available",
+          metadata: {
+            originalEntity: src,
+            source: "extracted",
+          },
+        };
+        nodes.push(node);
+        nodeMap.set(src.name, node);
+      });
+    }
+
+    // Add affected nodes with safe null checks
+    if (entities.affected && Array.isArray(entities.affected)) {
+      entities.affected.forEach((aff: any, index: number) => {
+        if (!aff || !aff.name) {
+          console.log(
+            `[GraphGenerationService] Skipping invalid affected at index ${index}:`,
+            aff
+          );
+          return;
+        }
+
+        const nodeId = `aff-${index}`;
+        const node: GraphNode = {
+          id: nodeId,
+          label: aff.name,
+          type: "affected",
+          description:
+            aff.description || "Affected system description not available",
+          metadata: {
+            originalEntity: aff,
+            source: "extracted",
+          },
+        };
+        nodes.push(node);
+        nodeMap.set(aff.name, node);
+      });
+    }
+
+    // Add risk nodes with safe null checks
+    if (entities.risks && Array.isArray(entities.risks)) {
+      entities.risks.forEach((risk: any, index: number) => {
+        if (!risk || !risk.name) {
+          console.log(
+            `[GraphGenerationService] Skipping invalid risk at index ${index}:`,
+            risk
+          );
+          return;
+        }
+
+        const nodeId = `risk-${index}`;
+        const node: GraphNode = {
+          id: nodeId,
+          label: risk.name,
+          type: "risk",
+          description: risk.description || "Risk description not available",
+          metadata: {
+            originalEntity: risk,
+            source: "extracted",
+          },
+        };
+        nodes.push(node);
+        nodeMap.set(risk.name, node);
+      });
+    }
+
+    // Add relationships with safe null checks
+    if (relationships && Array.isArray(relationships)) {
+      relationships.forEach((rel: any) => {
+        if (!rel || !rel.source || !rel.target) {
+          console.log(
+            `[GraphGenerationService] Skipping invalid relationship:`,
+            rel
+          );
+          return;
+        }
+
+        if (rel.source === "User Question" || rel.source === "main-problem") {
+          const targetNode = nodeMap.get(rel.target);
+          if (targetNode) {
+            links.push({
+              source: "main-problem",
+              target: targetNode.id,
+              type: rel.type,
+              description: rel.description,
+              strength: rel.strength || 1,
+            });
+          }
+        } else if (
+          rel.target === "User Question" ||
+          rel.target === "main-problem"
+        ) {
+          const sourceNode = nodeMap.get(rel.source);
+          if (sourceNode) {
+            links.push({
+              source: sourceNode.id,
+              target: "main-problem",
+              type: rel.type,
+              description: rel.description,
+              strength: rel.strength || 1,
+            });
+          }
+        } else {
+          const sourceNode = nodeMap.get(rel.source);
+          const targetNode = nodeMap.get(rel.target);
+          if (sourceNode && targetNode) {
+            links.push({
+              source: sourceNode.id,
+              target: targetNode.id,
+              type: rel.type,
+              description: rel.description,
+              strength: rel.strength || 1,
+            });
+          }
+        }
+      });
+    }
 
     // Ensure ALL entities connect to the main problem (user question)
     const allEntities = [
-      ...entities.vulnerabilities.map((v: any) => ({
+      ...(entities.vulnerabilities || []).map((v: any) => ({
         name: v.name,
         type: "vulnerability",
       })),
-      ...entities.cves.map((c: any) => ({ name: c.cveId, type: "cve" })),
-      ...entities.mitigations.map((m: any) => ({
+      ...(entities.cves || []).map((c: any) => ({
+        name: c.cveId,
+        type: "cve",
+      })),
+      ...(entities.mitigations || []).map((m: any) => ({
         name: m.name,
         type: "mitigation",
       })),
-      ...entities.sources.map((s: any) => ({ name: s.name, type: "source" })),
-      ...entities.affected.map((a: any) => ({
+      ...(entities.sources || []).map((s: any) => ({
+        name: s.name,
+        type: "source",
+      })),
+      ...(entities.affected || []).map((a: any) => ({
         name: a.name,
         type: "affected",
       })),
-      ...entities.risks.map((r: any) => ({ name: r.name, type: "risk" })),
+      ...(entities.risks || []).map((r: any) => ({
+        name: r.name,
+        type: "risk",
+      })),
     ];
 
     // Add connections to main problem for entities that don't already have them
     allEntities.forEach((entity, index) => {
+      if (!entity || !entity.name) {
+        console.log(
+          `[GraphGenerationService] Skipping invalid entity at index ${index}:`,
+          entity
+        );
+        return;
+      }
+
       const entityNode = nodeMap.get(entity.name);
       if (entityNode) {
         // Check if this entity already has a connection to main problem
@@ -838,6 +1000,11 @@ Return only the topic, no quotes or extra text. Examples:
 
     console.log("[GraphGenerationService] Main topic extracted:", mainTopic);
     console.log("[GraphGenerationService] Original question:", question);
+    console.log("[GraphGenerationService] Graph built successfully:", {
+      nodesCount: nodes.length,
+      linksCount: links.length,
+      mainTopic,
+    });
 
     return {
       nodes,

@@ -107,7 +107,7 @@ export const saveGraphVisualization = mutation({
       relationships: v.optional(
         v.array(
           v.object({
-            id: v.string(),
+            id: v.optional(v.string()),
             sourceId: v.string(),
             targetId: v.string(),
             type: v.string(),
@@ -125,7 +125,9 @@ export const saveGraphVisualization = mutation({
       messageId,
       chatId,
       hasGraphVisualization: !!graphVisualization,
-      graphVisualizationKeys: graphVisualization ? Object.keys(graphVisualization) : []
+      graphVisualizationKeys: graphVisualization
+        ? Object.keys(graphVisualization)
+        : [],
     });
 
     // Find the chat history entry by messageId
@@ -136,35 +138,47 @@ export const saveGraphVisualization = mutation({
       .first();
 
     if (chatHistoryEntry) {
-      console.log("📝 [GraphVisualizations] Found existing chat history entry, updating with graph visualization:", {
-        messageId,
-        databaseId: chatHistoryEntry._id,
-        graphVisualizationSummary: graphVisualization ? {
-          vulnerabilities: graphVisualization.vulnerabilities?.length || 0,
-          mitigations: graphVisualization.mitigations?.length || 0,
-          sources: graphVisualization.sources?.length || 0,
-          cves: graphVisualization.cves?.length || 0,
-          problems: graphVisualization.problems?.length || 0,
-          affected: graphVisualization.affected?.length || 0,
-          risks: graphVisualization.risks?.length || 0,
-          relationships: graphVisualization.relationships?.length || 0
-        } : 'No graph data'
-      });
+      console.log(
+        "📝 [GraphVisualizations] Found existing chat history entry, updating with graph visualization:",
+        {
+          messageId,
+          databaseId: chatHistoryEntry._id,
+          graphVisualizationSummary: graphVisualization
+            ? {
+                vulnerabilities:
+                  graphVisualization.vulnerabilities?.length || 0,
+                mitigations: graphVisualization.mitigations?.length || 0,
+                sources: graphVisualization.sources?.length || 0,
+                cves: graphVisualization.cves?.length || 0,
+                problems: graphVisualization.problems?.length || 0,
+                affected: graphVisualization.affected?.length || 0,
+                risks: graphVisualization.risks?.length || 0,
+                relationships: graphVisualization.relationships?.length || 0,
+              }
+            : "No graph data",
+        }
+      );
 
       // Update existing chat history entry with graph visualization
       const result = await ctx.db.patch(chatHistoryEntry._id, {
         graphVisualization,
       });
-      
-      console.log("✅ [GraphVisualizations] Graph visualization updated successfully:", {
-        messageId,
-        databaseId: chatHistoryEntry._id,
-        result
-      });
-      
+
+      console.log(
+        "✅ [GraphVisualizations] Graph visualization updated successfully:",
+        {
+          messageId,
+          databaseId: chatHistoryEntry._id,
+          result,
+        }
+      );
+
       return { success: true, updated: true, messageId: chatHistoryEntry._id };
     } else {
-      console.log("❌ [GraphVisualizations] Chat history entry not found for messageId:", messageId);
+      console.log(
+        "❌ [GraphVisualizations] Chat history entry not found for messageId:",
+        messageId
+      );
       return { success: false, error: "Chat history entry not found" };
     }
   },
@@ -174,11 +188,26 @@ export const saveGraphVisualization = mutation({
 export const getGraphByMessageId = query({
   args: { messageId: v.string(), chatId: v.id("chats") },
   handler: async (ctx, { messageId, chatId }) => {
+    console.log(
+      `🔍 [Convex] Querying for graph: messageId=${messageId}, chatId=${chatId}`
+    );
+
     const chatHistoryEntry = await ctx.db
       .query("chatHistory")
       .withIndex("by_chatId", (q) => q.eq("chatId", chatId))
       .filter((q) => q.eq(q.field("humanInTheLoopId"), messageId))
       .first();
+
+    console.log(`📊 [Convex] Query result:`, {
+      foundEntry: !!chatHistoryEntry,
+      entryId: chatHistoryEntry?._id,
+      hasGraphVisualization: !!chatHistoryEntry?.graphVisualization,
+      graphVisualizationKeys: chatHistoryEntry?.graphVisualization
+        ? Object.keys(chatHistoryEntry.graphVisualization)
+        : "No graph data",
+      messageId,
+      chatId,
+    });
 
     return chatHistoryEntry?.graphVisualization || null;
   },
