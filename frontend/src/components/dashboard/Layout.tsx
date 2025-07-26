@@ -18,12 +18,15 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import useStore from "../../store/store";
 import type { Chats } from "../../types/chats";
+import { Sun, Moon } from "lucide-react";
+import { useTheme } from "../theme/theme-provider";
 // import { ModeToggle } from "../theme/mode-toggle";
 
 export function Layout() {
 	const location = useLocation();
 	const user = useStore((state) => state.user);
 	const chats = useQuery(api.chats.getChatsByUserId, user?.id ? { userId: String(user.id) } : "skip") as Chats[] | undefined;
+	const { theme, setTheme } = useTheme();
 
 	// Get path segments for breadcrumbs
 	const pathSegments = location.pathname.split("/").filter(Boolean);
@@ -62,6 +65,21 @@ export function Layout() {
 									})}
 							</BreadcrumbList>
 						</Breadcrumb>
+					</div>
+					
+					{/* Dark Mode Toggle */}
+					<div className="flex items-center px-4">
+						<button
+							onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+							className="p-2 rounded-lg hover:bg-accent transition-colors duration-200"
+							title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+						>
+							{theme === "dark" ? (
+								<Sun className="h-5 w-5 text-foreground" />
+							) : (
+								<Moon className="h-5 w-5 text-foreground" />
+							)}
+						</button>
 					</div>
 				</header>
 

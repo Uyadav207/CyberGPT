@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Network, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Network, Loader2, EyeOff } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import GraphVisualization from './GraphVisualization';
@@ -432,7 +432,7 @@ const GraphButton: React.FC<GraphButtonProps> = ({ message, chatId, className = 
         <TooltipTrigger asChild>
           <Button
             variant="ghost"
-            size="sm"
+            size="lg"
             onClick={toggleGraph}
             disabled={isGenerating}
             className={`h-8 w-8 p-0 rounded-full transition-all duration-200 ${
@@ -442,11 +442,11 @@ const GraphButton: React.FC<GraphButtonProps> = ({ message, chatId, className = 
             }`}
           >
             {isGenerating ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="w-5 h-5 animate-spin" />
             ) : showGraph ? (
-              <EyeOff className="h-4 w-4" />
+              <EyeOff className="w-5 h-5" />
             ) : (
-              <Network className="h-4 w-4" />
+              <Network className="w-5 h-5" />
             )}
           </Button>
         </TooltipTrigger>

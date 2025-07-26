@@ -3,7 +3,7 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { v4 as uuidv4 } from "uuid";
 import { FaChevronRight } from 'react-icons/fa';
-import { Brain } from "lucide-react";
+import { Brain, Link } from "lucide-react";
 
 //components
 import { ScrollArea } from "@components/ui/scroll-area";
@@ -17,7 +17,9 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@components/ui/dialog";
-
+import { Sheet, SheetTrigger, SheetContent } from '../ui/sheet';
+import { Link2 } from 'lucide-react';
+import { Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
 
 //apis
 import { useMutation, useQuery } from "convex/react";
@@ -255,9 +257,24 @@ RESPONSE STRUCTURE:
 1. Start with "Let's break it down..." or similar educational phrase
 2. Define key terms and concepts clearly
 3. Explain step-by-step how things work
-4. Provide real-world examples
+4. Provide real-world examples with code
 5. Explain the practical implications
 6. End with encouragement to ask follow-up questions
+
+CODE FORMATTING:
+- Always include code examples with proper markdown syntax
+- Use \`\`\`language for code blocks (javascript, python, sql, bash, etc.)
+- Include comments in code for clarity
+- Use inline \`code\` for short snippets
+- DETECT ALL CODE: Format any programming syntax, commands, or technical terms as code
+- Inline Code Examples: Use \`npm install\`, \`git clone\`, \`docker run\`, \`curl -X GET\`, \`SELECT * FROM users\`
+- Code Detection Rules:
+  - Any programming language syntax → Code block
+  - Commands (npm, git, docker, curl, etc.) → Inline code
+  - File paths (/etc/passwd, C:\\Windows) → Inline code
+  - URLs with parameters → Inline code
+  - JSON/XML structures → Code block
+  - Configuration syntax → Code block
 
 TONE: Friendly, patient, educational, encouraging
 
@@ -278,10 +295,25 @@ PERSONALITY TRAITS:
 RESPONSE STRUCTURE:
 1. Lead with investigation findings (e.g., "CVE-2024-XYZ targets...")
 2. Analyze the vulnerability's origin and affected versions
-3. Detail the attack vectors and exploitation methods
+3. Detail the attack vectors and exploitation methods with code examples
 4. Assess risk severity with evidence
 5. Trace the timeline of discovery and patches
 6. Connect to related threats or attack patterns
+
+CODE FORMATTING:
+- Include exploit code examples with proper markdown syntax
+- Use \`\`\`language for code blocks (python, bash, javascript, etc.)
+- Show both vulnerable and patched code examples
+- Include comments explaining the exploit techniques
+- DETECT ALL CODE: Format any programming syntax, commands, or technical terms as code
+- Inline Code Examples: Use \`curl -X POST\`, \`nmap -sS\`, \`sqlmap -u\`, \`metasploit\`, \`exploit-db\`
+- Code Detection Rules:
+  - Any programming language syntax → Code block
+  - Commands (curl, nmap, sqlmap, metasploit, etc.) → Inline code
+  - File paths (/etc/passwd, C:\\Windows) → Inline code
+  - URLs with parameters → Inline code
+  - JSON/XML structures → Code block
+  - Configuration syntax → Code block
 
 TONE: Professional, analytical, evidence-based, thorough
 
@@ -308,8 +340,23 @@ RESPONSE STRUCTURE:
    - Step 4: Impact analysis and business implications
 3. Advanced technical details with frameworks (MITRE ATT&CK, OWASP, etc.)
 4. Threat landscape positioning
-5. Strategic recommendations with references
+5. Strategic recommendations with references and code examples
 6. Future monitoring and detection strategies
+
+CODE FORMATTING:
+- Include analysis scripts and detection code with proper markdown syntax
+- Use \`\`\`language for code blocks (python, bash, yaml, json, etc.)
+- Show monitoring queries and detection rules
+- Include configuration examples for security tools
+- DETECT ALL CODE: Format any programming syntax, commands, or technical terms as code
+- Inline Code Examples: Use \`kibana query\`, \`splunk search\`, \`elasticsearch\`, \`wireshark\`, \`tcpdump\`
+- Code Detection Rules:
+  - Any programming language syntax → Code block
+  - Commands (kibana, splunk, elasticsearch, wireshark, etc.) → Inline code
+  - File paths (/var/log/auth.log, C:\\Windows\\System32) → Inline code
+  - URLs with parameters → Inline code
+  - JSON/XML structures → Code block
+  - Configuration syntax → Code block
 
 TONE: Expert-level, comprehensive, strategic, authoritative
 
@@ -3559,7 +3606,7 @@ const MiraChatBot: React.FC = () => {
 	return (
 		<div className={`relative flex h-screen flex-col overflow-hidden${highlightChatBlock ? ' ring-4 ring-yellow-300/60 bg-yellow-50 dark:bg-yellow-900/30 transition-all duration-700' : ''}`}>
 			<div className="flex justify-center">
-				<div className="flex flex-col w-full max-w-4xl mx-auto h-[89vh] rounded-lg">
+				<div className="flex flex-col w-full max-w-6xl mx-auto h-[89vh] rounded-lg">
 					{uniqueMessages.length === 0 ? (
 						<div className="flex flex-col items-center justify-end w-full lg:h-1/3 md:h-1 sm:h-full p-4 sm:p-8">
 							<motion.div
@@ -3867,12 +3914,40 @@ const MiraChatBot: React.FC = () => {
 														});
 														return <MarkdownViewer content={processedContent} />;
 													})()}
+													{/* Old SourceLinks component - commented for future use
 													{message.sourceLinks && message.sourceLinks.length > 0 && (
-														<SourceLinks sourceLinks={message.sourceLinks} />
+														<SourceLinks sourceLinks={message.sourceLinks || []} autoExpand={true} />
 													)}
+													*/}
 													
-													{/* Action Buttons - Graph and TODO List */}
+													{/* Action Buttons - Sources, Graph, and TODO List */}
 													<div className="flex items-center gap-2 mt-3 -ml-2">
+														{/* Sources */}
+														{(() => {
+															return (
+																<Sheet>
+																	<Tooltip>
+																		<TooltipTrigger asChild>
+																			<SheetTrigger asChild>
+																				<button className="p-2 rounded-full hover:bg-accent/60 transition-colors" title="Show sources">
+																					<Link className="w-4 h-4 text-muted-foreground" />
+																				</button>
+																			</SheetTrigger>
+																		</TooltipTrigger>
+																		<TooltipContent side="top" align="center">
+																			View sources
+																		</TooltipContent>
+																	</Tooltip>
+																	<SheetContent side="right" className="max-w-md w-full">
+																		<div className="p-4">
+																			<SourceLinks sourceLinks={message.sourceLinks || []} autoExpand={true} />
+																		</div>
+																	</SheetContent>
+																</Sheet>
+															);
+														})()}
+														
+														{/* Graph */}
 														{(() => {
 															const graphChatId = chatId || createdChatId || '';
 															console.log('[MiraChatBot] Passing chatId to GraphButton:', {
@@ -3885,18 +3960,19 @@ const MiraChatBot: React.FC = () => {
 																<GraphButton 
 																	message={message} 
 																	chatId={graphChatId} 
-																	className=""
+																	className="text-muted-foreground"
 																/>
 															);
 														})()}
 														
+														{/* TODO List */}
 														{(() => {
 															const todoChatId = chatId || createdChatId || '';
 															return (
 																<TodoListButton 
 																	message={message} 
 																	chatId={todoChatId} 
-																	className=""
+																	className="text-muted-foreground"
 																/>
 															);
 														})()}
@@ -3963,14 +4039,23 @@ const MiraChatBot: React.FC = () => {
 					)}
 					<div className="flex justify-center w-full px-4 sm:px-6 lg:px-8 xl:px-12">
 						<motion.div
-							initial={{ width: "100%", opacity: 0, y: 20 }}
-							animate={{ width: "100%", opacity: 1, y: 0 }}
-							transition={{ 
-								duration: 0.5, 
-								ease: "easeOut",
-								delay: 0.1 
+							initial={{
+								width: uniqueMessages.length === 0 ? '42rem' : '100%',
+								opacity: 0,
+								y: 20
 							}}
-							className="chat-input flex flex-col p-2 rounded-2xl border border-sidebar-border bg-sidebar text-sidebar-foreground w-full max-w-4xl shadow-sm transition-colors"
+							animate={{
+								width: uniqueMessages.length === 0 ? '42rem' : '100%',
+								opacity: 1,
+								y: 0
+							}}
+							transition={{
+								duration: 0.5,
+								ease: 'easeOut',
+								delay: 0.1
+							}}
+							className={`chat-input flex flex-col p-2 rounded-2xl border border-sidebar-border bg-sidebar text-sidebar-foreground w-full ${uniqueMessages.length === 0 ? 'max-w-2xl' : 'max-w-6xl'} shadow-sm transition-all`}
+							style={{ margin: uniqueMessages.length === 0 ? '2.5rem auto' : '0 auto' }}
 						>
 							{/* Input Field */}
 							<motion.textarea

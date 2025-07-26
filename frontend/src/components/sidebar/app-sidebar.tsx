@@ -31,10 +31,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
 	return (
 		<Sidebar collapsible="offcanvas" {...props}>
-			<SidebarHeader className="flex items-center mb-5 justify-between">
+			<SidebarHeader className="flex items-center justify-between p-0">
 				<NewChat />
 			</SidebarHeader>
-			<SidebarSeparator />
 			<SidebarContent className="overflow-hidden h-screen">
 				<NavChatHistory onOpenSearch={() => setIsSearchOpen(true)} />
 			</SidebarContent>

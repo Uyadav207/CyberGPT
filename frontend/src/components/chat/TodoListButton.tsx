@@ -15,6 +15,7 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  useDroppable,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -91,29 +92,18 @@ const SortableTodoItem: React.FC<{
     <motion.div
       ref={setNodeRef}
       style={style}
-      initial={{ opacity: 0, x: -20, y: 10 }}
-      animate={{ 
-        opacity: 1, 
-        x: 0, 
-        y: 0,
-        scale: isDragging ? 1.02 : 1,
-        rotateZ: isDragging ? 1 : 0
-      }}
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
       transition={{
         type: "spring",
         stiffness: 300,
         damping: 30,
         duration: 0.3
       }}
-      whileHover={{ 
-        scale: isDragging ? 1.02 : 1.01,
-        y: isDragging ? 0 : -2
-      }}
-      className={`p-4 border rounded-lg transition-all duration-200 ${
-        item.completed 
-          ? 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700' 
-          : 'bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600'
-      } ${isDragging ? 'shadow-2xl scale-105 ring-2 ring-blue-500 ring-opacity-50' : 'hover:shadow-md'}`}
+      className={`p-4 sm:p-5 rounded-lg transition-all duration-200 bg-card border border-border text-foreground shadow-sm w-full max-w-full relative group
+        ${item.completed ? 'opacity-80 bg-green-50 dark:bg-green-900/30' : ''}
+        ${isDragging ? 'shadow-lg ring-2 ring-primary/20 z-20' : ''}
+        hover:border-primary hover:ring-2 hover:ring-primary/60 hover:shadow-lg`}
     >
       <div className="flex items-start gap-3">
         {/* Drag Handle for Reordering */}
@@ -121,9 +111,9 @@ const SortableTodoItem: React.FC<{
           <div
             {...attributes}
             {...listeners}
-            className="cursor-grab active:cursor-grabbing"
+            className="cursor-grab active:cursor-grabbing rounded p-1 hover:bg-muted/60 transition-colors"
           >
-            <GripVertical className="h-4 w-4 text-gray-400 hover:text-gray-600 transition-colors" />
+            <GripVertical className="h-4 w-4 text-gray-400 group-hover:text-primary transition-colors" />
           </div>
           <Button
             variant="ghost"
@@ -152,21 +142,15 @@ const SortableTodoItem: React.FC<{
                             }`}>
                               {index + 1}. {item.emoji} {item.task}
                             </h4>
-            <Badge className={`text-xs ${getPriorityColor(item.priority)}`}>
-              {item.priority}
-            </Badge>
-            <Badge className={`text-xs ${getCategoryColor(item.category)}`}>
-              {item.category}
-            </Badge>
+            <Badge className={`text-xs bg-sidebar text-sidebar-foreground border border-border hover:bg-sidebar/90 hover:text-sidebar-foreground focus:ring-2 focus:ring-primary/20 transition-colors duration-150 ${getPriorityColor(item.priority)}`}>{item.priority}</Badge>
+            <Badge className={`text-xs bg-sidebar text-sidebar-foreground border border-border hover:bg-sidebar/90 hover:text-sidebar-foreground focus:ring-2 focus:ring-primary/20 transition-colors duration-150 ${getCategoryColor(item.category)}`}>{item.category}</Badge>
           </div>
           
           {/* Risk and CVSS Information */}
           <div className="flex items-center gap-4 mb-3">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-orange-500" />
-              <Badge className={`text-xs border ${getRiskColor(item.riskLevel)}`}>
-                Risk: {item.riskLevel.toUpperCase()}
-              </Badge>
+              <Badge className={`text-xs border bg-card text-foreground border-border hover:bg-card/90 hover:text-foreground focus:ring-2 focus:ring-primary/20 transition-colors duration-150 ${getRiskColor(item.riskLevel)}`}>Risk: {item.riskLevel.toUpperCase()}</Badge>
             </div>
             <div className="flex items-center gap-2">
               <Shield className="h-4 w-4 text-blue-500" />
@@ -186,14 +170,10 @@ const SortableTodoItem: React.FC<{
           {(item.cveIds && item.cveIds.length > 0) || (item.affectedSystems && item.affectedSystems.length > 0) ? (
             <div className="flex flex-wrap gap-2 mb-3">
               {item.cveIds && item.cveIds.map((cveId, idx) => (
-                <Badge key={idx} variant="outline" className="text-xs">
-                  {cveId}
-                </Badge>
+                <Badge key={idx} variant="outline" className="text-xs bg-muted text-muted-foreground border border-border hover:bg-muted/90 hover:text-muted-foreground focus:ring-2 focus:ring-primary/20 transition-colors duration-150">{cveId}</Badge>
               ))}
               {item.affectedSystems && item.affectedSystems.map((system, idx) => (
-                <Badge key={idx} variant="secondary" className="text-xs">
-                  {system}
-                </Badge>
+                <Badge key={idx} variant="secondary" className="text-xs bg-muted text-muted-foreground border border-border hover:bg-muted/90 hover:text-muted-foreground focus:ring-2 focus:ring-primary/20 transition-colors duration-150">{system}</Badge>
               ))}
             </div>
           ) : null}
@@ -213,6 +193,33 @@ const SortableTodoItem: React.FC<{
       </div>
     </motion.div>
   );
+};
+
+// DropIndicator component
+const DropIndicator = ({ id }: { id: string }) => {
+  const { isOver } = useDroppable({ id });
+  return (
+    <div
+      className={`transition-all duration-150 h-0.5 flex items-center justify-center -my-1 ${isOver ? 'opacity-100' : 'opacity-0'}`}
+      aria-hidden={!isOver}
+    >
+      <div className="w-full h-1.5 rounded bg-primary" />
+    </div>
+  );
+};
+
+// Add animation variants for staggered reveal
+const listVariants = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.08
+    }
+  }
+};
+const itemVariants = {
+  hidden: { opacity: 0, scale: 0.98 },
+  visible: { opacity: 1, scale: 1, transition: { duration: 0.3, ease: 'easeOut' } }
 };
 
 const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, className = '' }) => {
@@ -790,38 +797,39 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
     }
   };
 
+  // Update color utility functions to use theme tokens
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      case 'medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-      case 'low': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+      case 'high': return 'bg-destructive/10 text-destructive border border-destructive/20';
+      case 'medium': return 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 border border-yellow-300 dark:border-yellow-800';
+      case 'low': return 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border border-green-300 dark:border-green-800';
+      default: return 'bg-muted text-muted-foreground border border-border';
     }
   };
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case 'Security': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      case 'Updates': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
-      case 'Configuration': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
-      case 'Monitoring': return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200';
-      case 'Testing': return 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+      case 'Security': return 'bg-primary/10 text-primary border border-primary/20';
+      case 'Updates': return 'bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 border border-purple-300 dark:border-purple-800';
+      case 'Configuration': return 'bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 border border-orange-300 dark:border-orange-800';
+      case 'Monitoring': return 'bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 border border-indigo-300 dark:border-indigo-800';
+      case 'Testing': return 'bg-pink-100 dark:bg-pink-900 text-pink-800 dark:text-pink-200 border border-pink-300 dark:border-pink-800';
+      default: return 'bg-muted text-muted-foreground border border-border';
     }
   };
 
   const getRiskColor = (riskLevel: string) => {
     switch (riskLevel) {
-      case 'critical': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-200 dark:border-red-800';
-      case 'high': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 border-orange-200 dark:border-orange-800';
-      case 'medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 border-yellow-200 dark:border-yellow-800';
-      case 'low': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-green-200 dark:border-green-800';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200 border-gray-200 dark:border-gray-800';
+      case 'critical': return 'bg-destructive/10 text-destructive border border-destructive/20';
+      case 'high': return 'bg-orange-100 dark:bg-orange-900 text-orange-800 dark:text-orange-200 border border-orange-300 dark:border-orange-800';
+      case 'medium': return 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 border border-yellow-300 dark:border-yellow-800';
+      case 'low': return 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border border-green-300 dark:border-green-800';
+      default: return 'bg-muted text-muted-foreground border border-border';
     }
   };
 
   const getCVSSColor = (score: number) => {
-    if (score >= 9.0) return 'text-red-600 dark:text-red-400';
+    if (score >= 9.0) return 'text-destructive';
     if (score >= 7.0) return 'text-orange-600 dark:text-orange-400';
     if (score >= 4.0) return 'text-yellow-600 dark:text-yellow-400';
     return 'text-green-600 dark:text-green-400';
@@ -902,16 +910,21 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
 
       {/* TODO List Modal */}
       <Dialog open={showTodoList} onOpenChange={setShowTodoList}>
-        <DialogContent className="max-w-4xl max-h-[80vh] p-0">
+        <DialogContent className="max-w-4xl w-full max-w-full sm:max-w-3xl h-[80vh] p-0 bg-background text-foreground border border-border rounded-lg overflow-hidden flex flex-col">
           {todoList && (
             <>
-              <DialogHeader className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <DialogHeader className="p-4 sm:p-6 border-b border-border bg-card flex-shrink-0">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, ease: 'easeOut' }}
+                    className="flex items-center gap-2 min-w-0 flex-shrink"
+                  >
                     <CheckSquare className="h-5 w-5" />
-                    <DialogTitle>{todoList.title}</DialogTitle>
-                  </div>
-                  <div className="flex items-center gap-2">
+                    <DialogTitle className="truncate">{todoList.title}</DialogTitle>
+                  </motion.div>
+                  <div className="flex flex-row flex-wrap gap-x-2 gap-y-2 items-center justify-end min-w-0">
                     {isSaving && (
                       <div className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
                         <Loader2 className="h-3 w-3 animate-spin" />
@@ -945,7 +958,7 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
                 </p>
               </DialogHeader>
               
-              <ScrollArea className="max-h-[60vh] p-6">
+              <ScrollArea className="flex-1 p-3 sm:p-6 bg-background min-h-0 scroll-smooth overscroll-behavior-contain scroll-behavior-smooth">
                 <DndContext
                   sensors={sensors}
                   collisionDetection={closestCenter}
@@ -955,32 +968,57 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
                     items={todoList.items.map(item => item.id)}
                     strategy={verticalListSortingStrategy}
                   >
-                    <div className="space-y-4">
-                      {todoList.items.map((item, index) => (
-                        <SortableTodoItem
-                          key={item.id}
-                          item={item}
-                          index={index}
-                          onToggle={handleToggleItem}
-                          getPriorityColor={getPriorityColor}
-                          getCategoryColor={getCategoryColor}
-                          getRiskColor={getRiskColor}
-                          getCVSSColor={getCVSSColor}
-                        />
-                      ))}
-                    </div>
+                    <AnimatePresence>
+                      <motion.div
+                        className="space-y-2 pt-4 pb-4"
+                        variants={listVariants}
+                        initial="hidden"
+                        animate="visible"
+                        exit="hidden"
+                      >
+                        {todoList.items.map((item, index) => (
+                          <React.Fragment key={item.id}>
+                            <DropIndicator id={`drop-${item.id}-before`} />
+                            <motion.div variants={itemVariants}>
+                              <SortableTodoItem
+                                item={item}
+                                index={index}
+                                onToggle={handleToggleItem}
+                                getPriorityColor={getPriorityColor}
+                                getCategoryColor={getCategoryColor}
+                                getRiskColor={getRiskColor}
+                                getCVSSColor={getCVSSColor}
+                              />
+                            </motion.div>
+                          </React.Fragment>
+                        ))}
+                        <DropIndicator id={`drop-end`} />
+                      </motion.div>
+                    </AnimatePresence>
                   </SortableContext>
                 </DndContext>
               </ScrollArea>
               
-              <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                <div className="flex justify-between items-center text-sm text-gray-600 dark:text-gray-400">
-                  <span>
-                    {todoList.items.filter(item => item.completed).length} of {todoList.items.length} completed
-                  </span>
-                  <span>
-                    Created {new Date(todoList.createdAt).toLocaleDateString()}
-                  </span>
+              <div className="p-4 sm:p-6 border-t border-border bg-sidebar flex-shrink-0">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                      <span className="text-sidebar-foreground font-medium">
+                        {todoList.items.filter(item => item.completed).length} of {todoList.items.length} completed
+                      </span>
+                    </div>
+                    <div className="h-1 w-1 rounded-full bg-sidebar-foreground/30" />
+                    <span className="text-sidebar-foreground/70">
+                      {Math.round((todoList.items.filter(item => item.completed).length / todoList.items.length) * 100)}% done
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sidebar-foreground/60">
+                    <span className="text-xs">Created</span>
+                    <span className="text-sidebar-foreground font-medium">
+                      {new Date(todoList.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
                 </div>
               </div>
             </>

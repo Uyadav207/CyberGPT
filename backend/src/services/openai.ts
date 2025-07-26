@@ -136,6 +136,22 @@ export class OpenAIService {
 						1. CVEID: The CVE ID of the vulnerability
 
 						Format the response in markdown with clear sections and bullet points for readability.
+						**Code Formatting (REQUIRED):**
+						- **ALWAYS format code examples with proper markdown code blocks**
+						- **Use \`\`\`language syntax highlighting for all code**
+						- **Examples: \`\`\`javascript, \`\`\`python, \`\`\`sql, \`\`\`bash, \`\`\`html, \`\`\`css, \`\`\`json**
+						- **Start code blocks on a new line with proper spacing**
+						- **Include comments in code examples for clarity**
+						- **Use inline code with \`backticks\` for short code snippets**
+						- **DETECT ALL CODE**: If you see any programming syntax, commands, or technical terms, format them as code
+						- **Inline Code Examples**: Use \`SELECT * FROM users\`, \`npm install\`, \`git clone\`, \`docker run\`, \`curl -X GET\`
+						- **Code Detection Rules**:
+						  - Any programming language syntax → Code block
+						  - Commands (npm, git, docker, curl, etc.) → Inline code
+						  - File paths (/etc/passwd, C:\\Windows) → Inline code
+						  - URLs with parameters → Inline code
+						  - JSON/XML structures → Code block
+						  - Configuration syntax → Code block
 						**Add attractive and relevant emojis frequently and naturally throughout the answer, not just in headings or lists.**
 						- Place emojis at the start of major sections, in lists, and within sentences to make the content visually engaging and friendly.
 						- Use a variety of emojis (e.g., lightbulb 💡 for ideas, warning ⚠️ for risks, shield 🛡️ for protection, checkmark ✅ for steps, etc.).

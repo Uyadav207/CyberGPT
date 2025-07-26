@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, ChevronRight, ExternalLink, Shield, BookOpen, Database, Link } from 'lucide-react';
+import { Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
 
 interface SourceLink {
   title: string;
@@ -11,18 +12,19 @@ interface SourceLink {
 interface SourceLinksProps {
   sourceLinks: SourceLink[];
   className?: string;
+  autoExpand?: boolean;
 }
 
 const getSourceIcon = (type: string) => {
   switch (type) {
     case 'official':
-      return <Shield className="w-3 h-3 text-green-600" />;
+      return <Shield className="w-4 h-4 text-muted-foreground" strokeWidth={2.5} />;
     case 'reference':
-      return <BookOpen className="w-3 h-3 text-blue-600" />;
+      return <BookOpen className="w-4 h-4 text-muted-foreground" strokeWidth={2.5} />;
     case 'framework':
-      return <Database className="w-3 h-3 text-purple-600" />;
+      return <Database className="w-4 h-4 text-muted-foreground" strokeWidth={2.5} />;
     default:
-      return <ExternalLink className="w-3 h-3 text-gray-600" />;
+      return <ExternalLink className="w-4 h-4 text-muted-foreground" strokeWidth={2.5} />;
   }
 };
 
@@ -39,8 +41,15 @@ const getSourceTypeColor = (type: string) => {
   }
 };
 
-export const SourceLinks: React.FC<SourceLinksProps> = ({ sourceLinks, className = '' }) => {
+export const SourceLinks: React.FC<SourceLinksProps> = ({ sourceLinks, className = '', autoExpand }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  React.useEffect(() => {
+    if (autoExpand) {
+      const timer = setTimeout(() => setIsExpanded(true), 200);
+      return () => clearTimeout(timer);
+    }
+  }, [autoExpand]);
 
   if (!sourceLinks || sourceLinks.length === 0) {
     return null;
@@ -67,15 +76,24 @@ export const SourceLinks: React.FC<SourceLinksProps> = ({ sourceLinks, className
           className="w-full px-3 py-2 flex items-center justify-between hover:bg-accent/60 transition-colors"
         >
           <div className="flex items-center gap-2">
-            <Link className="w-4 h-4 text-muted-foreground" />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span>
+                  <Link className="w-4 h-4 text-muted-foreground" strokeWidth={2.5} />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" align="center">
+                Show all sources
+              </TooltipContent>
+            </Tooltip>
             <span className="text-sm font-medium text-sidebar-foreground">
               Sources ({sourceLinks.length})
             </span>
           </div>
           {isExpanded ? (
-            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            <ChevronDown className="w-4 h-4 text-muted-foreground" strokeWidth={2.5} />
           ) : (
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <ChevronRight className="w-4 h-4 text-muted-foreground" strokeWidth={2.5} />
           )}
         </button>
 

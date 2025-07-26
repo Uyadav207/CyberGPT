@@ -1,4 +1,4 @@
-import { MessageCirclePlusIcon } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "../ui/sidebar";
 import useChatActionStore from "../../store/chatActions";
@@ -17,14 +17,14 @@ export function NewChat() {
 		<TooltipProvider>
 			<SidebarMenu className="m-0">
 				<SidebarMenuItem>
-					<div className="w-full flex justify-center">
+					<div className="flex justify-center px-4 py-3">
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<SidebarMenuButton
 									onClick={handleNewChat}
-									className="w-full flex items-center justify-center gap-1 rounded-md bg-sidebar text-sidebar-foreground border border-sidebar-border hover:bg-accent transition-colors px-3 py-2 font-medium text-sm"
+									className="flex items-center justify-center gap-2 rounded-lg bg-black text-white dark:bg-white dark:text-black hover:bg-gray-800 dark:hover:bg-gray-100 transition-all duration-200 px-4 py-2.5 font-medium text-sm shadow-sm hover:shadow-md"
 								>
-									<MessageCirclePlusIcon className="h-4 w-4 text-muted-foreground" />
+									<Plus className="h-4 w-4 text-white dark:text-black" />
 									<span>New chat</span>
 								</SidebarMenuButton>
 							</TooltipTrigger>
