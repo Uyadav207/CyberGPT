@@ -4,7 +4,7 @@ import { Label } from "@components/ui/label";
 import { profileSchema, USER_INITIAL_VALUES } from "./constants";
 import type { ProfileValues } from "./constants";
 import { showErrorToast } from "@components/toaster";
-import { Loader2 } from "lucide-react";
+import { Loader2, Save, User, AtSign } from "lucide-react";
 import {
 	Form,
 	FormItem,
@@ -17,15 +17,12 @@ import type { FieldValues } from "react-hook-form";
 import useStore from "../../store/store";
 import { useState } from "react";
 import { Button } from "../ui/button";
-import { Dialog } from "../dialog";
-import { handleSubmit, handleDelete } from "./profile-actions";
+import { handleSubmit } from "./profile-actions";
 import AvatarUpload from "./AvatarUpload";
 
 const ProfileForm = () => {
 	const user = useStore((state) => state.user);
-	const [isDialog, setIsDialogOpen] = useState(false);
 	const token = useStore((state) => state.token);
-	const [, setUserIdToDelete] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 
 	const form = useForm<ProfileValues>({
@@ -38,184 +35,183 @@ const ProfileForm = () => {
 	});
 
 	return (
-		<div className="flex flex-col w-full bg-transparent px-4 md:px-8">
-			<div className="flex justify-left items-left mb-10 px-20">
+		<div className="space-y-6">
+			{/* Avatar Section */}
+			<div className="flex flex-col items-center space-y-4 p-6 rounded-lg bg-muted/30 border border-border/50">
 				<AvatarUpload userId={user?.id ?? ""} token={token || ""} />
+				<div className="text-center">
+					<h3 className="font-medium text-sm">Profile Picture</h3>
+					<p className="text-xs text-muted-foreground mt-1">
+						Click to upload a new image
+					</p>
+				</div>
 			</div>
-			<div className="flex justify-center items-center">
-				<Form {...form}>
-					<form
-						onSubmit={form.handleSubmit((data) => {
-							if (user) {
-								handleSubmit(
-									data,
-									{ userId: user.id },
-									setIsLoading,
-								);
-							} else {
-								showErrorToast("User not found");
-							}
-						})}
-						className="w-full max-w-4xl"
-					>
-						{/* Form Layout */}
-						<div className="flex gap-8">
-							<div className="flex flex-col gap-8 w-1/2">
-								<FormField
-									control={form.control}
-									name="firstName"
-									render={({
-										field,
-									}: { field: FieldValues }) => (
-										<FormItem>
-											<Label
-												htmlFor="firstName"
-												className="text-sm font-medium"
-											>
-												First Name
-											</Label>
-											<FormControl>
-												<Input
-													placeholder="First Name"
-													{...field}
-												/>
-											</FormControl>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
-								<FormField
-									control={form.control}
-									name="username"
-									render={({
-										field,
-									}: { field: FieldValues }) => (
-										<FormItem>
-											<Label
-												htmlFor="username"
-												className="text-sm font-medium"
-											>
-												Username
-											</Label>
-											<FormControl>
-												<Input
-													placeholder="Username"
-													{...field}
-												/>
-											</FormControl>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
-							</div>
 
-							<div className="flex flex-col gap-8 w-1/2">
-								<FormField
-									control={form.control}
-									name="lastName"
-									render={({
-										field,
-									}: { field: FieldValues }) => (
-										<FormItem>
-											<Label
-												htmlFor="lastName"
-												className="text-sm font-medium"
-											>
-												Last Name
-											</Label>
-											<FormControl>
-												<Input
-													placeholder="Last Name"
-													{...field}
-												/>
-											</FormControl>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
-								<FormField
-									control={form.control}
-									name="email"
-									render={({
-										field,
-									}: { field: FieldValues }) => (
-										<FormItem>
-											<Label
-												htmlFor="email"
-												className="text-sm font-medium"
-											>
-												Email
-											</Label>
-											<FormControl>
-												<Input
-													placeholder="Email"
-													type="email"
-													disabled={
-														user?.authProvider ===
-														"google"
-													}
-													{...field}
-												/>
-											</FormControl>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
-							</div>
+			{/* Form Section */}
+			<Form {...form}>
+				<form
+					onSubmit={form.handleSubmit((data) => {
+						if (user) {
+							handleSubmit(
+								data,
+								{ userId: user.id },
+								setIsLoading,
+							);
+						} else {
+							showErrorToast("User not found");
+						}
+					})}
+					className="space-y-6"
+				>
+					{/* Personal Information */}
+					<div className="space-y-4">
+						<div className="flex items-center gap-2 mb-4">
+							<User className="h-4 w-4 text-muted-foreground" />
+							<h3 className="font-medium text-sm">Personal Information</h3>
 						</div>
-
-						{/* Submit Button */}
-						<div className="mt-6 text-center">
-							<Button
-								className="flex items-center justify-center gap-2 px-6 py-2"
-								type="submit"
-								variant="default"
-								disabled={
-									isLoading ||
-									Object.keys(form.formState.errors).length >
-										0 ||
-									(!form.formState.isDirty &&
-										!form.formState.isSubmitting)
-								}
-							>
-								{isLoading && (
-									<Loader2 className="animate-spin text-blue-500" />
+						
+						<div className="grid gap-4 md:grid-cols-2">
+							<FormField
+								control={form.control}
+								name="firstName"
+								render={({
+									field,
+								}: { field: FieldValues }) => (
+									<FormItem>
+										<Label
+											htmlFor="firstName"
+											className="text-sm font-medium"
+										>
+											First Name
+										</Label>
+										<FormControl>
+											<Input
+												placeholder="Enter your first name"
+												className="h-10"
+												{...field}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
 								)}
-								Edit Details
-							</Button>
+							/>
+							
+							<FormField
+								control={form.control}
+								name="lastName"
+								render={({
+									field,
+								}: { field: FieldValues }) => (
+									<FormItem>
+										<Label
+											htmlFor="lastName"
+											className="text-sm font-medium"
+										>
+											Last Name
+										</Label>
+										<FormControl>
+											<Input
+												placeholder="Enter your last name"
+												className="h-10"
+												{...field}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
 						</div>
-						<div className="mt-6 text-center">
-							<Button
-								type="button"
-								variant="destructive"
-								className="flex items-center justify-center gap-2 px-6 py-2 "
-								onClick={() => {
-									setUserIdToDelete(user?.id || null);
-									setIsDialogOpen(true);
-								}}
-							>
-								Delete Account
-							</Button>
+					</div>
+
+					{/* Account Information */}
+					<div className="space-y-4">
+						<div className="flex items-center gap-2 mb-4">
+							<AtSign className="h-4 w-4 text-muted-foreground" />
+							<h3 className="font-medium text-sm">Account Information</h3>
 						</div>
-					</form>
-				</Form>
-			</div>
-			<Dialog
-				onClose={() => setIsDialogOpen(false)}
-				onConfirm={() => {
-					if (user?.id) {
-						handleDelete({ userId: user.id });
-					} else {
-						showErrorToast("User ID is missing.");
-					}
-				}}
-				open={isDialog}
-				title="Delete User"
-				description="Are you sure you want to delete account? Once deleted cannot be retrieved!."
-				onCancel={() => setIsDialogOpen(false)}
-				confirmText="Delete"
-				cancelText="Cancel"
-			/>
+						
+						<div className="grid gap-4 md:grid-cols-2">
+							<FormField
+								control={form.control}
+								name="username"
+								render={({
+									field,
+								}: { field: FieldValues }) => (
+									<FormItem>
+										<Label
+											htmlFor="username"
+											className="text-sm font-medium"
+										>
+											Username
+										</Label>
+										<FormControl>
+											<Input
+												placeholder="Choose a username"
+												className="h-10"
+												{...field}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							
+							<FormField
+								control={form.control}
+								name="email"
+								render={({
+									field,
+								}: { field: FieldValues }) => (
+									<FormItem>
+										<Label
+											htmlFor="email"
+											className="text-sm font-medium"
+										>
+											Email Address
+										</Label>
+										<FormControl>
+											<Input
+												placeholder="your.email@example.com"
+												type="email"
+												className="h-10"
+												disabled={
+													user?.authProvider ===
+													"google"
+												}
+												{...field}
+											/>
+										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+						</div>
+					</div>
+
+					{/* Action Button */}
+					<div className="pt-6 border-t border-border/50">
+						<Button
+							className="flex items-center justify-center gap-2 px-6 py-2.5"
+							type="submit"
+							variant="default"
+							disabled={
+								isLoading ||
+								Object.keys(form.formState.errors).length >
+									0 ||
+								(!form.formState.isDirty &&
+									!form.formState.isSubmitting)
+							}
+						>
+							{isLoading ? (
+								<Loader2 className="h-4 w-4 animate-spin" />
+							) : (
+								<Save className="h-4 w-4" />
+							)}
+							Save Changes
+						</Button>
+					</div>
+				</form>
+			</Form>
 		</div>
 	);
 };

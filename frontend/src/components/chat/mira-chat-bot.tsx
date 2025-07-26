@@ -2,10 +2,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { v4 as uuidv4 } from "uuid";
-import { FaRegLightbulb } from 'react-icons/fa';
-import { FaChevronDown, FaChevronRight } from 'react-icons/fa';
-import { Button } from "@components/ui/button";
-import { Search } from "lucide-react";
+import { FaChevronRight } from 'react-icons/fa';
+import { Brain } from "lucide-react";
 
 //components
 import { ScrollArea } from "@components/ui/scroll-area";
@@ -34,7 +32,7 @@ import useStore from "../../store/store";
 import useChatActionStore from "../../store/chatActions";
 
 // svgs
-import mira_logo from "../../assets/Mira_logo.png";
+// import mira_logo from "../../assets/Mira_logo.png";
 
 // types
 import type { TriggerAgentData } from "../../types/agent";
@@ -69,9 +67,7 @@ import { showErrorToast, showInfoToast, showSuccessToast } from "../toaster";
 
 import { agentApi } from "../../api/agent";
 import RoleButtonGroup from "./chatComponents/RoleButton/RoleButtonGroup";
-import { ReasoningTrace } from "./ReasoningTrace";
 import { SourceLinks } from "./SourceLinks";
-import { ChatSearch } from "./chat-search";
 import GraphButton, { convertGraphDataToGraphVisualization } from "../graph-visualization/GraphButton";
 
 // Interactive Loading Messages
@@ -3568,14 +3564,6 @@ const MiraChatBot: React.FC = () => {
 										<div
 											className={`items-center ${message.sender === "ai" ? "flex space-x-3" : ""}`}
 										>
-											{message.sender === "ai" && (
-												<img
-													src={mira_logo}
-													alt="Avatar"
-													className="w-5 h-5 mt-3 object-cover rounded-full justify-self-center mb-auto"
-												/>
-											)}
-
 										<div className={`${messageClasses}`}>
 											{/* Reasoning summary indicator (before every message if present) */}
 											{message.reasoningTrace && (
@@ -3620,8 +3608,8 @@ const MiraChatBot: React.FC = () => {
 													aria-expanded={expandedReasoning[String(message.id)] === true}
 													aria-controls={`reasoning-summary-${String(message.id)}`}
 												>
-													<FaRegLightbulb className="mr-1 text-sidebar-foreground" />
-													<span>Reasoning available</span>
+													<Brain className="mr-2 text-sidebar-foreground w-4 h-4" />
+													<span>Reasoning</span>
 													{typeof message.durationSec === 'number' && (
 														<span className="ml-2 text-sidebar-foreground/60">Thought for {Math.round(message.durationSec)}s</span>
 													)}
@@ -3651,7 +3639,7 @@ const MiraChatBot: React.FC = () => {
 														className="mb-2 p-3 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 rounded-lg border-l-4 border-blue-400 dark:border-blue-500 shadow-sm relative overflow-hidden"
 														style={{ fontSize: '0.875rem', lineHeight: 1.5 }}
 													>
-														<div className="flex items-center mb-1">
+														<div className="flex items-center mb-2 mt-1">
 															<span className="text-lg mr-1">🤔</span>
 															<span className="font-medium text-blue-700 dark:text-blue-200 text-sm">Reasoning</span>
 													</div>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, ChevronRight, ExternalLink, Shield, BookOpen, Database } from 'lucide-react';
+import { ChevronDown, ChevronRight, ExternalLink, Shield, BookOpen, Database, Link } from 'lucide-react';
 
 interface SourceLink {
   title: string;
@@ -67,7 +67,7 @@ export const SourceLinks: React.FC<SourceLinksProps> = ({ sourceLinks, className
           className="w-full px-3 py-2 flex items-center justify-between hover:bg-accent/60 transition-colors"
         >
           <div className="flex items-center gap-2">
-            <ExternalLink className="w-4 h-4 text-muted-foreground" />
+            <Link className="w-4 h-4 text-muted-foreground" />
             <span className="text-sm font-medium text-sidebar-foreground">
               Sources ({sourceLinks.length})
             </span>

@@ -59,7 +59,7 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({ userId, token }) => {
 			/>
 			<button
 				type="button"
-				className="avatar-preview"
+				className="avatar-preview transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-full"
 				onClick={handlePreviewClick}
 				onKeyUp={(e) => {
 					if (e.key === "Enter" || e.key === " ") {
@@ -67,14 +67,15 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({ userId, token }) => {
 					}
 				}}
 				style={{
-					width: "150px",
-					height: "150px",
+					width: "120px",
+					height: "120px",
 					borderRadius: "50%",
 					overflow: "hidden",
 					cursor: "pointer",
 					padding: 0,
 					border: "none",
 					background: "none",
+					boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
 				}}
 			>
 				<img
