@@ -104,10 +104,12 @@ const chatSummaryOpenAI = async (payload: { messages: string[] }) => {
   return response; // Return the readable stream for processing
 };
 
-// Add a new function to call the backend chatWithJargon endpoint
+// Add a new function to call the backend chatWithJargon endpoint with automatic graph generation
 export const chatWithJargon = async (payload: {
   message: string;
   agentPersonality?: string;
+  messageId?: string;
+  chatId?: string;
 }) => {
   console.log(
     "DEBUG: Calling chatWithJargon endpoint:",

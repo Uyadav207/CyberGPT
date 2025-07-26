@@ -26,7 +26,7 @@ export const saveChatMessage = mutation({
   },
 });
 
-// Save Enhanced Chat Message with AI Response Data
+// Save Enhanced Chat Message with AI Response Data and Graph Visualization
 export const saveEnhancedChatMessage = mutation({
   args: {
     chatId: v.id("chats"),
@@ -55,6 +55,7 @@ export const saveEnhancedChatMessage = mutation({
     ),
     Severity: v.optional(v.string()),
     tags: v.optional(v.array(v.string())),
+    graphVisualization: v.optional(v.any()), // Add graph visualization data
   },
   handler: async (
     ctx,
@@ -71,6 +72,7 @@ export const saveEnhancedChatMessage = mutation({
       Info,
       Severity,
       tags,
+      graphVisualization,
     }
   ) => {
     console.log("saveEnhancedChatMessage called with:", {
@@ -80,6 +82,10 @@ export const saveEnhancedChatMessage = mutation({
       hasInfo: !!Info,
       hasReasoning: !!Reasoning,
       jargonsKeys: Jargons ? Object.keys(Jargons) : [],
+      hasGraphVisualization: !!graphVisualization,
+      graphVisualizationKeys: graphVisualization
+        ? Object.keys(graphVisualization)
+        : [],
     });
     const now = Date.now();
     // Ensure Reasoning is always a string (narrative)
@@ -91,6 +97,26 @@ export const saveEnhancedChatMessage = mutation({
           : Reasoning && typeof Reasoning.narrative === "string"
             ? Reasoning.narrative
             : undefined;
+    console.log("📊 [Convex] Storing chat message with graph visualization:", {
+      messageId: humanInTheLoopId,
+      chatId,
+      sender,
+      messageLength: message.length,
+      hasGraphVisualization: !!graphVisualization,
+      graphVisualizationSummary: graphVisualization
+        ? {
+            vulnerabilities: graphVisualization.vulnerabilities?.length || 0,
+            mitigations: graphVisualization.mitigations?.length || 0,
+            sources: graphVisualization.sources?.length || 0,
+            cves: graphVisualization.cves?.length || 0,
+            problems: graphVisualization.problems?.length || 0,
+            affected: graphVisualization.affected?.length || 0,
+            risks: graphVisualization.risks?.length || 0,
+            relationships: graphVisualization.relationships?.length || 0,
+          }
+        : "No graph data",
+    });
+
     const result = await ctx.db.insert("chatHistory", {
       chatId,
       humanInTheLoopId,
@@ -105,7 +131,17 @@ export const saveEnhancedChatMessage = mutation({
       Info,
       Severity,
       tags: tags || [], // Default to empty array if not provided
+      graphVisualization, // Include graph visualization data
     });
+
+    console.log(
+      "✅ [Convex] Chat message stored successfully with graph visualization:",
+      {
+        messageId: humanInTheLoopId,
+        databaseId: result,
+        hasGraphVisualization: !!graphVisualization,
+      }
+    );
 
     await ctx.db.patch(chatId, { updatedAt: now });
 

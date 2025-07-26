@@ -20,4 +20,19 @@ graphRoutes.get("/chat/:chatId", async (c) => {
   return graphController.getGraphsByChatId(c);
 });
 
+// Test endpoint to generate sample graph data
+graphRoutes.get("/test", async (c) => {
+  return graphController.generateTestGraph(c);
+});
+
+// Test endpoint to generate real graph with sample data
+graphRoutes.get("/test-real", async (c) => {
+  return graphController.generateTestRealGraph(c);
+});
+
+// Test endpoint to verify user question as main problem node
+graphRoutes.get("/test-user-question", async (c) => {
+  return graphController.generateTestUserQuestionGraph(c);
+});
+
 export default graphRoutes;
