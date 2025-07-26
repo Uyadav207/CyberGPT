@@ -3710,13 +3710,13 @@ const MiraChatBot: React.FC = () => {
 													{/* Related Questions - Positioned below */}
 													{isLastAiMessage && (
 														<div className="mt-3">
-															<div className="text-xs text-gray-500 mb-2 italic">Suggested follow-up questions:</div>
+															<div className="text-xs text-sidebar-foreground/70 mb-2 italic">Suggested follow-up questions:</div>
 															<div className="flex flex-wrap gap-2">
 															{messageRelatedQuestions.map((q: string, i: number) => (
 																<motion.button
 																	key={`${message.id}-${q}-${i}`}
 																	onClick={() => handleSend(q, false, true)}
-																	className="rounded-lg px-3 py-1.5 bg-white border border-gray-300 text-gray-700 text-xs sm:text-sm font-medium hover:bg-gray-50 hover:shadow-sm transition-shadow focus:outline-none focus:ring-2 focus:ring-indigo-400"
+																	className="rounded-lg px-3 py-1.5 bg-sidebar border border-sidebar-border text-sidebar-foreground text-xs sm:text-sm font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-sidebar-ring"
 																	style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
 																	initial={{ opacity: 0, y: 20 }}
 																	animate={{ opacity: 1, y: 0 }}
@@ -3794,7 +3794,6 @@ const MiraChatBot: React.FC = () => {
 								selectedAgentMode={selectedAgentMode}
 								onAgentModeChange={setSelectedAgentMode}
 								agentButtonsDisabled={agentButtonsDisabled}
-								buttonClassName="border border-sidebar-border"
 							/>
 						</motion.div>
 					</div>

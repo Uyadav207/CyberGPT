@@ -272,16 +272,16 @@ export const convertGraphDataToGraphVisualization = (graphData: GraphData): Grap
 
   // Convert links to relationships according to schema
   graphData.links.forEach((link, index) => {
-    relationships.push({
-      id: link.id,
-      sourceId: link.source,
-      targetId: link.target,
-      type: link.type,
-      strength: link.strength || 8.0,
-      description: link.description || '',
-      evidence: link.metadata?.evidence || '',
-      confidence: link.metadata?.confidence || 0.8,
-    });
+          relationships.push({
+        id: link.id,
+        sourceId: link.source,
+        targetId: link.target,
+        type: link.type,
+        strength: link.strength || 8.0,
+        description: link.description || '',
+        evidence: '',
+        confidence: 0.8,
+      });
   });
 
   // Add non-empty arrays to graphVisualization
@@ -340,7 +340,7 @@ const GraphButton: React.FC<GraphButtonProps> = ({ message, chatId, className = 
 
       // First, try to get existing graph from REST API
       console.log('[GraphButton] Checking for existing graph:', { messageId: message.id, chatId });
-      const existingGraph = await graphApis.getGraphByMessageId(message.id, chatId);
+      const existingGraph = await graphApis.getGraphByMessageId(message.id || '', chatId);
       
       if (existingGraph) {
         console.log('[GraphButton] Found existing graph:', existingGraph);
@@ -385,9 +385,9 @@ const GraphButton: React.FC<GraphButtonProps> = ({ message, chatId, className = 
         
         // Save to Convex
         await saveGraphMutation({
-          messageId: message.id,
+          messageId: message.id || '',
           chatId,
-          graphVisualization
+          graphVisualization: graphVisualization
         });
 
         console.log('[GraphButton] Graph saved to Convex successfully');
@@ -437,8 +437,8 @@ const GraphButton: React.FC<GraphButtonProps> = ({ message, chatId, className = 
             disabled={isGenerating}
             className={`h-8 w-8 p-0 rounded-full transition-all duration-200 ${
               showGraph 
-                ? 'bg-blue-100 text-blue-600 hover:bg-blue-200 dark:bg-blue-900 dark:text-blue-300' 
-                : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                ? 'bg-sidebar-accent text-sidebar-primary hover:bg-sidebar-accent/80' 
+                : 'hover:bg-sidebar-accent'
             }`}
           >
             {isGenerating ? (

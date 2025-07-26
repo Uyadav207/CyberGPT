@@ -32,24 +32,24 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
   const [zoomLevel, setZoomLevel] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Node type configurations
+  // Node type configurations with sidebar color scheme
   const nodeConfig = {
-    vulnerability: { color: '#ef4444', icon: AlertTriangle, size: 20 },
-    mitigation: { color: '#10b981', icon: Shield, size: 18 },
-    source: { color: '#3b82f6', icon: Info, size: 16 },
-    cve: { color: '#f59e0b', icon: Target, size: 22 },
-    problem: { color: '#8b5cf6', icon: Network, size: 24 },
-    affected: { color: '#ec4899', icon: Zap, size: 19 },
-    risk: { color: '#dc2626', icon: AlertTriangle, size: 21 }
+    vulnerability: { color: 'hsl(var(--destructive))', icon: AlertTriangle, size: 20 },
+    mitigation: { color: 'hsl(var(--chart-2))', icon: Shield, size: 18 },
+    source: { color: 'hsl(var(--sidebar-primary))', icon: Info, size: 16 },
+    cve: { color: 'hsl(var(--chart-4))', icon: Target, size: 22 },
+    problem: { color: 'hsl(var(--chart-5))', icon: Network, size: 24 },
+    affected: { color: 'hsl(var(--chart-1))', icon: Zap, size: 19 },
+    risk: { color: 'hsl(var(--destructive))', icon: AlertTriangle, size: 21 }
   };
 
-  // Link type configurations
+  // Link type configurations with sidebar color scheme
   const linkConfig = {
-    mitigates: { color: '#10b981', width: 3 },
-    affects: { color: '#ef4444', width: 2 },
-    references: { color: '#3b82f6', width: 1 },
-    causes: { color: '#f59e0b', width: 2.5 },
-    relates_to: { color: '#8b5cf6', width: 1.5 }
+    mitigates: { color: 'hsl(var(--chart-2))', width: 3 },
+    affects: { color: 'hsl(var(--destructive))', width: 2 },
+    references: { color: 'hsl(var(--sidebar-primary))', width: 1 },
+    causes: { color: 'hsl(var(--chart-4))', width: 2.5 },
+    relates_to: { color: 'hsl(var(--chart-5))', width: 1.5 }
   };
 
   useEffect(() => {
@@ -132,11 +132,11 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
       .attr('fill', (d) => {
         if (d.severity) {
           const severityColors = {
-            Critical: '#dc2626',
-            High: '#ea580c',
-            Medium: '#d97706',
-            Low: '#65a30d',
-            Info: '#3b82f6'
+            Critical: 'hsl(var(--destructive))',
+            High: 'hsl(var(--chart-1))',
+            Medium: 'hsl(var(--chart-4))',
+            Low: 'hsl(var(--chart-2))',
+            Info: 'hsl(var(--sidebar-primary))'
           };
           return severityColors[d.severity] || nodeConfig[d.type]?.color;
         }
@@ -153,7 +153,7 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
       .attr('dy', 30)
       .attr('font-size', '12px')
       .attr('font-weight', '500')
-      .attr('fill', '#374151')
+      .attr('fill', 'hsl(var(--sidebar-foreground))')
       .style('pointer-events', 'none');
 
     // Add node type icons
@@ -161,7 +161,7 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
       .attr('text-anchor', 'middle')
       .attr('dy', -5)
       .attr('font-size', '14px')
-      .attr('fill', '#fff')
+      .attr('fill', 'hsl(var(--sidebar-primary-foreground))')
       .style('pointer-events', 'none')
       .text((d) => {
         const icons = {
@@ -236,26 +236,26 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
   const currentHeight = isFullscreen ? window.innerHeight - 100 : height;
 
   return (
-    <div className={`relative bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 ${className}`}>
+    <div className={`relative bg-sidebar border border-sidebar-border rounded-lg ${className}`}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
         <div className="flex items-center space-x-2">
-          <Network className="w-5 h-5 text-blue-600" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          <Network className="w-5 h-5 text-sidebar-primary" />
+          <h3 className="text-lg font-semibold text-sidebar-foreground">
             Knowledge Graph Visualization
           </h3>
         </div>
         <div className="flex items-center space-x-2">
           <button
             onClick={resetZoom}
-            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+            className="p-2 text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors"
             title="Reset Zoom"
           >
             <RotateCcw className="w-4 h-4" />
           </button>
           <button
             onClick={toggleFullscreen}
-            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+            className="p-2 text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors"
             title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
@@ -266,10 +266,10 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
       {/* Graph Container */}
       <div ref={containerRef} className="relative">
         {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-gray-900 bg-opacity-75 z-10">
+          <div className="absolute inset-0 flex items-center justify-center bg-sidebar bg-opacity-75 z-10">
             <div className="flex items-center space-x-2">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-              <span className="text-gray-600 dark:text-gray-300">Generating graph...</span>
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-sidebar-primary"></div>
+              <span className="text-sidebar-foreground">Generating graph...</span>
             </div>
           </div>
         )}
@@ -282,15 +282,15 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
         />
 
         {/* Zoom Level Indicator */}
-        <div className="absolute bottom-4 right-4 bg-white dark:bg-gray-800 px-3 py-1 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600">
-          <span className="text-sm text-gray-600 dark:text-gray-300">
+        <div className="absolute bottom-4 right-4 bg-sidebar px-3 py-1 rounded-lg shadow-lg border border-sidebar-border">
+          <span className="text-sm text-sidebar-foreground">
             Zoom: {Math.round(zoomLevel * 100)}%
           </span>
         </div>
 
         {/* Legend */}
-        <div className="absolute top-4 left-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-200 dark:border-gray-600 max-w-xs">
-          <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Node Types</h4>
+        <div className="absolute top-4 left-4 bg-sidebar p-4 rounded-lg shadow-lg border border-sidebar-border max-w-xs">
+          <h4 className="text-sm font-semibold text-sidebar-foreground mb-3">Node Types</h4>
           <div className="space-y-2">
             {Object.entries(nodeConfig).map(([type, config]) => (
               <div key={type} className="flex items-center space-x-2">
@@ -298,7 +298,7 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
                   className="w-3 h-3 rounded-full"
                   style={{ backgroundColor: config.color }}
                 />
-                <span className="text-xs text-gray-600 dark:text-gray-300 capitalize">
+                <span className="text-xs text-sidebar-foreground/70 capitalize">
                   {type}
                 </span>
               </div>
@@ -314,16 +314,16 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
             initial={{ opacity: 0, x: 300 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 300 }}
-            className="absolute top-0 right-0 w-80 h-full bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-lg overflow-y-auto"
+            className="absolute top-0 right-0 w-80 h-full bg-sidebar border-l border-sidebar-border shadow-lg overflow-y-auto"
           >
             <div className="p-4">
               <div className="flex items-center justify-between mb-4">
-                <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                <h4 className="text-lg font-semibold text-sidebar-foreground">
                   Node Details
                 </h4>
                 <button
                   onClick={clearSelection}
-                  className="p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  className="p-1 text-sidebar-foreground/70 hover:text-sidebar-foreground"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -331,24 +331,24 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
               
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Label</label>
-                  <p className="text-gray-900 dark:text-white font-semibold">{selectedNode.label}</p>
+                  <label className="text-sm font-medium text-sidebar-foreground/70">Label</label>
+                  <p className="text-sidebar-foreground font-semibold">{selectedNode.label}</p>
                 </div>
                 
                 <div>
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Type</label>
-                  <p className="text-gray-900 dark:text-white capitalize">{selectedNode.type}</p>
+                  <label className="text-sm font-medium text-sidebar-foreground/70">Type</label>
+                  <p className="text-sidebar-foreground capitalize">{selectedNode.type}</p>
                 </div>
                 
                 {selectedNode.severity && (
                   <div>
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Severity</label>
+                    <label className="text-sm font-medium text-sidebar-foreground/70">Severity</label>
                     <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                      selectedNode.severity === 'Critical' ? 'bg-red-100 text-red-800' :
-                      selectedNode.severity === 'High' ? 'bg-orange-100 text-orange-800' :
-                      selectedNode.severity === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                      selectedNode.severity === 'Low' ? 'bg-green-100 text-green-800' :
-                      'bg-blue-100 text-blue-800'
+                      selectedNode.severity === 'Critical' ? 'bg-destructive/20 text-destructive' :
+                      selectedNode.severity === 'High' ? 'bg-chart-1/20 text-chart-1' :
+                      selectedNode.severity === 'Medium' ? 'bg-chart-4/20 text-chart-4' :
+                      selectedNode.severity === 'Low' ? 'bg-chart-2/20 text-chart-2' :
+                      'bg-sidebar-primary/20 text-sidebar-primary'
                     }`}>
                       {selectedNode.severity}
                     </span>
@@ -357,22 +357,22 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
                 
                 {selectedNode.cvss && (
                   <div>
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">CVSS Score</label>
-                    <p className="text-gray-900 dark:text-white">{selectedNode.cvss}</p>
+                    <label className="text-sm font-medium text-sidebar-foreground/70">CVSS Score</label>
+                    <p className="text-sidebar-foreground">{selectedNode.cvss}</p>
                   </div>
                 )}
                 
                 {selectedNode.description && (
                   <div>
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
-                    <p className="text-gray-900 dark:text-white text-sm">{selectedNode.description}</p>
+                    <label className="text-sm font-medium text-sidebar-foreground/70">Description</label>
+                    <p className="text-sidebar-foreground text-sm">{selectedNode.description}</p>
                   </div>
                 )}
                 
                 {selectedNode.source && (
                   <div>
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Source</label>
-                    <p className="text-gray-900 dark:text-white text-sm">{selectedNode.source}</p>
+                    <label className="text-sm font-medium text-sidebar-foreground/70">Source</label>
+                    <p className="text-sidebar-foreground text-sm">{selectedNode.source}</p>
                   </div>
                 )}
               </div>
@@ -388,16 +388,16 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
             initial={{ opacity: 0, y: 300 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 300 }}
-            className="absolute bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 shadow-lg"
+            className="absolute bottom-0 left-0 right-0 bg-sidebar border-t border-sidebar-border shadow-lg"
           >
             <div className="p-4">
               <div className="flex items-center justify-between mb-4">
-                <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                <h4 className="text-lg font-semibold text-sidebar-foreground">
                   Link Details
                 </h4>
                 <button
                   onClick={clearSelection}
-                  className="p-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  className="p-1 text-sidebar-foreground/70 hover:text-sidebar-foreground"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -405,35 +405,35 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
               
               <div className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Type</label>
-                  <p className="text-gray-900 dark:text-white capitalize">{selectedLink.type}</p>
+                  <label className="text-sm font-medium text-sidebar-foreground/70">Type</label>
+                  <p className="text-sidebar-foreground capitalize">{selectedLink.type}</p>
                 </div>
                 
                 <div>
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Connection</label>
-                  <p className="text-gray-900 dark:text-white text-sm">
+                  <label className="text-sm font-medium text-sidebar-foreground/70">Connection</label>
+                  <p className="text-sidebar-foreground text-sm">
                     {data.nodes.find(n => n.id === selectedLink.source)?.label} → {data.nodes.find(n => n.id === selectedLink.target)?.label}
                   </p>
                 </div>
                 
                 {selectedLink.description && (
                   <div>
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
-                    <p className="text-gray-900 dark:text-white text-sm">{selectedLink.description}</p>
+                    <label className="text-sm font-medium text-sidebar-foreground/70">Description</label>
+                    <p className="text-sidebar-foreground text-sm">{selectedLink.description}</p>
                   </div>
                 )}
                 
                 {selectedLink.strength && (
                   <div>
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Strength</label>
+                    <label className="text-sm font-medium text-sidebar-foreground/70">Strength</label>
                     <div className="flex items-center space-x-2">
-                      <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                      <div className="flex-1 bg-sidebar-accent rounded-full h-2">
                         <div
-                          className="bg-blue-600 h-2 rounded-full"
+                          className="bg-sidebar-primary h-2 rounded-full"
                           style={{ width: `${(selectedLink.strength / 10) * 100}%` }}
                         />
                       </div>
-                      <span className="text-sm text-gray-600 dark:text-gray-300">{selectedLink.strength}/10</span>
+                      <span className="text-sm text-sidebar-foreground/70">{selectedLink.strength}/10</span>
                     </div>
                   </div>
                 )}
