@@ -107,6 +107,21 @@
 		outline-offset: 1px !important;
 	}
 	
+	/* Dark mode specific jargon highlighting */
+	.dark .jargon-highlight {
+		background: rgba(147, 197, 253, 0.12) !important;
+		border-bottom: 1px solid rgba(147, 197, 253, 0.4) !important;
+	}
+	
+	.dark .jargon-highlight:hover {
+		background: rgba(147, 197, 253, 0.18) !important;
+		border-bottom-color: rgba(147, 197, 253, 0.6) !important;
+	}
+	
+	.dark .jargon-highlight:focus {
+		outline: 1px solid rgba(147, 197, 253, 0.5) !important;
+	}
+	
 
 }
 

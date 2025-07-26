@@ -3126,7 +3126,14 @@ const MiraChatBot: React.FC = () => {
 		
 		console.log('Preprocessing jargons:', jargons.length, 'jargons found');
 		
-		let processed = content;
+		// Split content into code blocks and regular text to preserve code blocks
+		const codeBlockRegex = /```[\s\S]*?```/g;
+		const codeBlocks: string[] = [];
+		let processed = content.replace(codeBlockRegex, (match) => {
+			codeBlocks.push(match);
+			return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
+		});
+		
 		// Sort by term length descending to avoid partial matches (longer terms first)
 		const sortedJargons = [...jargons].sort((a, b) => b.term.length - a.term.length);
 		
@@ -3144,8 +3151,13 @@ const MiraChatBot: React.FC = () => {
 			// Replace with inline HTML span with tooltip and minimalist styling
 			processed = processed.replace(
 				regex,
-				`<span class="jargon-highlight" title="${desc.replace(/"/g, '&quot;')}" style="background: rgba(59, 130, 246, 0.08); border-bottom: 1px solid rgba(59, 130, 246, 0.3); border-radius: 2px; padding: 0 1px; cursor: pointer; font-weight: 500;">${j.term}</span>`
+				`<span class="jargon-highlight" title="${desc.replace(/"/g, '&quot;')}" style="border-radius: 2px; padding: 0 1px; cursor: pointer; font-weight: 500;">${j.term}</span>`
 			);
+		});
+		
+		// Restore code blocks
+		codeBlocks.forEach((block, index) => {
+			processed = processed.replace(`__CODE_BLOCK_${index}__`, block);
 		});
 		
 		console.log('Jargon preprocessing complete');
@@ -3495,13 +3507,16 @@ const MiraChatBot: React.FC = () => {
 											{!isUser && (
 												<div className="mb-3 p-5 bg-background">
 													{(() => {
+														const processedContent = preprocessJargonMarkdown(message.message, message.jargons, message.cveDescriptionsMap);
 														console.log('Rendering message:', {
 															sender: message.sender,
 															hasJargons: !!message.jargons,
 															jargonsCount: message.jargons?.length || 0,
-															messageId: message.id
+															messageId: message.id,
+															hasCodeBlocks: processedContent.includes('```'),
+															contentLength: processedContent.length
 														});
-														return <MarkdownViewer content={preprocessJargonMarkdown(message.message, message.jargons, message.cveDescriptionsMap)} />;
+														return <MarkdownViewer content={processedContent} />;
 													})()}
 													{message.sourceLinks && message.sourceLinks.length > 0 && (
 														<SourceLinks sourceLinks={message.sourceLinks} />
