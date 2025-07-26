@@ -17,7 +17,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@components/ui/dialog";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@components/ui/tooltip";
+
 
 //apis
 import { useMutation, useQuery } from "convex/react";
@@ -3302,10 +3302,10 @@ const MiraChatBot: React.FC = () => {
 			const desc = j.description || cveDescriptionsMap[j.term] || '';
 			console.log(`Highlighting term: "${j.term}" with description: "${desc.substring(0, 50)}..."`);
 			
-			// Replace with inline HTML span with tooltip and minimalist styling
+			// Replace with HTML span that has data attributes for tooltip
 			processed = processed.replace(
 				regex,
-				`<span class="jargon-highlight" title="${desc.replace(/"/g, '&quot;')}" style="border-radius: 2px; padding: 0 1px; cursor: pointer; font-weight: 500;">${j.term}</span>`
+				`<span class="jargon-highlight" data-term="${j.term}" data-description="${desc.replace(/"/g, '&quot;')}" style="border-radius: 2px; padding: 0 1px; cursor: pointer; font-weight: 500;">${j.term}</span>`
 			);
 		});
 		
@@ -3317,6 +3317,8 @@ const MiraChatBot: React.FC = () => {
 		console.log('Jargon preprocessing complete');
 		return processed;
 	};
+
+
 
 	const [isSearchOpen, setIsSearchOpen] = useState(false);
 	const location = useLocation();
@@ -3756,13 +3758,25 @@ const MiraChatBot: React.FC = () => {
 					)}
 					<div className="flex justify-center w-full px-4 sm:px-6 lg:px-8 xl:px-12">
 						<motion.div
-							initial={{ width: "100%" }}
-							animate={{ width: "100%" }}
-							transition={{ duration: 0.3 }}
+							initial={{ width: "100%", opacity: 0, y: 20 }}
+							animate={{ width: "100%", opacity: 1, y: 0 }}
+							transition={{ 
+								duration: 0.5, 
+								ease: "easeOut",
+								delay: 0.1 
+							}}
 							className="chat-input flex flex-col p-2 rounded-2xl border border-sidebar-border bg-sidebar text-sidebar-foreground w-full max-w-4xl shadow-sm transition-colors"
 						>
 							{/* Input Field */}
-							<textarea
+							<motion.textarea
+								initial={{ height: 0, opacity: 0, scale: 0.95 }}
+								animate={{ height: "40px", opacity: 1, scale: 1 }}
+								transition={{ 
+									duration: 0.6, 
+									ease: "easeOut",
+									delay: 0.3,
+									scale: { duration: 0.4, delay: 0.4 }
+								}}
 								value={input}
 								onChange={(e) => setInput(e.target.value)}
 								onKeyDown={(e) => {
@@ -3771,7 +3785,7 @@ const MiraChatBot: React.FC = () => {
 										handleSend();
 									}
 								}}
-								className="w-full text-sm bg-sidebar text-sidebar-foreground rounded-md h-10 px-3 py-2 placeholder:text-muted-foreground focus:outline-none border-none resize-none transition-colors"
+								className="w-full text-sm bg-sidebar text-sidebar-foreground rounded-md px-3 py-2 placeholder:text-muted-foreground focus:outline-none border-none resize-none transition-colors overflow-hidden"
 								placeholder="Type your message here..."
 								disabled={isLoading || !!pendingAction}
 							/>

@@ -5,6 +5,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import rehypeRaw from 'rehype-raw';
 import { Check, Copy } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip";
 import "../file/MarkdownViewer.css";
 
 interface MarkdownViewerProps {
@@ -165,6 +166,37 @@ const MarkdownViewer = ({ content, isUser = false }: MarkdownViewerProps) => {
                 {children}
               </td>
             );
+          },
+          span({ className, children, ...props }: any) {
+            // Handle jargon highlights with tooltips
+            if (className && className.includes('jargon-highlight')) {
+              const term = props['data-term'];
+              const description = props['data-description'];
+              
+              if (term && description) {
+                return (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span 
+                          className={className}
+                          style={{ borderRadius: '2px', padding: '0 1px', cursor: 'pointer', fontWeight: '500' }}
+                          {...props}
+                        >
+                          {children}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs p-2">
+                        <div className="text-xs text-muted-foreground leading-relaxed">{description}</div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                );
+              }
+            }
+            
+            // Default span rendering
+            return <span className={className} {...props}>{children}</span>;
           }
         }}
       >
