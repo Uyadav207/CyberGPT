@@ -72,6 +72,7 @@ import RoleButtonGroup from "./chatComponents/RoleButton/RoleButtonGroup";
 import { ReasoningTrace } from "./ReasoningTrace";
 import { SourceLinks } from "./SourceLinks";
 import { ChatSearch } from "./chat-search";
+import GraphButton from "../graph-visualization/GraphButton";
 
 // Interactive Loading Messages
 const INTERACTIVE_LOADING_MESSAGES = [

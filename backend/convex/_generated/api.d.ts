@@ -14,6 +14,7 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as chats from "../chats.js";
+import type * as graphVisualizations from "../graphVisualizations.js";
 import type * as reports from "../reports.js";
 import type * as sastScans from "../sastScans.js";
 import type * as scans from "../scans.js";
@@ -31,6 +32,7 @@ import type * as vulnerabilityInfo from "../vulnerabilityInfo.js";
  */
 declare const fullApi: ApiFromModules<{
   chats: typeof chats;
+  graphVisualizations: typeof graphVisualizations;
   reports: typeof reports;
   sastScans: typeof sastScans;
   scans: typeof scans;

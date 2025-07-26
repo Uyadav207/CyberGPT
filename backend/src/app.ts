@@ -10,6 +10,7 @@ import { zapRoutes } from "./routes/zapRoutes";
 import { chatRoutes } from "./routes/chatRoute";
 import { ragRoutes } from "./routes/rag";
 import { paymentRoutes } from "./routes/paymentRoutes";
+import graphRoutes from "./routes/graphRoutes";
 
 const app = new Hono();
 
@@ -31,5 +32,6 @@ app.route("/reports", reportRoutes);
 app.route("/zap", zapRoutes);
 app.route("/reports", reportRoutes);
 app.route("/subscription", paymentRoutes);
+app.route("/graph", graphRoutes);
 
 export default app;
