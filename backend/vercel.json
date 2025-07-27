@@ -1,9 +1,4 @@
 {
-    "functions": {
-        "src/api/index.ts": {
-            "runtime": "nodejs18.x"
-        }
-    },
     "buildCommand": "bun run vercel:build",
     "outputDirectory": ".",
     "installCommand": "bun install"
