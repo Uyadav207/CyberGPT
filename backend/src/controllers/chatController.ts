@@ -1,175 +1,245 @@
 import type { Context } from "hono";
 import { ChatService } from "../services/chatService";
+import { graphRAGAnswer } from "../utils/neo4j-cve-fetch-ingest";
+import { ChatGraphIntegrationService } from "../services/chatGraphIntegrationService";
 
 export class ChatController {
-	private chatService!: ChatService;
+  private chatService!: ChatService;
+  private chatGraphService = ChatGraphIntegrationService.getInstance();
 
-	constructor() {
-		this.init();
-	}
+  constructor() {
+    this.init();
+  }
 
-	private async init() {
-		this.chatService = await ChatService.getInstance();
-	}
+  private async init() {
+    this.chatService = await ChatService.getInstance();
+  }
 
-	async chatTitle(c: Context) {
-		try {
-			const { botMessage } = await c.req.json();
-			const response = await this.chatService.generateTitle(botMessage);
-			return c.json({ response });
-		} catch (error) {
-			const errorMessage =
-				error instanceof Error ? error.message : "Unknown error";
-			return c.json({ status: "error", message: errorMessage }, 500);
-		}
-	}
+  async chatTitle(c: Context) {
+    try {
+      const { botMessage } = await c.req.json();
+      const response = await this.chatService.generateTitle(botMessage);
+      return c.json({ response });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      return c.json({ status: "error", message: errorMessage }, 500);
+    }
+  }
 
-	async chatStream(c: Context) {
-		try {
-			const { message, useRAG, previousMessages = [] } = await c.req.json();
-			const stream = await this.chatService.processMessageStream(
-				message,
-				useRAG,
-				previousMessages,
-			);
+  async chatStream(c: Context) {
+    try {
+      const { message } = await c.req.json();
+      // Use graphRAGAnswer for the main chat flow
+      const {
+        answer,
+        reasoningTrace,
+        jargons,
+        cveDescriptionsMap,
+        dynamicTag,
+        contextData,
+        sourceLinks,
+      } = await graphRAGAnswer(message);
+      // Ensure trace is always an array with a narrative field if reasoningTrace is a string
+      let trace = Array.isArray(reasoningTrace)
+        ? reasoningTrace
+        : reasoningTrace
+          ? [{ narrative: reasoningTrace }]
+          : [];
+      return c.json({
+        answer,
+        trace,
+        jargons,
+        cveDescriptionsMap,
+        dynamicTag,
+        contextData,
+        sourceLinks,
+      });
+    } catch (error) {
+      console.error("Controller error:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      return c.json({ status: "error", message: errorMessage }, 500);
+    }
+  }
+  async chatSummary(c: Context) {
+    try {
+      const { messages } = await c.req.json();
+      const stream = await this.chatService.processChatSummary(messages);
+      return new Response(
+        new ReadableStream({
+          async start(controller) {
+            for await (const chunk of stream) {
+              const content = chunk.choices[0]?.delta?.content;
+              if (content) {
+                controller.enqueue(new TextEncoder().encode(content));
+              }
+            }
+            controller.close();
+          },
+        }),
+        {
+          headers: {
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            Connection: "keep-alive",
+          },
+        }
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      return c.json({ status: "error", message: errorMessage }, 500);
+    }
+  }
 
-			return new Response(
-				new ReadableStream({
-					async start(controller) {
-						try {
-							let accumulatedToolCall = null;
-							let accumulatedContent = "";
+  // Add a new endpoint for chat with jargon extraction and automatic graph generation
+  async chatWithJargon(c: Context) {
+    try {
+      const body = await c.req.json();
+      const {
+        message,
+        agentPersonality,
+        concept,
+        question,
+        messageId,
+        chatId,
+      } = body;
+      // Accept both 'message' and 'concept' or 'question' as input
+      const mainMessage = message || concept || question;
+      if (!mainMessage) {
+        return c.json(
+          {
+            status: "error",
+            message: "Expected parameter(s): message, concept, or question",
+          },
+          400
+        );
+      }
+      const {
+        answer,
+        reasoningTrace,
+        jargons,
+        cveDescriptionsMap,
+        dynamicTag,
+        contextData,
+        sourceLinks,
+      } = await graphRAGAnswer(mainMessage, agentPersonality);
+      // Ensure trace is always an array with a narrative field if reasoningTrace is a string
+      let trace = Array.isArray(reasoningTrace)
+        ? reasoningTrace
+        : reasoningTrace
+          ? [{ narrative: reasoningTrace }]
+          : [];
 
-							for await (const chunk of stream) {
-								const delta = chunk.choices[0]?.delta;
+      // Automatically generate graph visualization if messageId and chatId are provided
+      let graphData = null;
+      console.log("🔍 [ChatController] Checking graph generation conditions:", {
+        messageId,
+        chatId,
+        hasMessageId: !!messageId,
+        hasChatId: !!chatId,
+        willGenerateGraph: !!(messageId && chatId),
+      });
+      if (messageId && chatId) {
+        try {
+          console.log(
+            "🔄 [ChatController] Automatically generating graph for message:",
+            {
+              messageId,
+              chatId,
+              question: mainMessage.substring(0, 50) + "...",
+              hasAnswer: !!answer,
+              answerLength: answer.length,
+            }
+          );
 
-								// Handle regular content
-								if (delta?.content) {
-									accumulatedContent += delta.content;
-									controller.enqueue(new TextEncoder().encode(delta.content));
-								}
+          console.log(
+            "🔄 [ChatController] Calling graph generation service with data:",
+            {
+              messageId,
+              chatId,
+              questionLength: mainMessage.length,
+              answerLength: answer.length,
+              hasReasoningTrace: !!trace,
+              hasJargons: !!jargons,
+              hasCveDescriptionsMap: !!cveDescriptionsMap,
+              hasSourceLinks: !!sourceLinks,
+              hasContextData: !!contextData,
+            }
+          );
 
-								// Handle tool calls
-								if (delta?.tool_calls) {
-									const toolCall = delta.tool_calls[0];
+          const graphResult =
+            await this.chatGraphService.processChatMessageWithGraph({
+              messageId,
+              chatId,
+              question: mainMessage,
+              answer,
+              reasoningTrace: trace,
+              jargons,
+              cveDescriptionsMap,
+              sourceLinks,
+              contextData,
+            });
 
-									if (!accumulatedToolCall) {
-										accumulatedToolCall = {
-											index: toolCall.index,
-											id: toolCall.id,
-											type: toolCall.type,
-											function: {
-												name: toolCall.function?.name || "",
-												arguments: "",
-											},
-										};
-									}
+          if (graphResult.success) {
+            graphData = graphResult.graphData;
+            console.log("✅ [ChatController] Graph generated successfully:", {
+              messageId,
+              nodes: graphData.nodes.length,
+              links: graphData.links.length,
+              mainProblemNode: graphData.nodes.find(
+                (n) => n.id === "main-problem"
+              ),
+              problemConnections: graphData.links.filter(
+                (l) =>
+                  l.source === "main-problem" || l.target === "main-problem"
+              ).length,
+            });
+          } else {
+            console.error(
+              "❌ [ChatController] Graph generation failed:",
+              graphResult.error
+            );
+          }
+        } catch (graphError) {
+          console.error(
+            "❌ [ChatController] Error in automatic graph generation:",
+            graphError
+          );
+          // Don't fail the entire request if graph generation fails
+        }
+      }
 
-									if (toolCall.function?.arguments) {
-										accumulatedToolCall.function.arguments +=
-											toolCall.function.arguments;
-									}
+      console.log("📤 [ChatController] Sending response with graph data:", {
+        hasAnswer: !!answer,
+        hasGraphData: !!graphData,
+        graphDataSummary: graphData
+          ? {
+              nodes: graphData.nodes?.length || 0,
+              links: graphData.links?.length || 0,
+              hasMainProblem: !!graphData.nodes?.find(
+                (n) => n.id === "main-problem"
+              ),
+            }
+          : "No graph data",
+      });
 
-									console.log(toolCall);
-
-									// Check if JSON is complete
-									if (
-										accumulatedToolCall.function.name &&
-										accumulatedToolCall.function.arguments.trim()
-									) {
-										const jsonString =
-											accumulatedToolCall.function.arguments.trim();
-
-										// Log the JSON string for debugging
-										// console.log("Accumulated JSON string:", jsonString);
-
-										// Check if the JSON string is complete
-										const lastChar = jsonString.slice(-1);
-										console.log("Last char:", lastChar);
-
-										if (
-											lastChar === "}" ||
-											lastChar === "]" ||
-											lastChar === "]}"
-										) {
-											try {
-												// Attempt to parse the JSON string
-												const parsedArgs = JSON.parse(jsonString);
-
-												// Send tool call response
-												const toolCallResponse = {
-													type: "tool_call",
-													data: {
-														name: accumulatedToolCall.function.name,
-														arguments: parsedArgs,
-													},
-												};
-												controller.enqueue(
-													new TextEncoder().encode(
-														JSON.stringify(toolCallResponse),
-													),
-												);
-
-												// Reset accumulator
-												accumulatedToolCall = null;
-											} catch (e) {
-												console.debug("Error parsing JSON:", e);
-											}
-										}
-									}
-								}
-							}
-
-							controller.close();
-						} catch (error) {
-							console.error("Streaming error:", error);
-							controller.error(error);
-						}
-					},
-				}),
-				{
-					headers: {
-						"Content-Type": "text/event-stream",
-						"Cache-Control": "no-cache",
-						Connection: "keep-alive",
-					},
-				},
-			);
-		} catch (error) {
-			console.error("Controller error:", error);
-			const errorMessage =
-				error instanceof Error ? error.message : "Unknown error";
-			return c.json({ status: "error", message: errorMessage }, 500);
-		}
-	}
-	async chatSummary(c: Context) {
-		try {
-			const { messages } = await c.req.json();
-			const stream = await this.chatService.processChatSummary(messages);
-			return new Response(
-				new ReadableStream({
-					async start(controller) {
-						for await (const chunk of stream) {
-							const content = chunk.choices[0]?.delta?.content;
-							if (content) {
-								controller.enqueue(new TextEncoder().encode(content));
-							}
-						}
-						controller.close();
-					},
-				}),
-				{
-					headers: {
-						"Content-Type": "text/event-stream",
-						"Cache-Control": "no-cache",
-						Connection: "keep-alive",
-					},
-				},
-			);
-		} catch (error) {
-			const errorMessage =
-				error instanceof Error ? error.message : "Unknown error";
-			return c.json({ status: "error", message: errorMessage }, 500);
-		}
-	}
+      return c.json({
+        answer,
+        trace,
+        jargons,
+        cveDescriptionsMap,
+        dynamicTag,
+        contextData,
+        sourceLinks,
+        graphData, // Include graph data in response if generated
+      });
+    } catch (error) {
+      console.error("Controller error:", error, error?.stack);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      return c.json({ status: "error", message: errorMessage }, 500);
+    }
+  }
 }

@@ -19,19 +19,19 @@ const HumanInTheLoopApproval: React.FC<HumanInTheLoopProps> = ({
 }) => {
 	const { setPendingAction } = useChatActionStore();
 	return (
-		<div className="relative flex flex-col mt-4 p-4 bg-[#eeedff] border-l-4 border-[#7156DB] mb-4 rounded-lg rounded-l-none">
+		<div className="relative flex flex-col mt-4 p-4 bg-sidebar-accent/20 border-l-4 border-sidebar-primary mb-4 rounded-lg rounded-l-none">
 			<XIcon
 				onClick={() => {
 					setPendingAction(null);
 					addBotMessage("Action cancelled?");
 				}}
-				className="h-5 w-5 cursor-pointer absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+				className="h-5 w-5 cursor-pointer absolute top-2 right-2 text-sidebar-foreground/70 hover:text-sidebar-foreground"
 			/>
-			<p className="text-gray-950 mr-2 mb-4">{message}</p>
+			<p className="text-sidebar-foreground mr-2 mb-4">{message}</p>
 			<div className="flex space-x-4">
 				<Button
 					size="lg"
-					className="bg-[#7156DB] text-white hover:bg-[#5c4baf]"
+					className="bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90"
 					onClick={() => {
 						onConfirm(confirmType);
 					}}
@@ -40,7 +40,7 @@ const HumanInTheLoopApproval: React.FC<HumanInTheLoopProps> = ({
 				</Button>
 				<Button
 					size="lg"
-					className="bg-red-500 text-white hover:bg-red-700"
+					className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 					type="button"
 					onClick={onCancel}
 				>

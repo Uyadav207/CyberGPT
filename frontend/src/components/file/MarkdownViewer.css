@@ -261,3 +261,61 @@
 	text-decoration: none;
 	color: #000;
 }
+
+.jargon-highlight {
+  background: rgba(59, 130, 246, 0.06); /* very subtle blue tint */
+  border-bottom: 1px solid rgba(59, 130, 246, 0.25); /* subtle blue underline */
+  border-radius: 2px;
+  padding: 0 1px;
+  cursor: pointer;
+  font-weight: 500;
+  color: inherit;
+  transition: all 0.15s ease;
+}
+.jargon-highlight:hover,
+.jargon-highlight:focus {
+  background: rgba(59, 130, 246, 0.1);
+  border-bottom-color: rgba(59, 130, 246, 0.4);
+  color: inherit;
+}
+
+/* Dark mode specific jargon highlighting */
+.dark .jargon-highlight {
+  background: rgba(147, 197, 253, 0.12); /* soft light blue background for dark mode */
+  border-bottom: 1px solid rgba(147, 197, 253, 0.4); /* darker blue underline for visibility */
+}
+
+.dark .jargon-highlight:hover,
+.dark .jargon-highlight:focus {
+  background: rgba(147, 197, 253, 0.18);
+  border-bottom-color: rgba(147, 197, 253, 0.6);
+}
+
+/* Code block styling */
+.prose pre {
+  background-color: hsl(var(--sidebar-background)) !important;
+  border: 1px solid hsl(var(--sidebar-border)) !important;
+  border-radius: 0.375rem !important;
+  overflow-x: auto !important;
+  margin: 1rem 0 !important;
+  color: hsl(var(--sidebar-foreground)) !important;
+}
+
+.prose code {
+  background-color: hsl(var(--sidebar-accent)) !important;
+  border: 1px solid hsl(var(--sidebar-border)) !important;
+  border-radius: 0.25rem !important;
+  padding: 0.125rem 0.25rem !important;
+  font-size: 0.875rem !important;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace !important;
+  color: hsl(var(--sidebar-foreground)) !important;
+}
+
+/* Ensure code blocks are properly displayed */
+.prose pre code {
+  background-color: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  color: inherit !important;
+}

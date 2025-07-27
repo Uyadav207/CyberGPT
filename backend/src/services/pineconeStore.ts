@@ -108,4 +108,26 @@ export class PineconeService {
 
 		return latestCves;
 	}
+
+	// // List all unique node names (concepts) in the store for debugging/logging
+	// async listNodeNames(): Promise<string[]> {
+	// 	if (typeof this.store.listNodeNames === 'function') {
+	// 		return this.store.listNodeNames();
+	// 	}
+	// 	// If not supported, return empty array (or implement if possible)
+	// 	return [];
+	// }
+
+	// Fetch a document by its canonical concept name (node name)
+	async getDocumentByConceptName(conceptName: string): Promise<Document | null> {
+		const results = await this.store.similaritySearch(conceptName, 100);
+		console.log(`[PineconeService] Fallback search for concept: ${conceptName}`);
+		results.forEach((doc, idx) => {
+			console.log(`[PineconeService] Result ${idx + 1}: metadata.id=`, doc.metadata?.id, '| pageContent snippet=', doc.pageContent?.slice(0, 80));
+		});
+		return results.find(doc =>
+			doc.metadata?.id === conceptName ||
+			(doc.pageContent && doc.pageContent.includes(conceptName))
+		) || null;
+	}
 }

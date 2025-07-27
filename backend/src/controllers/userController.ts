@@ -106,7 +106,7 @@ export const requestReset = async (c: Context) => {
 	}
 };
 
-// TODO: verify OTP  with redis cache
+// TODO: verify OTP with in-memory storage
 export const verifyOtp = async (c: Context) => {
 	const { email, otp } = await c.req.json();
 	try {
@@ -117,7 +117,7 @@ export const verifyOtp = async (c: Context) => {
 	}
 };
 
-// TODO: Reset password using OTP with redis cache and hashed password
+// TODO: Reset password using OTP with in-memory storage and hashed password
 export const resetPassword = async (c: Context) => {
 	const { email, newPassword, confirmPassword } = await c.req.json();
 	try {

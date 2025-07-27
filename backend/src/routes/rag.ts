@@ -1,11 +1,10 @@
 import { Hono } from "hono";
-import { RAGController } from "../controllers/ragController";
+import { ChatController } from "../controllers/chatController";
 
 const ragRoutes = new Hono();
-const controller = new RAGController();
+const chatController = new ChatController();
 
-ragRoutes.post("/load-documents", (c) => controller.loadDocuments(c));
-ragRoutes.post("/query", (c) => controller.query(c));
-ragRoutes.get("/latest-cves", (c) => controller.getDocuments(c));
+// Use the new chatWithJargon logic for GraphRAG queries
+ragRoutes.post("/graphrag", (c) => chatController.chatWithJargon(c));
 
 export { ragRoutes };

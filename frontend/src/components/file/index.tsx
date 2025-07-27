@@ -6,7 +6,7 @@ import MarkdownViewer from "./MarkdownViewer";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import html2pdf from "html2pdf.js";
-import "../../../public/Mira_logo.png";
+// Removed Mira logo import
 
 // Skeleton loader component for the FileView
 const FileViewSkeleton = () => {
@@ -117,11 +117,6 @@ export function FileView() {
 							borderRadius: "8px",
 						}}
 					>
-						<img
-							src="/Mira_logo.png"
-							alt="Mira Logo"
-							className="h-8"
-						/>
 						<MarkdownViewer content={file.markdownContent} />
 					</div>
 				</div>
