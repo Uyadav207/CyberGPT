@@ -13,10 +13,6 @@ import { BASE_URL } from "./config.backend";
 const axiosInstance = axios.create({
 	baseURL: BASE_URL,
 	withCredentials: true,
-	headers: {
-		'Content-Type': 'application/json',
-		'X-Requested-With': 'XMLHttpRequest',
-	},
 });
 
 // Request interceptor
