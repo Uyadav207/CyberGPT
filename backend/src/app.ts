@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { errorHandler } from "./middlewares/errorHandler";
+import { driver } from "./config/neo4j";
 
 import { authRoutes } from "./routes/authRoutes";
 import { userRoutes } from "./routes/userRoutes";
@@ -33,5 +34,30 @@ app.route("/zap", zapRoutes);
 app.route("/reports", reportRoutes);
 app.route("/subscription", paymentRoutes);
 app.route("/graph", graphRoutes);
+
+// Health check endpoint
+app.get("/health", async (c) => {
+  try {
+    // Test Neo4j connection
+    await driver.verifyConnectivity();
+    return c.json({
+      status: "healthy",
+      timestamp: new Date().toISOString(),
+      services: {
+        neo4j: "connected"
+      }
+    });
+  } catch (error) {
+    console.error("Health check failed:", error);
+    return c.json({
+      status: "unhealthy",
+      timestamp: new Date().toISOString(),
+      services: {
+        neo4j: "disconnected"
+      },
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, 503);
+  }
+});
 
 export default app;

@@ -133,6 +133,33 @@ export class GraphGenerationService {
       return graphData;
     } catch (error) {
       console.error("[GraphGenerationService] Error generating graph:", error);
+      
+      // In production, return a basic graph structure instead of throwing
+      if (process.env.NODE_ENV === 'production') {
+        console.warn('⚠️ Returning basic graph structure due to Neo4j connection issues');
+        return {
+          nodes: [
+            {
+              id: 'main-question',
+              label: question || 'User Question',
+              type: 'question',
+              properties: {
+                description: 'Main user question',
+                category: 'question'
+              }
+            }
+          ],
+          links: [],
+          metadata: {
+            summary: 'Graph generation limited due to database connection issues',
+            totalNodes: 1,
+            totalLinks: 0,
+            generatedAt: new Date().toISOString()
+          }
+        };
+      }
+      
+      // In development, re-throw for debugging
       throw new Error(
         `Failed to generate graph: ${error instanceof Error ? error.message : String(error)}`
       );
@@ -335,6 +362,9 @@ Example format:
   ): Promise<any> {
     const session = driver.session();
     try {
+      // Test connection before proceeding
+      await driver.verifyConnectivity();
+      
       const results: any = {};
 
       // Enhanced vulnerability query with CVE relationships
@@ -488,6 +518,24 @@ Example format:
       }
 
       return results;
+    } catch (error) {
+      console.error('❌ Neo4j query error:', error);
+      
+      // In production, return empty results instead of throwing
+      if (process.env.NODE_ENV === 'production') {
+        console.warn('⚠️ Returning empty graph data due to Neo4j connection issues');
+        return {
+          vulnerabilities: [],
+          cves: [],
+          mitigations: [],
+          affected: [],
+          risks: [],
+          sources: []
+        };
+      }
+      
+      // In development, re-throw for debugging
+      throw error;
     } finally {
       await session.close();
     }
