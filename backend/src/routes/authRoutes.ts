@@ -14,7 +14,9 @@ authRoutes.use("*", cors({
   credentials: true,
 }));
 
-authRoutes.options("*", (c) => c.text("OK"));
+authRoutes.options("*", (c) => {
+  return c.text("", 200);
+});
 authRoutes.post("/register", register);
 authRoutes.post("/login", login);
 

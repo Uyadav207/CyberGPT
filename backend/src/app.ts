@@ -25,16 +25,27 @@ console.log("🔧 CORS Configuration:", {
   corsOrigin: corsOrigin
 });
 
+// CORS middleware with proper preflight handling
 app.use('*', cors({
-  origin: corsOrigin,
+  origin: (origin) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return "*";
+    
+    if (process.env.NODE_ENV === "production") {
+      return ["https://appcybergpt.vercel.app", "https://cybergpt-sable.vercel.app"].includes(origin) ? origin : null;
+    }
+    return "*";
+  },
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
   credentials: true,
   maxAge: 86400, // 24 hours
 }))
 
-// 🛠️ Fixing the .options handler to resolve the type error!
-app.options("*", (c) => c.text("OK"));
+// 🛠️ Proper OPTIONS handler for CORS preflight requests
+app.options("*", (c) => {
+  return c.text("", 200);
+});
 
 // 📝 Logging all requests for better observability!
 app.use("*", logger());
