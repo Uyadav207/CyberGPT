@@ -24,10 +24,13 @@ app.use('*', cors({
   origin: corsOrigin,
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
+  credentials: true, // optional, add if needed
 }))
 
+// 🛠️ Fixing the .options handler to resolve the type error!
+app.options("*", (c) => c.text("OK"));
 
-//logger.info
+// 📝 Logging all requests for better observability!
 app.use("*", logger());
 
 // Middlewares
