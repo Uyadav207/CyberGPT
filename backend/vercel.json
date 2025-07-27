@@ -1,18 +1,10 @@
 {
-    "version": 2,
-    "builds": [
-        {
-            "src": "src/api/index.ts",
-            "use": "nodejs18"
+    "functions": {
+        "src/api/index.ts": {
+            "runtime": "nodejs18.x"
         }
-    ],
-    "routes": [
-        {
-            "src": "/(.*)",
-            "dest": "src/api/index.ts"
-        }
-    ],
-    "env": {
-        "NODE_ENV": "production"
-    }
+    },
+    "buildCommand": "bun run setup:prisma",
+    "outputDirectory": ".",
+    "installCommand": "bun install"
 }
