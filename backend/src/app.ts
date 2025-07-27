@@ -15,7 +15,17 @@ import graphRoutes from "./routes/graphRoutes";
 
 const app = new Hono();
 
-app.use("*", cors());
+// Set CORS origin based on environment
+const corsOrigin = process.env.NODE_ENV === "production" 
+  ? "https://appcybergpt.vercel.app" 
+  : "*";
+
+app.use('*', cors({
+  origin: corsOrigin,
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+}))
+
 
 //logger.info
 app.use("*", logger());
