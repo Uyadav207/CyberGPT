@@ -78,15 +78,33 @@ const AvatarUpload: React.FC<AvatarUploadProps> = ({ userId, token }) => {
 					boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)",
 				}}
 			>
-				<img
-					src={previewUrl || user?.avatar || "/logo.jpg"}
-					alt="User Avatar"
-					style={{
-						width: "100%",
-						height: "100%",
-						objectFit: "cover",
-					}}
-				/>
+				{(previewUrl || user?.avatar) ? (
+					<img
+						src={previewUrl || user?.avatar || ""}
+						alt="User Avatar"
+						style={{
+							width: "100%",
+							height: "100%",
+							objectFit: "cover",
+						}}
+					/>
+				) : (
+					<div
+						style={{
+							width: "100%",
+							height: "100%",
+							display: "flex",
+							alignItems: "center",
+							justifyContent: "center",
+							backgroundColor: "var(--muted)",
+							color: "var(--muted-foreground)",
+							fontSize: "2rem",
+							fontWeight: "bold",
+						}}
+					>
+						{user?.firstName?.substring(0, 1) || "?"}
+					</div>
+				)}
 			</button>
 		</div>
 	);

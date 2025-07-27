@@ -18,7 +18,7 @@ import {
 	DialogTitle,
 } from "@components/ui/dialog";
 import { Sheet, SheetTrigger, SheetContent } from '../ui/sheet';
-import { Link2 } from 'lucide-react';
+// Removed unused Link2 import
 import { Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
 
 //apis
@@ -3747,12 +3747,12 @@ const MiraChatBot: React.FC = () => {
 								}
 
 								const isUser = message.sender === "user";
-								const messageClasses = `inline-block px-3 pt-3 rounded-xl max-w-[80%] sm:max-w-[100%] ${
+								const messageClasses = `inline-block rounded-xl max-w-[80%] sm:max-w-[100%] ${
 									isUser
-										? "bg-secondary dark:bg-primary-900 p-4 text-sm"
+										? "bg-secondary dark:bg-primary-900 px-4 py-3 text-sm"
 										: "text-foreground pr-4 overflow-y-auto text-pretty break-normal text-sm leading-relaxed"
 								}`;
-								const containerClasses = `mb-2  ${isUser ? "text-right" : "text-left"}`;
+								const containerClasses = `mb-3 ${isUser ? "text-right" : "text-left"}`;
 
 								// Only show related questions for the very last message if it is an AI message
 								const isLastMessage = idx === uniqueMessages.length - 1;
@@ -3813,61 +3813,61 @@ const MiraChatBot: React.FC = () => {
 										<div className={`${messageClasses}`}>
 											{/* Reasoning summary indicator (before every message if present) */}
 											{message.reasoningTrace && (
-												<div className="flex items-center mb-1 text-xs text-sidebar-foreground cursor-pointer select-none hover:text-sidebar-accent-foreground transition-colors"
-													onClick={() => {
-														const messageId = String(message.id);
-														// Ensure the state is always defined
-														const currentState = expandedReasoning[messageId] === undefined ? false : expandedReasoning[messageId];
-														const newState = !currentState;
-														
-														console.log('[Reasoning Toggle] Clicked reasoning for message:', {
-															messageId: message.id,
-															hasReasoningTrace: !!message.reasoningTrace,
-															currentExpandedState: currentState,
-															newState: newState,
-															allExpandedReasoning: expandedReasoning
-														});
-														
-														setExpandedReasoning(prev => {
-															const updated = { ...prev, [messageId]: newState };
-															console.log('[Reasoning Toggle] Updated state:', {
-																messageId: messageId,
-																oldState: prev[messageId],
-																newState: newState,
-																updatedState: updated
-															});
-															return updated;
-														});
-													}}
-													onKeyDown={(e) => {
-														if (e.key === 'Enter' || e.key === ' ') {
-															e.preventDefault();
+																									<div className="flex items-center mb-2 text-xs text-sidebar-foreground cursor-pointer select-none hover:text-sidebar-accent-foreground transition-colors"
+														onClick={() => {
 															const messageId = String(message.id);
 															// Ensure the state is always defined
 															const currentState = expandedReasoning[messageId] === undefined ? false : expandedReasoning[messageId];
 															const newState = !currentState;
-															setExpandedReasoning(prev => ({ ...prev, [messageId]: newState }));
-														}
-													}}
-													tabIndex={0}
-													role="button"
-													aria-expanded={expandedReasoning[String(message.id)] === true}
-													aria-controls={`reasoning-summary-${String(message.id)}`}
-												>
-													<Brain className="mr-2 text-sidebar-foreground w-4 h-4" />
-													<span>Reasoning</span>
-													{typeof message.durationSec === 'number' && (
-														<span className="ml-2 text-sidebar-foreground/60">Thought for {Math.round(message.durationSec)}s</span>
-													)}
-
-													<motion.div
-														animate={{ rotate: expandedReasoning[String(message.id)] ? 90 : 0 }}
-														transition={{ duration: 0.2, ease: "easeInOut" }}
-														className="ml-1"
+															
+															console.log('[Reasoning Toggle] Clicked reasoning for message:', {
+																messageId: message.id,
+																hasReasoningTrace: !!message.reasoningTrace,
+																currentExpandedState: currentState,
+																newState: newState,
+																allExpandedReasoning: expandedReasoning
+															});
+															
+															setExpandedReasoning(prev => {
+																const updated = { ...prev, [messageId]: newState };
+																console.log('[Reasoning Toggle] Updated state:', {
+																	messageId: messageId,
+																	oldState: prev[messageId],
+																	newState: newState,
+																	updatedState: updated
+																});
+																return updated;
+															});
+														}}
+														onKeyDown={(e) => {
+															if (e.key === 'Enter' || e.key === ' ') {
+																e.preventDefault();
+																const messageId = String(message.id);
+																// Ensure the state is always defined
+																const currentState = expandedReasoning[messageId] === undefined ? false : expandedReasoning[messageId];
+																const newState = !currentState;
+																setExpandedReasoning(prev => ({ ...prev, [messageId]: newState }));
+															}
+														}}
+														tabIndex={0}
+														role="button"
+														aria-expanded={expandedReasoning[String(message.id)] === true}
+														aria-controls={`reasoning-summary-${String(message.id)}`}
 													>
-														<FaChevronRight className="text-sidebar-foreground" />
-													</motion.div>
-												</div>
+														<Brain className="mr-2 text-sidebar-foreground w-4 h-4" />
+														<span>Reasoning</span>
+														{typeof message.durationSec === 'number' && (
+															<span className="ml-2 text-sidebar-foreground/60">Thought for {Math.round(message.durationSec)}s</span>
+														)}
+
+														<motion.div
+															animate={{ rotate: expandedReasoning[String(message.id)] ? 90 : 0 }}
+															transition={{ duration: 0.2, ease: "easeInOut" }}
+															className="ml-1"
+														>
+															<FaChevronRight className="text-sidebar-foreground" />
+														</motion.div>
+													</div>
 											)}
 											<AnimatePresence>
 											{message.reasoningTrace && expandedReasoning[String(message.id)] && (
@@ -3882,14 +3882,13 @@ const MiraChatBot: React.FC = () => {
 															opacity: { duration: 0.2 },
 															height: { duration: 0.3 }
 														}}
-														className="mb-2 p-3 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 rounded-lg border-l-4 border-blue-400 dark:border-blue-500 shadow-sm relative overflow-hidden"
+														className="mb-2 p-3 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900 dark:to-purple-800 rounded-lg border-l-4 border-purple-400 dark:border-purple-500 shadow-sm relative overflow-hidden"
 														style={{ fontSize: '0.875rem', lineHeight: 1.5 }}
 													>
-														<div className="flex items-center mb-2 mt-1">
+																												<div className="flex items-center mb-2 mt-1">
 															<span className="text-lg mr-1">🤔</span>
-															<span className="font-medium text-blue-700 dark:text-blue-200 text-sm">Reasoning</span>
-													</div>
-														<div className="text-blue-600 dark:text-blue-300 text-xs opacity-80">
+														</div>
+														<div className="text-purple-600 dark:text-purple-300 text-xs opacity-80">
 															{(() => {
 																const reasoningContent = getReasoningString(message.reasoningTrace);
 																console.log('[Reasoning Display] Rendering reasoning for message:', {
@@ -3934,8 +3933,8 @@ const MiraChatBot: React.FC = () => {
 																	<Tooltip>
 																		<TooltipTrigger asChild>
 																			<SheetTrigger asChild>
-																				<button className="p-2 rounded-full hover:bg-accent/60 transition-colors" title="Show sources">
-																					<Link className="w-4 h-4 text-muted-foreground" />
+																				<button className="p-2 rounded-full hover:bg-accent/60 transition-colors group" title="Show sources">
+																					<Link className="w-4 h-4 text-muted-foreground group-hover:text-black dark:group-hover:text-white transition-colors" />
 																				</button>
 																			</SheetTrigger>
 																		</TooltipTrigger>
@@ -4007,7 +4006,7 @@ const MiraChatBot: React.FC = () => {
 												</div>
 											)}
 											{isUser && (
-												<div className="mb-2">
+												<div className="mb-3 px-1">
 													{message.message}
 												</div>
 											)}

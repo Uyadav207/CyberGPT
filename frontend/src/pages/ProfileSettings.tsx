@@ -17,8 +17,8 @@ const ProfileSettings = () => {
 	const { theme, setTheme } = useTheme();
 	
 	return (
-		<div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-			<div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 max-w-7xl">
+		<div className="h-full bg-gradient-to-br from-background via-background to-muted/20 overflow-y-auto">
+			<div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 max-w-7xl pb-8">
 				{/* Main Content Grid */}
 				<div className="grid gap-6 lg:gap-8 lg:grid-cols-3">
 					{/* Profile Section - Takes full width on mobile, 2 columns on desktop */}

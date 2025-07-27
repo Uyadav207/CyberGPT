@@ -177,7 +177,7 @@ const TermsOfService: React.FC = () => {
 					</CardContent>
 				</Card>
 				<p className="text-center text-gray-500 text-wrap text-xs mt-1">
-					Copyright &copy; Mira, a product of denkMinds, Planspiel
+					Copyright &copy; denkMinds, Planspiel
 					Project {new Date().getFullYear()}
 				</p>
 			</div>

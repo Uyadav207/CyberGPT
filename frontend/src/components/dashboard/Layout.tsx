@@ -34,7 +34,7 @@ export function Layout() {
 		<SidebarProvider className="bg-white">
 			<AppSidebar className="bg-gray-100" />
 			<SidebarInset>
-				<div className="flex flex-col h-screen min-h-0">
+				<div className="flex flex-col h-screen min-h-0 overflow-hidden">
 					<header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 justify-between">
 						<div className="flex items-center gap-2 px-4">
 							<SidebarTrigger className="-ml-1" />
@@ -83,7 +83,7 @@ export function Layout() {
 					</div>
 				</header>
 
-					<div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+					<div className="flex-1 min-h-0 flex flex-col overflow-y-auto">
 						<Outlet />
 					</div>
 
