@@ -21,20 +21,8 @@ const allowedOrigins = [
 ];
 
 // 🔐 CORS Middleware
-app.use("*", cors({
-  origin: (origin) => {
-    if (!origin) return "*";
-    if (process.env.NODE_ENV === "production") {
-      if (allowedOrigins.includes(origin)) return origin;
-      console.warn(`🚫 Blocked CORS origin: ${origin}`);
-      return ""; // Explicitly deny
-    }
-    return "*";
-  },
-  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-  credentials: true,
-  maxAge: 86400,
+app.use(cors({
+  origin: 'https://appcybergpt.vercel.app'
 }));
 
 // ⚠️ OPTIONS preflight route must return 200 OK
