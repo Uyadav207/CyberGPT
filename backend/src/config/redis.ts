@@ -8,6 +8,9 @@ const redisConfig = isProduction
 			url: process.env.REDIS_URL || "",
 			retryDelayOnFailover: 100,
 			maxRetriesPerRequest: 3,
+			connectTimeout: 15000,
+			commandTimeout: 10000,
+			lazyConnect: true,
 		}
 	: {
 			host: process.env.REDIS_HOST_LOCAL || "127.0.0.1",
@@ -18,18 +21,30 @@ const redisConfig = isProduction
 			lazyConnect: true,
 		};
 
+// Log configuration for debugging
+console.log(`🔧 Redis Configuration: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
+if (isProduction) {
+	console.log(`🌐 Using Redis URL: ${process.env.REDIS_URL ? 'Configured' : 'NOT CONFIGURED'}`);
+} else {
+	console.log(`🏠 Using Local Redis: ${process.env.REDIS_HOST_LOCAL}:${process.env.REDIS_PORT_LOCAL}`);
+}
+
 const redis = new Redis(redisConfig);
 
 // Enhanced error handling and logging
 redis.on("error", (err) => {
 	console.error("❌ Redis connection error:", err.message);
 	if ((err as any).code === "ECONNREFUSED") {
-		console.error("💡 Make sure Redis server is running: brew services start redis");
+		if (isProduction) {
+			console.error("💡 Production Redis connection failed. Check REDIS_URL configuration.");
+		} else {
+			console.error("💡 Local Redis connection failed. Make sure Redis server is running: brew services start redis");
+		}
 	}
 });
 
 redis.on("connect", () => {
-	console.log("✅ Connected to Redis successfully");
+	console.log(`✅ Connected to Redis successfully (${isProduction ? 'Production' : 'Development'} mode)`);
 });
 
 redis.on("reconnecting", () => {
