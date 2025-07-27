@@ -15,7 +15,17 @@ import graphRoutes from "./routes/graphRoutes";
 
 const app = new Hono();
 
-app.use("*", cors());
+// CORS configuration
+const corsOrigins = process.env.CORS_ORIGIN 
+  ? process.env.CORS_ORIGIN.split(',') 
+  : ["*", "http://localhost:3000", "http://localhost:5173"];
+
+app.use("*", cors({
+  origin: corsOrigins,
+  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  credentials: true,
+}));
 
 //logger.info
 app.use("*", logger());
