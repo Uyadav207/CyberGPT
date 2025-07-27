@@ -1,5 +1,5 @@
 {
     "buildCommand": "bun run vercel:build",
-    "outputDirectory": ".",
+    "outputDirectory": "api",
     "installCommand": "bun install"
 }
