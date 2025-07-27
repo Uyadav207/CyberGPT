@@ -27,7 +27,6 @@
 		"dotenv": "^17.2.1",
 		"fs-extra": "^11.2.0",
 		"hono": "^4.6.16",
-		"ioredis": "^5.4.1",
 		"jsonwebtoken": "^9.0.2",
 		"langchain": "^0.3.11",
 		"neo4j-driver": "^5.28.1",

@@ -1,10 +1,12 @@
 import type { PrismaClient } from "@prisma/client";
 import { transporter } from "../config/nodemailer";
-import redis from "../config/redis";
 import type User from "../models/User";
 import { generateOtp } from "../utils/otpUtils";
 import { hashPassword } from "../utils/passwordUtils";
 import { uploadImageAndGetUrl } from "../utils/supabaseUtils/avatars";
+
+// Simple in-memory OTP storage (for development)
+const otpStorage = new Map<string, { otp: string; expiresAt: number }>();
 
 export class UserService {
 	private prisma: PrismaClient;
@@ -123,12 +125,10 @@ export class UserService {
 			}
 
 			const otp = generateOtp();
-			await redis.set(`reset:${email}`, otp, "EX", 10 * 60).catch((err) => {
-				throw new Error(
-					"Unable to process the OTP request. Please try again.",
-					err,
-				);
-			});
+			const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+			
+			// Store OTP in memory
+			otpStorage.set(email, { otp, expiresAt });
 
 			await transporter.sendMail({
 				from: process.env.EMAIL_USER,
@@ -148,21 +148,18 @@ export class UserService {
 	// TODO: Verify OTP
 	async verifyOtp(email: string, otp: string) {
 		try {
-			const storedOtp = await redis.get(`reset:${email}`).catch((err) => {
-				throw new Error("Unable to verify the OTP. Please try again.", err);
-			});
-			if (!storedOtp || storedOtp !== otp) {
+			const storedData = otpStorage.get(email);
+			if (!storedData || storedData.otp !== otp || Date.now() > storedData.expiresAt) {
 				throw new Error("Invalid or expired OTP");
 			}
 
-			await redis.del(`reset:${email}`).catch((err) => {
-				throw new Error("Unable to verify the OTP. Please try again.", err);
-			});
+			// Remove OTP after successful verification
+			otpStorage.delete(email);
 
 			return { message: "OTP verified successfully" };
 		} catch (error) {
 			throw new Error(
-				`An error occurred while verifying the OTP${(error as unknown as Error).message}`,
+				`An error occurred while verifying the OTP: ${(error as unknown as Error).message}`,
 			);
 		}
 	}
