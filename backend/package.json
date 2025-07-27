@@ -8,15 +8,15 @@
 		"check": "biome check ./src",
 		"check:fix": "biome check --write ./src",
 		"setup:prisma": "cd src && npx prisma generate && npx prisma migrate deploy",
-		"start:prod": "npm run setup:prisma && bun run src/index.ts"
+		"start:prod": "bun run setup:prisma && bun run src/index.ts"
 	},
 	"dependencies": {
 		"@elysiajs/cron": "^1.2.0",
 		"@huggingface/inference": "^2.8.1",
-		"@langchain/core": "^0.3.30",
+		"@langchain/core": "^0.3.66",
 		"@langchain/openai": "^0.6.3",
-		"@langchain/pinecone": "^0.1.3",
-		"@pinecone-database/pinecone": "^4.0.0",
+		"@langchain/pinecone": "^0.2.0",
+		"@pinecone-database/pinecone": "^6.1.2",
 		"@prisma/client": "5.9.1",
 		"@supabase/supabase-js": "^2.47.10",
 		"@types/fs-extra": "^11.0.4",
