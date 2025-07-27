@@ -16,7 +16,7 @@
 		"@huggingface/inference": "^2.8.1",
 		"@langchain/core": "^0.3.66",
 		"@langchain/openai": "^0.6.3",
-		"@langchain/pinecone": "^0.3.0",
+		"@langchain/pinecone": "^0.2.0",
 		"@pinecone-database/pinecone": "^5.1.2",
 		"@prisma/client": "5.9.1",
 		"@supabase/supabase-js": "^2.47.10",
