@@ -11,8 +11,6 @@ import type {
 	RegisterApiPayloadType,
 } from "../types/auth";
 import { createLoginResponseBody } from "../utils/auth-helper";
-
-import aevix from "../../public/logo.png";
 import { ModeToggle } from "../components/theme/mode-toggle";
 import { Button } from "../components/ui/button";
 import { HelpMenu } from "../components/chat/help-menu";

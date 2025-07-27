@@ -20,8 +20,6 @@ import {
 	Globe,
 	ArrowUp,
 	MoreHorizontal,
-	Monitor as DockIcon,
-	Github,
 } from "lucide-react";
 
 import tooltipData from "../data/tooltipData.json";

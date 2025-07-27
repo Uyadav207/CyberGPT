@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckSquare, Loader2, Eye, EyeOff, ListTodo, Download, GripVertical, AlertTriangle, Shield, CheckCircle } from 'lucide-react';
+import { CheckSquare, Loader2, EyeOff, ListTodo, Download, GripVertical, AlertTriangle, Shield, CheckCircle } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
@@ -27,7 +27,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useMutation, useQuery, useAction } from 'convex/react';
+import { useMutation, useAction } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import type { Message } from '../../types/chats';
 
@@ -509,20 +509,6 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
       console.log('[TodoListButton] No existing TODO list, generating new one...');
       generateTodoList();
     }
-  };
-
-  const toggleTodoItem = (itemId: string) => {
-    if (!todoList) return;
-    
-    setTodoList(prev => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        items: prev.items.map(item => 
-          item.id === itemId ? { ...item, completed: !item.completed } : item
-        )
-      };
-    });
   };
 
   const handleDragEnd = (event: DragEndEvent) => {

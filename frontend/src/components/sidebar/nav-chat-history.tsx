@@ -4,7 +4,6 @@ import {
 	ArrowRight,
 	ChevronRight,
 	MessageCircleDashedIcon,
-	MessageSquareCode,
 	TrendingUpDown,
 	Search,
 } from "lucide-react";
@@ -22,7 +21,6 @@ import {
 	SidebarMenu,
 	SidebarMenuItem,
 	SidebarMenuButton,
-	SidebarSeparator,
 	SidebarContent,
 	SidebarGroupContent,
 } from "@components/ui/sidebar";
@@ -197,7 +195,7 @@ export default function ChatHistory({ onOpenSearch }: NavChatHistoryProps) {
 	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 	const sub = (user as any)?.subscription;
 
-	const [type] = useState<string>(() => {
+	const [] = useState<string>(() => {
 		switch (sub) {
 			case "FREE":
 				return "free";
@@ -210,22 +208,7 @@ export default function ChatHistory({ onOpenSearch }: NavChatHistoryProps) {
 		}
 	});
 
-	let colorClasses = "";
-	let label = "";
 
-	if (type === "free") {
-		colorClasses = "bg-green-200 text-green-500 border-green-200";
-		label = "Free";
-	} else if (type === "pro") {
-		colorClasses = "bg-purple-200 text-purple-500 border-purple-200";
-		label = "Pro";
-	} else if (type === "intermediate") {
-		colorClasses = "bg-orange-200 text-orange-500 border-orange-200";
-		label = "Standard";
-	} else {
-		colorClasses = "bg-gray-200 text-gray-500 border-gray-200";
-		label = "Unknown";
-	}
 
 	return (
 		<>

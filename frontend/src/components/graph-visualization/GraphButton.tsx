@@ -181,7 +181,7 @@ export const convertGraphDataToGraphVisualization = (graphData: GraphData): Grap
   const relationships: any[] = [];
 
   // Convert nodes to graph elements according to schema
-  graphData.nodes.forEach((node, index) => {
+  graphData.nodes.forEach((node, _index) => {
     switch (node.type) {
       case 'vulnerability':
         vulnerabilities.push({
@@ -271,7 +271,7 @@ export const convertGraphDataToGraphVisualization = (graphData: GraphData): Grap
   });
 
   // Convert links to relationships according to schema
-  graphData.links.forEach((link, index) => {
+  graphData.links.forEach((link, _index) => {
           relationships.push({
         id: link.id,
         sourceId: link.source,
