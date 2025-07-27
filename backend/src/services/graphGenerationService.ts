@@ -4,7 +4,7 @@ import type {
   GraphData,
   GraphNode,
   GraphLink,
-} from "../../types/graphVisualization";
+} from "../types/graphVisualization";
 
 export class GraphGenerationService {
   private static instance: GraphGenerationService;
