@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { errorHandler } from "./middlewares/errorHandler";
 import { driver } from "./config/neo4j";
@@ -15,43 +14,11 @@ import graphRoutes from "./routes/graphRoutes";
 
 const app = new Hono();
 
-// CORS: must come first
-const allowedOrigins = [
-  "https://appcybergpt.vercel.app",
-  "https://cybergpt-sable.vercel.app"
-];
-
-app.use("*", cors({
-  origin: (origin) => {
-    if (!origin) return "*";
-    if (process.env.NODE_ENV === "production") {
-      return allowedOrigins.includes(origin) ? origin : "";
-    }
-    return "*";
-  },
-  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-  allowHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-  credentials: true,
-  maxAge: 86400
-}));
-
-// Required by Vercel — handle OPTIONS first
-app.options("*", (c) => {
-  return c.text("", 200);
-});
-
 // Logging
 app.use("*", logger());
 
-// Safe error handler that skips OPTIONS
-app.use("*", async (c, next) => {
-  if (c.req.method === "OPTIONS") return c.text("", 200);
-  try {
-    return await next();
-  } catch (err) {
-    return errorHandler(c, () => Promise.resolve(c), err);
-  }
-});
+// Error handler
+app.use("*", errorHandler);
 
 // Routes
 app.route("/auth", authRoutes);
