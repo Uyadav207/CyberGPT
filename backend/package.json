@@ -1,14 +1,15 @@
 {
 	"name": "backend",
 	"scripts": {
-		"start": "bun run src/index.ts",
 		"dev": "bun run --watch src/index.ts",
+		"start": "bun run src/index.ts",
+		"start:prod": "bun run setup:prisma && bun run src/index.ts",
 		"start:cron": "bun run src/jobs/cronJob.ts",
 		"prepare": "husky",
 		"check": "biome check ./src",
 		"check:fix": "biome check --write ./src",
-		"setup:prisma": "cd src && npx prisma generate && npx prisma migrate deploy",
-		"start:prod": "bun run setup:prisma && bun run src/index.ts"
+		"setup:prisma": "npx prisma generate && npx prisma migrate deploy",
+		"vercel:build": "bun run setup:prisma"
 	},
 	"dependencies": {
 		"@elysiajs/cron": "^1.2.0",
