@@ -17,14 +17,20 @@ const app = new Hono();
 
 // Set CORS origin based on environment
 const corsOrigin = process.env.NODE_ENV === "production" 
-  ? "https://appcybergpt.vercel.app" 
+  ? ["https://appcybergpt.vercel.app", "https://cybergpt-sable.vercel.app"] 
   : "*";
+
+console.log("🔧 CORS Configuration:", {
+  NODE_ENV: process.env.NODE_ENV,
+  corsOrigin: corsOrigin
+});
 
 app.use('*', cors({
   origin: corsOrigin,
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization'],
-  credentials: true, // optional, add if needed
+  allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  credentials: true,
+  maxAge: 86400, // 24 hours
 }))
 
 // 🛠️ Fixing the .options handler to resolve the type error!
