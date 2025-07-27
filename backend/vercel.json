@@ -1,0 +1,10 @@
+{
+    "functions": {
+        "src/api/index.ts": {
+            "runtime": "nodejs18.x"
+        }
+    },
+    "buildCommand": "bun run setup:prisma",
+    "outputDirectory": ".",
+    "installCommand": "bun install"
+}
