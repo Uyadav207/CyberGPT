@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
-import { errorHandler } from "./middlewares/errorHandler";
 import { driver } from "./config/neo4j";
 
 import { authRoutes } from "./routes/authRoutes";
@@ -15,77 +14,97 @@ import graphRoutes from "./routes/graphRoutes";
 
 const app = new Hono();
 
-// Set CORS origin based on environment
-const corsOrigin = process.env.NODE_ENV === "production" 
-  ? ["https://appcybergpt.vercel.app", "https://cybergpt-sable.vercel.app"] 
-  : "*";
+// 🌍 Define allowed origins
+const allowedOrigins = [
+  "https://appcybergpt.vercel.app",
+  "https://cybergpt-sable.vercel.app"
+];
 
-console.log("🔧 CORS Configuration:", {
-  NODE_ENV: process.env.NODE_ENV,
-  corsOrigin: corsOrigin
-});
-
-// CORS middleware with proper preflight handling
-app.use('*', cors({
+// 🔐 CORS Middleware
+app.use("*", cors({
   origin: (origin) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return "*";
-    
     if (process.env.NODE_ENV === "production") {
-      return ["https://appcybergpt.vercel.app", "https://cybergpt-sable.vercel.app"].includes(origin) ? origin : null;
+      if (allowedOrigins.includes(origin)) return origin;
+      console.warn(`🚫 Blocked CORS origin: ${origin}`);
+      return ""; // Explicitly deny
     }
     return "*";
   },
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   credentials: true,
-  maxAge: 86400, // 24 hours
-}))
+  maxAge: 86400,
+}));
 
-// 🛠️ Proper OPTIONS handler for CORS preflight requests
-app.options("*", (c) => {
-  return c.text("", 200);
-});
+// ⚠️ OPTIONS preflight route must return 200 OK
+app.options("*", (c) => c.text("", 200));
 
-// 📝 Logging all requests for better observability!
+// 📝 Logger for all requests
 app.use("*", logger());
 
-// Middlewares
-app.use("*", errorHandler);
+// 🛡️ Safe error handler that skips OPTIONS
+app.use("*", async (c, next) => {
+  if (c.req.method === "OPTIONS") return c.text("", 200);
+  try {
+    return await next();
+  } catch (err) {
+    // Reuse your structured errorHandler here
+    if (err instanceof Error) {
+      return c.json(
+        {
+          error: {
+            message: err.message,
+            stack: process.env.NODE_ENV === "production" ? "🥞" : err.stack,
+          },
+        },
+        500
+      );
+    }
 
-// Routes
+    return c.json(
+      {
+        error: {
+          message: "An unexpected error occurred",
+          stack: process.env.NODE_ENV === "production" ? "🥞" : "Unknown stack",
+        },
+      },
+      500
+    );
+  }
+});
+
+// ✅ Define Routes
 app.route("/auth", authRoutes);
 app.route("/users", userRoutes);
 app.route("/chat", chatRoutes);
 app.route("/api", ragRoutes);
-app.route("/api/chat", chatRoutes); // Add this for /api/chat/with-jargon
+app.route("/api/chat", chatRoutes); // Special route for /api/chat/with-jargon
 app.route("/reports", reportRoutes);
 app.route("/zap", zapRoutes);
-app.route("/reports", reportRoutes);
 app.route("/subscription", paymentRoutes);
 app.route("/graph", graphRoutes);
 
-// Health check endpoint
+// 🧪 Health Check
 app.get("/health", async (c) => {
   try {
-    // Test Neo4j connection
     await driver.verifyConnectivity();
     return c.json({
       status: "healthy",
       timestamp: new Date().toISOString(),
       services: {
-        neo4j: "connected"
-      }
+        neo4j: "connected",
+      },
     });
   } catch (error) {
-    console.error("Health check failed:", error);
+    console.error("❌ Health check failed:", error);
     return c.json({
       status: "unhealthy",
       timestamp: new Date().toISOString(),
       services: {
-        neo4j: "disconnected"
+        neo4j: "disconnected",
       },
-      error: error instanceof Error ? error.message : "Unknown error"
+      error: error instanceof Error ? error.message : "Unknown error",
     }, 503);
   }
 });
