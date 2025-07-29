@@ -3,9 +3,6 @@ import { PineconeService } from "../services/pineconeStore";
 import { OpenAIService } from "../services/openai";
 import { Document } from "langchain/document";
 import type { CVEDocument } from "../types/cve";
-import { graphRAGAnswer } from '../utils/neo4j-cve-fetch-ingest';
-import { normalizeVulnName } from '../utils/vulnNameNormalizer';
-
 interface QueryResponse {
 	answer: string;
 	context: Document[];

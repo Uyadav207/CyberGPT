@@ -916,6 +916,7 @@ Return only the topic, no quotes or extra text. Examples:
           const targetNode = nodeMap.get(rel.target);
           if (targetNode) {
             links.push({
+              id: `link-${rel.source}-${rel.target}`,
               source: "main-problem",
               target: targetNode.id,
               type: rel.type,
@@ -930,6 +931,7 @@ Return only the topic, no quotes or extra text. Examples:
           const sourceNode = nodeMap.get(rel.source);
           if (sourceNode) {
             links.push({
+              id: `link-${rel.source}-${rel.target}`,
               source: sourceNode.id,
               target: "main-problem",
               type: rel.type,
@@ -942,6 +944,7 @@ Return only the topic, no quotes or extra text. Examples:
           const targetNode = nodeMap.get(rel.target);
           if (sourceNode && targetNode) {
             links.push({
+              id: `link-${rel.source}-${rel.target}`,
               source: sourceNode.id,
               target: targetNode.id,
               type: rel.type,
@@ -1121,12 +1124,12 @@ Return only the topic, no quotes or extra text. Examples:
    * Generate a comprehensive graph summary for logging
    */
   private generateGraphSummary(graphData: GraphData): string {
-    const nodeCounts = graphData.nodes.reduce((acc: any, node) => {
+    const nodeCounts = graphData.nodes.reduce((acc: any, node: any) => {
       acc[node.type] = (acc[node.type] || 0) + 1;
       return acc;
     }, {});
 
-    const linkCounts = graphData.links.reduce((acc: any, link) => {
+    const linkCounts = graphData.links.reduce((acc: any, link: any) => {
       acc[link.type] = (acc[link.type] || 0) + 1;
       return acc;
     }, {});

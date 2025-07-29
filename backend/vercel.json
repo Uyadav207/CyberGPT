@@ -30,6 +30,6 @@
     "env": {
         "NODE_ENV": "production"
     },
-    "installCommand": "npm install --legacy-peer-deps",
+    "installCommand": "bun install",
     "buildCommand": "bun run setup:prisma"
 }
