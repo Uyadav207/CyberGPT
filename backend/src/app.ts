@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import { logger } from "hono/logger";
+import { cors } from "hono/cors";
 import { errorHandler } from "./middlewares/errorHandler";
 import { driver } from "./config/neo4j";
-
 import { authRoutes } from "./routes/authRoutes";
 import { userRoutes } from "./routes/userRoutes";
 import { reportRoutes } from "./routes/reportRoutes";
@@ -13,6 +13,15 @@ import { paymentRoutes } from "./routes/paymentRoutes";
 import graphRoutes from "./routes/graphRoutes";
 
 const app = new Hono();
+
+// CORS middleware - MUST be first, before other middleware
+app.use("*", cors({
+  origin: ["https://appcybergpt.vercel.app", "http://localhost:3000"],
+  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+  maxAge: 600,
+}));
 
 // Logging
 app.use("*", logger());

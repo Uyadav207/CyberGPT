@@ -17,28 +17,34 @@
                 "DELETE",
                 "PATCH",
                 "OPTIONS"
-            ],
-            "headers": {
-                "Access-Control-Allow-Origin": "https://appcybergpt.vercel.app",
-                "Access-Control-Allow-Credentials": "true",
-                "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
-                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-                "Access-Control-Max-Age": "86400"
-            }
-        },
+            ]
+        }
+    ],
+    "headers": [
         {
-            "src": "/auth/(.*)",
-            "dest": "src/api/index.ts",
-            "methods": [
-                "OPTIONS"
-            ],
-            "headers": {
-                "Access-Control-Allow-Origin": "https://appcybergpt.vercel.app",
-                "Access-Control-Allow-Credentials": "true",
-                "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
-                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-                "Access-Control-Max-Age": "86400"
-            }
+            "source": "/(.*)",
+            "headers": [
+                {
+                    "key": "Access-Control-Allow-Origin",
+                    "value": "https://appcybergpt.vercel.app"
+                },
+                {
+                    "key": "Access-Control-Allow-Credentials",
+                    "value": "true"
+                },
+                {
+                    "key": "Access-Control-Allow-Headers",
+                    "value": "Content-Type, Authorization, X-Requested-With"
+                },
+                {
+                    "key": "Access-Control-Allow-Methods",
+                    "value": "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+                },
+                {
+                    "key": "Access-Control-Max-Age",
+                    "value": "86400"
+                }
+            ]
         }
     ],
     "env": {
