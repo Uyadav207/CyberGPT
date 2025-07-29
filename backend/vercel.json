@@ -1,13 +1,9 @@
 {
     "version": 2,
-    "functions": {
-        "api/index.ts": {
-            "runtime": "edge"
-        }
-    },
     "builds": [
         {
             "src": "src/api/index.ts",
+            "runtime": "edge",
             "use": "@vercel/node",
             "config": {
                 "includeFiles": [
