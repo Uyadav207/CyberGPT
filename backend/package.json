@@ -9,7 +9,8 @@
 		"check": "biome check ./src",
 		"check:fix": "biome check --write ./src",
 		"setup:prisma": "bunx prisma generate --schema=./src/prisma/schema.prisma && bunx prisma migrate deploy --schema=./src/prisma/schema.prisma",
-		"vercel:build": "bun run setup:prisma &&  bun run src/api/index.ts"
+		"vercel:build": "bun run setup:prisma && bun run src/api/index.ts",
+		"postinstall": "bunx prisma generate --schema=./src/prisma/schema.prisma"
 	},
 	"dependencies": {
 		"@elysiajs/cron": "^1.2.0",
