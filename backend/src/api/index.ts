@@ -1,7 +1,4 @@
 import app from "../app";
-// Export the handler for Vercel serverless deployment
+import { handle } from "hono/vercel";
 
-export const config = {
-    runtime: 'edge',
-  }
-export default app.fetch;
+export default handle(app);
