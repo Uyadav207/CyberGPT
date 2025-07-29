@@ -9,7 +9,6 @@
     "routes": [
         {
             "src": "/(.*)",
-            "dest": "src/api/index.ts",
             "methods": [
                 "GET",
                 "POST",
@@ -17,12 +16,7 @@
                 "DELETE",
                 "PATCH",
                 "OPTIONS"
-            ]
-        }
-    ],
-    "headers": [
-        {
-            "source": "/(.*)",
+            ],
             "headers": [
                 {
                     "key": "Access-Control-Allow-Origin",
@@ -44,7 +38,8 @@
                     "key": "Access-Control-Max-Age",
                     "value": "86400"
                 }
-            ]
+            ],
+            "dest": "src/api/index.ts"
         }
     ],
     "env": {
