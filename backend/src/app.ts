@@ -15,7 +15,13 @@ import graphRoutes from "./routes/graphRoutes";
 const app = new Hono();
 
 // CORS middleware - MUST be first, before other middleware
-app.use("*", cors());
+app.use("*", cors({
+  origin: ["https://appcybergpt.vercel.app", "http://localhost:3000", "https://cybergpt.onrender.com"],
+  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+  maxAge: 600,
+}));
 
 // Logging
 app.use("*", logger());
