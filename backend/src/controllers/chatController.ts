@@ -2,6 +2,7 @@ import type { Context } from "hono";
 import { ChatService } from "../services/chatService";
 import { graphRAGAnswer } from "../utils/neo4j-cve-fetch-ingest";
 import { ChatGraphIntegrationService } from "../services/chatGraphIntegrationService";
+import { getConnectionHealth } from "../config/neo4j";
 
 export class ChatController {
   private chatService!: ChatService;
@@ -242,3 +243,21 @@ export class ChatController {
     }
   }
 }
+
+export const getNeo4jHealth = async (req: Request, res: Response) => {
+  try {
+    const health = getConnectionHealth();
+    res.json({
+      success: true,
+      neo4j: health,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("❌ Health check error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Health check failed",
+      timestamp: new Date().toISOString(),
+    });
+  }
+};

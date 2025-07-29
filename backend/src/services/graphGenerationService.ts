@@ -1,4 +1,4 @@
-import { driver } from "../config/neo4j";
+import { executeWithSession, createSession } from "../config/neo4j";
 import { OpenAIService } from "./openai";
 import type {
   GraphData,
@@ -360,184 +360,136 @@ Example format:
       mitigation?: string;
     }
   ): Promise<any> {
-    const session = driver.session();
     try {
-      // Test connection before proceeding
-      await driver.verifyConnectivity();
-      
-      const results: any = {};
+      return await executeWithSession(async (session) => {
+        // Test connection before proceeding
+        await session.run("RETURN 1 as test");
+        
+        const results: any = {};
 
-      // Enhanced vulnerability query with CVE relationships
-      if (entities.vulnerabilities.length > 0 || cveInfo?.cve_id) {
-        const vulnQuery = `
-          MATCH (v:Vulnerability)
-          WHERE any(name IN $names WHERE toLower(v.name) CONTAINS toLower(name))
-             OR any(cveId IN $cveIds WHERE v.cveId = cveId)
-          OPTIONAL MATCH (v)-[:HAS_CVE]->(c:CVE)
-          OPTIONAL MATCH (v)-[:HAS_MITIGATION]->(m:Mitigation)
-          OPTIONAL MATCH (v)-[:AFFECTS]->(a:Affected)
-          OPTIONAL MATCH (v)-[:HAS_RISK]->(r:Risk)
-          OPTIONAL MATCH (v)-[:REFERENCES]->(s:Source)
-          RETURN v, 
-                 collect(DISTINCT c) as cves, 
+        // Enhanced vulnerability query with CVE relationships
+        if (entities.vulnerabilities.length > 0 || cveInfo?.cve_id) {
+          const vulnQuery = `
+            MATCH (v:Vulnerability)
+            WHERE any(name IN $names WHERE toLower(v.name) CONTAINS toLower(name))
+               OR any(cveId IN $cveIds WHERE v.cveId = cveId)
+            OPTIONAL MATCH (v)-[:HAS_CVE]->(c:CVE)
+            OPTIONAL MATCH (v)-[:HAS_MITIGATION]->(m:Mitigation)
+            OPTIONAL MATCH (v)-[:AFFECTS]->(a:Affected)
+            OPTIONAL MATCH (v)-[:HAS_RISK]->(r:Risk)
+            OPTIONAL MATCH (v)-[:REFERENCES]->(s:Source)
+            RETURN v, 
+                   collect(DISTINCT c) as cves, 
+                   collect(DISTINCT m) as mitigations,
+                   collect(DISTINCT a) as affected,
+                   collect(DISTINCT r) as risks,
+                   collect(DISTINCT s) as sources
+          `;
+
+          const vulnNames = entities.vulnerabilities.map((v: any) => v.name);
+          const cveIds = entities.cves.map((c: any) => c.cveId);
+          if (cveInfo?.cve_id) cveIds.push(cveInfo.cve_id);
+
+          const vulnResult = await session.run(vulnQuery, {
+            names: vulnNames,
+            cveIds: cveIds,
+          });
+
+          results.vulnerabilities = vulnResult.records.map((record) => ({
+            vulnerability: record.get("v").properties,
+            cves: record.get("cves").map((cve: any) => cve.properties),
+            mitigations: record
+              .get("mitigations")
+              .map((mit: any) => mit.properties),
+            affected: record.get("affected").map((aff: any) => aff.properties),
+            risks: record.get("risks").map((risk: any) => risk.properties),
+            sources: record.get("sources").map((src: any) => src.properties),
+          }));
+        }
+
+        // Enhanced CVE query with comprehensive relationships
+        const cveQuery = `
+          MATCH (c:CVE)
+          WHERE any(id IN $ids WHERE c.cveId = id)
+             OR any(desc IN $descriptions WHERE toLower(c.description) CONTAINS toLower(desc))
+          OPTIONAL MATCH (c)-[:BELONGS_TO]->(v:Vulnerability)
+          OPTIONAL MATCH (c)-[:HAS_MITIGATION]->(m:Mitigation)
+          OPTIONAL MATCH (c)-[:AFFECTS]->(a:Affected)
+          OPTIONAL MATCH (c)-[:HAS_SEVERITY]->(s:Severity)
+          OPTIONAL MATCH (c)-[:REFERENCES]->(src:Source)
+          RETURN c, 
+                 collect(DISTINCT v) as vulnerabilities, 
                  collect(DISTINCT m) as mitigations,
                  collect(DISTINCT a) as affected,
-                 collect(DISTINCT r) as risks,
-                 collect(DISTINCT s) as sources
+                 collect(DISTINCT s) as severities,
+                 collect(DISTINCT src) as sources
         `;
 
-        const vulnNames = entities.vulnerabilities.map((v: any) => v.name);
         const cveIds = entities.cves.map((c: any) => c.cveId);
+        const cveDescriptions = entities.cves
+          .map((c: any) => c.description)
+          .filter(Boolean);
         if (cveInfo?.cve_id) cveIds.push(cveInfo.cve_id);
+        if (cveInfo?.cve_desc) cveDescriptions.push(cveInfo.cve_desc);
 
-        const vulnResult = await session.run(vulnQuery, {
-          names: vulnNames,
-          cveIds: cveIds,
+        const cveResult = await session.run(cveQuery, {
+          ids: cveIds,
+          descriptions: cveDescriptions,
         });
 
-        results.vulnerabilities = vulnResult.records.map((record) => ({
-          vulnerability: record.get("v").properties,
-          cves: record.get("cves").map((cve: any) => cve.properties),
+        results.cves = cveResult.records.map((record) => ({
+          cve: record.get("c").properties,
+          vulnerabilities: record
+            .get("vulnerabilities")
+            .map((vuln: any) => vuln.properties),
           mitigations: record
             .get("mitigations")
             .map((mit: any) => mit.properties),
           affected: record.get("affected").map((aff: any) => aff.properties),
-          risks: record.get("risks").map((risk: any) => risk.properties),
+          severities: record.get("severities").map((sev: any) => sev.properties),
           sources: record.get("sources").map((src: any) => src.properties),
         }));
-      }
 
-      // Enhanced CVE query with comprehensive relationships
-      const cveQuery = `
-        MATCH (c:CVE)
-        WHERE any(id IN $ids WHERE c.cveId = id)
-           OR any(desc IN $descriptions WHERE toLower(c.description) CONTAINS toLower(desc))
-        OPTIONAL MATCH (c)-[:BELONGS_TO]->(v:Vulnerability)
-        OPTIONAL MATCH (c)-[:HAS_MITIGATION]->(m:Mitigation)
-        OPTIONAL MATCH (c)-[:AFFECTS]->(a:Affected)
-        OPTIONAL MATCH (c)-[:HAS_SEVERITY]->(s:Severity)
-        OPTIONAL MATCH (c)-[:REFERENCES]->(src:Source)
-        RETURN c, 
-               collect(DISTINCT v) as vulnerabilities, 
-               collect(DISTINCT m) as mitigations,
-               collect(DISTINCT a) as affected,
-               collect(DISTINCT s) as severities,
-               collect(DISTINCT src) as sources
-      `;
+        // Enhanced mitigation query
+        if (entities.mitigations.length > 0 || cveInfo?.mitigation) {
+          const mitQuery = `
+            MATCH (m:Mitigation)
+            WHERE any(desc IN $descriptions WHERE toLower(m.description) CONTAINS toLower(desc))
+            OPTIONAL MATCH (m)-[:MITIGATES]->(v:Vulnerability)
+            OPTIONAL MATCH (m)-[:APPLIES_TO]->(c:CVE)
+            RETURN m, 
+                   collect(DISTINCT v) as vulnerabilities,
+                   collect(DISTINCT c) as cves
+          `;
 
-      const cveIds = entities.cves.map((c: any) => c.cveId);
-      const cveDescriptions = entities.cves
-        .map((c: any) => c.description)
-        .filter(Boolean);
-      if (cveInfo?.cve_id) cveIds.push(cveInfo.cve_id);
-      if (cveInfo?.cve_desc) cveDescriptions.push(cveInfo.cve_desc);
-
-      const cveResult = await session.run(cveQuery, {
-        ids: cveIds,
-        descriptions: cveDescriptions,
-      });
-
-      results.cves = cveResult.records.map((record) => ({
-        cve: record.get("c").properties,
-        vulnerabilities: record
-          .get("vulnerabilities")
-          .map((vuln: any) => vuln.properties),
-        mitigations: record
-          .get("mitigations")
-          .map((mit: any) => mit.properties),
-        affected: record.get("affected").map((aff: any) => aff.properties),
-        severities: record.get("severities").map((sev: any) => sev.properties),
-        sources: record.get("sources").map((src: any) => src.properties),
-      }));
-
-      // Enhanced mitigation query
-      if (entities.mitigations.length > 0) {
-        const mitQuery = `
-          MATCH (m:Mitigation)
-          WHERE any(desc IN $descriptions WHERE toLower(m.description) CONTAINS toLower(desc))
-             OR any(name IN $names WHERE toLower(m.name) CONTAINS toLower(name))
-          OPTIONAL MATCH (m)-[:MITIGATES]->(v:Vulnerability)
-          OPTIONAL MATCH (m)-[:PROTECTS]->(a:Affected)
-          OPTIONAL MATCH (m)-[:REDUCES_RISK]->(r:Risk)
-          OPTIONAL MATCH (m)-[:REFERENCES]->(s:Source)
-          RETURN m, 
-                 collect(DISTINCT v) as vulnerabilities,
-                 collect(DISTINCT a) as affected,
-                 collect(DISTINCT r) as risks,
-                 collect(DISTINCT s) as sources
-        `;
-
-        const mitResult = await session.run(mitQuery, {
-          descriptions: entities.mitigations
+          const mitigationDescriptions = entities.mitigations
             .map((m: any) => m.description)
-            .filter(Boolean),
-          names: entities.mitigations.map((m: any) => m.name),
-        });
+            .filter(Boolean);
+          if (cveInfo?.mitigation) mitigationDescriptions.push(cveInfo.mitigation);
 
-        results.mitigations = mitResult.records.map((record) => ({
-          mitigation: record.get("m").properties,
-          vulnerabilities: record
-            .get("vulnerabilities")
-            .map((vuln: any) => vuln.properties),
-          affected: record.get("affected").map((aff: any) => aff.properties),
-          risks: record.get("risks").map((risk: any) => risk.properties),
-          sources: record.get("sources").map((src: any) => src.properties),
-        }));
-      }
+          const mitResult = await session.run(mitQuery, {
+            descriptions: mitigationDescriptions,
+          });
 
-      // Query for affected systems and components
-      if (entities.affected.length > 0) {
-        const affectedQuery = `
-          MATCH (a:Affected)
-          WHERE any(name IN $names WHERE toLower(a.name) CONTAINS toLower(name))
-             OR any(type IN $types WHERE toLower(a.type) CONTAINS toLower(type))
-          OPTIONAL MATCH (a)-[:VULNERABLE_TO]->(v:Vulnerability)
-          OPTIONAL MATCH (a)-[:PROTECTED_BY]->(m:Mitigation)
-          OPTIONAL MATCH (a)-[:HAS_RISK]->(r:Risk)
-          RETURN a, 
-                 collect(DISTINCT v) as vulnerabilities,
-                 collect(DISTINCT m) as mitigations,
-                 collect(DISTINCT r) as risks
-        `;
+          results.mitigations = mitResult.records.map((record) => ({
+            mitigation: record.get("m").properties,
+            vulnerabilities: record
+              .get("vulnerabilities")
+              .map((vuln: any) => vuln.properties),
+            cves: record.get("cves").map((cve: any) => cve.properties),
+          }));
+        }
 
-        const affectedResult = await session.run(affectedQuery, {
-          names: entities.affected.map((a: any) => a.name),
-          types: entities.affected.map((a: any) => a.type).filter(Boolean),
-        });
-
-        results.affected = affectedResult.records.map((record) => ({
-          affected: record.get("a").properties,
-          vulnerabilities: record
-            .get("vulnerabilities")
-            .map((vuln: any) => vuln.properties),
-          mitigations: record
-            .get("mitigations")
-            .map((mit: any) => mit.properties),
-          risks: record.get("risks").map((risk: any) => risk.properties),
-        }));
-      }
-
-      return results;
+        return results;
+      });
     } catch (error) {
-      console.error('❌ Neo4j query error:', error);
-      
-      // In production, return empty results instead of throwing
-      if (process.env.NODE_ENV === 'production') {
-        console.warn('⚠️ Returning empty graph data due to Neo4j connection issues');
-        return {
-          vulnerabilities: [],
-          cves: [],
-          mitigations: [],
-          affected: [],
-          risks: [],
-          sources: []
-        };
-      }
-      
-      // In development, re-throw for debugging
-      throw error;
-    } finally {
-      await session.close();
+      console.error("❌ Neo4j query error:", error);
+      console.log("⚠️ Returning empty graph data due to Neo4j connection issues");
+      return {
+        vulnerabilities: [],
+        mitigations: [],
+        cves: [],
+      };
     }
   }
 

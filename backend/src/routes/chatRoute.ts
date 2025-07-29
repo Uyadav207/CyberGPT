@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { ScanController } from "../controllers/scanController";
 import { healthCheckHandler } from "../controllers/ragController";
-import { ChatController } from "../controllers/chatController";
+import { ChatController, getNeo4jHealth } from "../controllers/chatController";
 import { generateRelatedQuestions } from "../utils/neo4j-cve-fetch-ingest";
 
 const chatRoutes = new Hono();
@@ -11,6 +11,7 @@ const scanController = new ScanController();
 chatRoutes.post("/title", (c) => chatController.chatTitle(c)); // Leave other endpoints as is
 // Old /message/stream route removed - now using /with-jargon
 chatRoutes.get("/health", healthCheckHandler);
+chatRoutes.get("/neo4j-health", (c) => getNeo4jHealth(c.req, c.res));
 chatRoutes.post("/scan/summary", (c) => scanController.chatStream(c));
 chatRoutes.post("/detailed/summary", (c) => scanController.detailedSummary(c));
 chatRoutes.post("/chat-summary", (c) => chatController.chatSummary(c));
