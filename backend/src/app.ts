@@ -16,7 +16,7 @@ const app = new Hono();
 
 // CORS middleware - MUST be first, before other middleware
 app.use("*", cors({
-  origin: ["https://appcybergpt.vercel.app", "http://localhost:3000", "https://cybergpt.onrender.com"],
+  origin: ["https://appcybergpt.vercel.app", "http://localhost:3000"],
   allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowHeaders: ["Content-Type", "Authorization"],
   credentials: true,
