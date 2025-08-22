@@ -22,7 +22,7 @@ export default defineConfig({
       allow: [".."],
     },
     cors: {
-      origin: ["http://mira-denkminds.duckdns.org"],
+      origin: ["https://appcybergpt.vercel.app", "https://cybergpt-sable.vercel.app"],
     },
     proxy: {
       "/api": "http://localhost:8000",

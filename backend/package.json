@@ -1,14 +1,15 @@
 {
 	"name": "backend",
 	"scripts": {
-		"start": "bun run src/index.ts",
 		"dev": "bun run --watch src/index.ts",
+		"start": "bun run src/index.ts",
+		"start:prod": "bun run setup:prisma && bun run src/index.ts",
 		"start:cron": "bun run src/jobs/cronJob.ts",
 		"prepare": "husky",
 		"check": "biome check ./src",
 		"check:fix": "biome check --write ./src",
-		"setup:prisma": "cd src && npx prisma generate && npx prisma migrate deploy",
-		"start:prod": "bun run setup:prisma && bun run src/index.ts"
+		"setup:prisma": "bunx prisma generate --schema=./src/prisma/schema.prisma && bunx prisma migrate deploy --schema=./src/prisma/schema.prisma",
+		"postinstall": "bunx prisma generate --schema=./src/prisma/schema.prisma"
 	},
 	"dependencies": {
 		"@elysiajs/cron": "^1.2.0",
@@ -16,7 +17,7 @@
 		"@langchain/core": "^0.3.66",
 		"@langchain/openai": "^0.6.3",
 		"@langchain/pinecone": "^0.2.0",
-		"@pinecone-database/pinecone": "^6.1.2",
+		"@pinecone-database/pinecone": "^5.1.2",
 		"@prisma/client": "5.9.1",
 		"@supabase/supabase-js": "^2.47.10",
 		"@types/fs-extra": "^11.0.4",
@@ -35,7 +36,6 @@
 		"nodemailer": "^6.9.16",
 		"ollama": "^0.5.11",
 		"openai": "^4.77.0",
-		"pinecone-client": "^2.0.0",
 		"prisma": "5.9.1",
 		"simple-git": "^3.27.0",
 		"stripe": "^17.6.0",

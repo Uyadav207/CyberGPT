@@ -1,9 +1,8 @@
 import { Hono } from "hono";
-import { cors } from "hono/cors";
 import { logger } from "hono/logger";
+import { cors } from "hono/cors";
 import { errorHandler } from "./middlewares/errorHandler";
 import { driver } from "./config/neo4j";
-
 import { authRoutes } from "./routes/authRoutes";
 import { userRoutes } from "./routes/userRoutes";
 import { reportRoutes } from "./routes/reportRoutes";
@@ -15,12 +14,19 @@ import graphRoutes from "./routes/graphRoutes";
 
 const app = new Hono();
 
-app.use("*", cors());
+// CORS middleware - MUST be first, before other middleware
+app.use("*", cors({
+  origin: ["https://appcybergpt.vercel.app", "http://localhost:3000"],
+  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowHeaders: ["Content-Type", "Authorization"],
+  credentials: true,
+  maxAge: 600,
+}));
 
-//logger.info
+// Logging
 app.use("*", logger());
 
-// Middlewares
+// Error handler
 app.use("*", errorHandler);
 
 // Routes
@@ -28,17 +34,15 @@ app.route("/auth", authRoutes);
 app.route("/users", userRoutes);
 app.route("/chat", chatRoutes);
 app.route("/api", ragRoutes);
-app.route("/api/chat", chatRoutes); // Add this for /api/chat/with-jargon
+app.route("/api/chat", chatRoutes);
 app.route("/reports", reportRoutes);
 app.route("/zap", zapRoutes);
-app.route("/reports", reportRoutes);
 app.route("/subscription", paymentRoutes);
 app.route("/graph", graphRoutes);
 
-// Health check endpoint
+// Health check
 app.get("/health", async (c) => {
   try {
-    // Test Neo4j connection
     await driver.verifyConnectivity();
     return c.json({
       status: "healthy",
@@ -48,13 +52,8 @@ app.get("/health", async (c) => {
       }
     });
   } catch (error) {
-    console.error("Health check failed:", error);
     return c.json({
       status: "unhealthy",
-      timestamp: new Date().toISOString(),
-      services: {
-        neo4j: "disconnected"
-      },
       error: error instanceof Error ? error.message : "Unknown error"
     }, 503);
   }

@@ -2,6 +2,7 @@ import type { Context } from "hono";
 import { ChatService } from "../services/chatService";
 import { graphRAGAnswer } from "../utils/neo4j-cve-fetch-ingest";
 import { ChatGraphIntegrationService } from "../services/chatGraphIntegrationService";
+import { getConnectionHealth } from "../config/neo4j";
 
 export class ChatController {
   private chatService!: ChatService;
@@ -179,7 +180,7 @@ export class ChatController {
               jargons,
               cveDescriptionsMap,
               sourceLinks,
-              contextData,
+              contextData: contextData || undefined,
             });
 
           if (graphResult.success) {
@@ -189,10 +190,10 @@ export class ChatController {
               nodes: graphData.nodes.length,
               links: graphData.links.length,
               mainProblemNode: graphData.nodes.find(
-                (n) => n.id === "main-problem"
+                (n:any) => n.id === "main-problem"
               ),
               problemConnections: graphData.links.filter(
-                (l) =>
+                (l:any) =>
                   l.source === "main-problem" || l.target === "main-problem"
               ).length,
             });
@@ -219,7 +220,7 @@ export class ChatController {
               nodes: graphData.nodes?.length || 0,
               links: graphData.links?.length || 0,
               hasMainProblem: !!graphData.nodes?.find(
-                (n) => n.id === "main-problem"
+                (n:any) => n.id === "main-problem"
               ),
             }
           : "No graph data",
@@ -236,10 +237,27 @@ export class ChatController {
         graphData, // Include graph data in response if generated
       });
     } catch (error) {
-      console.error("Controller error:", error, error?.stack);
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
       return c.json({ status: "error", message: errorMessage }, 500);
     }
   }
 }
+
+export const getNeo4jHealth = async (req: Request, res: Response) => {
+  try {
+    const health = getConnectionHealth();
+    res.json({
+      success: true,
+      neo4j: health,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("❌ Health check error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Health check failed",
+      timestamp: new Date().toISOString(),
+    });
+  }
+};

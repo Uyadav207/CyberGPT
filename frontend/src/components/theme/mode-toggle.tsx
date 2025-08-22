@@ -12,7 +12,7 @@ export function ModeToggle() {
 	return (
 		<RadioGroup
 			defaultValue={theme}
-			onValueChange={(value) => setTheme(value)}
+			onValueChange={(value) => setTheme(value as "light" | "dark" | "system")}
 			className="flex items-center space-x-6 mb-12"
 		>
 			<div className="flex items-center space-x-2">

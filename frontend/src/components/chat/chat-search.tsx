@@ -128,7 +128,7 @@ export function ChatSearch({ isOpen, onClose }: ChatSearchProps) {
               }}
               className="flex flex-wrap gap-2 justify-center mb-4"
             >
-              {availableTags.map((tag, i) => (
+              {availableTags.map((tag) => (
                 <motion.div
                   key={tag}
                   variants={{

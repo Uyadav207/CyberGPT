@@ -1,16 +1,6 @@
 import axiosInstance from "./axios";
 import { BASE_URL } from "./config.backend";
 
-interface ChatPayload {
-  message: string;
-  useRAG?: boolean;
-  previousMessages?: ChatMessage[];
-}
-
-interface ChatMessage {
-  role: "system" | "user";
-  content: string;
-}
 
 interface ChatOllamaPayload {
   prompt: string;
@@ -22,28 +12,28 @@ interface ScanPayload {
 }
 
 // New GraphRAG response interface
-interface GraphRAGResponse {
-  answer: string;
-  reasoningTrace: Array<{
-    step: string;
-    message: string;
-  }>;
-  jargons?: { term: string; description: string }[];
-  cveDescriptionsMap?: Record<string, string>;
-  dynamicTag?: string;
-  contextData?: {
-    cveIds: string[];
-    cveDescriptions: string[];
-    riskLevels: string[];
-    mitigations: string[];
-    concept: string;
-  };
-  sourceLinks?: Array<{
-    title: string;
-    url: string;
-    type: "official" | "reference" | "framework";
-  }>;
-}
+// interface GraphRAGResponse {
+//   answer: string;
+//   reasoningTrace: Array<{
+//     step: string;
+//     message: string;
+//   }>;
+//   jargons?: { term: string; description: string }[];
+//   cveDescriptionsMap?: Record<string, string>;
+//   dynamicTag?: string;
+//   contextData?: {
+//     cveIds: string[];
+//     cveDescriptions: string[];
+//     riskLevels: string[];
+//     mitigations: string[];
+//     concept: string;
+//   };
+//   sourceLinks?: Array<{
+//     title: string;
+//     url: string;
+//     type: "official" | "reference" | "framework";
+//   }>;
+// }
 
 // Old chatGraphRAG function removed - now using chatWithJargon instead
 

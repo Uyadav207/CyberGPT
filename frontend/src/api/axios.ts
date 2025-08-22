@@ -12,6 +12,7 @@ import { BASE_URL } from "./config.backend";
 // Creating an Axios instance
 const axiosInstance = axios.create({
 	baseURL: BASE_URL,
+	withCredentials: true,
 });
 
 // Request interceptor

@@ -8,13 +8,12 @@ import {
   AlertTriangle, 
   Info, 
   Target, 
-  Link, 
   X,
   Maximize2,
   Minimize2,
   RotateCcw
 } from 'lucide-react';
-import type { GraphData, GraphNode, GraphLink, GraphVisualizationProps } from '../../types/graphVisualization';
+import type { GraphNode, GraphLink, GraphVisualizationProps } from '../../types/graphVisualization';
 
 const GraphVisualization: React.FC<GraphVisualizationProps> = ({
   data,
@@ -97,12 +96,12 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
         setSelectedLink(d);
         onLinkClick?.(d);
       })
-      .on('mouseover', function(event, d) {
+      .on('mouseover', function(_event, d) {
         d3.select(this)
           .attr('stroke-opacity', 1)
           .attr('stroke-width', (linkConfig[d.type]?.width || 1) * 1.5);
       })
-      .on('mouseout', function(event, d) {
+      .on('mouseout', function(_event, d) {
         d3.select(this)
           .attr('stroke-opacity', 0.6)
           .attr('stroke-width', linkConfig[d.type]?.width || 1);

@@ -6,6 +6,7 @@ import type { Document } from "langchain/document";
 export class PineconeService {
 	private static instance: PineconeService;
 	private store!: PineconeStore;
+	listNodeNames: any;
 
 	private constructor() {
 		this.initPinecone();

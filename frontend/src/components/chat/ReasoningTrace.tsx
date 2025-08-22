@@ -3,15 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ChevronDown, 
   ChevronRight,
-  Search, 
-  Database, 
-  Brain, 
   CheckCircle, 
-  AlertCircle, 
-  Info,
-  Clock,
-  Sparkles,
-  BookOpen
 } from 'lucide-react';
 
 interface ReasoningStep {
@@ -25,35 +17,8 @@ interface ReasoningTraceProps {
   durationSec?: number;
 }
 
-const getStepIcon = (step: string) => {
-  const stepLower = step.toLowerCase();
-  
-  if (stepLower.includes('userintent') || stepLower.includes('user')) {
-    return <Sparkles className="w-3 h-3" />;
-  }
-  if (stepLower.includes('search') || stepLower.includes('query')) {
-    return <Search className="w-3 h-3" />;
-  }
-  if (stepLower.includes('database') || stepLower.includes('neo4j') || stepLower.includes('kg')) {
-    return <Database className="w-3 h-3" />;
-  }
-  if (stepLower.includes('llm') || stepLower.includes('ai') || stepLower.includes('generate')) {
-    return <Brain className="w-3 h-3" />;
-  }
-  if (stepLower.includes('success') || stepLower.includes('found') || stepLower.includes('complete') || stepLower.includes('enrich')) {
-    return <CheckCircle className="w-3 h-3" />;
-  }
-  if (stepLower.includes('error') || stepLower.includes('fallback') || stepLower.includes('failed')) {
-    return <AlertCircle className="w-3 h-3" />;
-  }
-  if (stepLower.includes('api') || stepLower.includes('nvd') || stepLower.includes('circl') || stepLower.includes('osv')) {
-    return <Info className="w-3 h-3" />;
-  }
-  
-  return <Clock className="w-3 h-3" />;
-};
 
-const createNarrativeMessage = (step: ReasoningStep, index: number, trace: ReasoningStep[]) => {
+const createNarrativeMessage = (step: ReasoningStep, _idx?: number, _trace?: ReasoningStep[]) => {
   const { step: stepType, message } = step;
   const stepLower = (stepType || '').toLowerCase();
   const msgLower = (message || '').toLowerCase();
@@ -105,29 +70,6 @@ const createNarrativeMessage = (step: ReasoningStep, index: number, trace: Reaso
   return message;
 };
 
-const getSearchTerms = (trace: ReasoningStep[]) => {
-  const searchSteps = trace.filter(step => 
-    step.step === 'NVD' && step.message.includes('Searching')
-  );
-  
-  if (searchSteps.length > 0) {
-    const terms = searchSteps.map(step => {
-      const match = step.message.match(/keyword: (.+?)\)/);
-      return match ? match[1] : '';
-    }).filter(term => term);
-    
-    return terms.slice(0, 3); // Limit to 3 terms
-  }
-  
-  return ['cybersecurity', 'vulnerabilities'];
-};
-
-const getSourceCount = (trace: ReasoningStep[]) => {
-  const sources = trace.filter(step => 
-    step.step === 'NVD' || step.step === 'CIRCL' || step.step === 'OSV' || step.step === 'LLM'
-  );
-  return sources.length;
-};
 
 // Add a function to create a narrative from the trace
 function createNarrativeFromTrace(trace: ReasoningStep[]): string {

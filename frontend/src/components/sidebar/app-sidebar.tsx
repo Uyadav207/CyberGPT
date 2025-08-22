@@ -9,8 +9,6 @@ import {
 	SidebarSeparator,
 } from "../ui/sidebar";
 import NavChatHistory from "./nav-chat-history";
-import { Search } from "lucide-react";
-import { Button } from "../ui/button";
 import { useState, useEffect } from "react";
 import { ChatSearch } from "../chat/chat-search";
 
