@@ -9,7 +9,11 @@
 		"check": "biome check ./src",
 		"check:fix": "biome check --write ./src",
 		"setup:prisma": "bunx prisma generate --schema=./src/prisma/schema.prisma && bunx prisma migrate deploy --schema=./src/prisma/schema.prisma",
-		"postinstall": "bunx prisma generate --schema=./src/prisma/schema.prisma"
+		"postinstall": "bunx prisma generate --schema=./src/prisma/schema.prisma",
+		"test": "bun test",
+		"test:watch": "bun test --watch",
+		"test:coverage": "bun test --coverage",
+		"type-check": "bunx tsc --noEmit"
 	},
 	"dependencies": {
 		"@elysiajs/cron": "^1.2.0",
