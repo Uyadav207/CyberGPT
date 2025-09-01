@@ -34,19 +34,13 @@ import type * as vulnerabilityInfo from "../vulnerabilityInfo.js";
  */
 declare const fullApi: ApiFromModules<{
   chats: typeof chats;
-<<<<<<< HEAD
   generateTodoTasks: typeof generateTodoTasks;
   graphVisualizations: typeof graphVisualizations;
-=======
->>>>>>> 92e629d1cdc63c882da9e571eb1cdc6717b3d2ef
   reports: typeof reports;
   sastScans: typeof sastScans;
   scans: typeof scans;
   summaries: typeof summaries;
-<<<<<<< HEAD
   todoLists: typeof todoLists;
-=======
->>>>>>> 92e629d1cdc63c882da9e571eb1cdc6717b3d2ef
   vulnerabilities: typeof vulnerabilities;
   vulnerabilityInfo: typeof vulnerabilityInfo;
 }>;
