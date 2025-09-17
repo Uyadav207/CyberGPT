@@ -116,8 +116,13 @@ export const chatWithJargon = async (payload: {
     throw new Error(error.error || "Failed to get answer");
   }
   const result = await response.json();
-  console.log("DEBUG: chatWithJargon response:", result);
-  return result;
+  // Normalize reasoning field for consumers: ensure reasoningTrace always exists
+  const normalized = { ...result } as any;
+  if (normalized.trace && !normalized.reasoningTrace) {
+    normalized.reasoningTrace = normalized.trace;
+  }
+  console.log("DEBUG: chatWithJargon response:", normalized);
+  return normalized;
 };
 
 export const chatApis = {

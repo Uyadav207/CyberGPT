@@ -3,7 +3,7 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { v4 as uuidv4 } from "uuid";
 import { FaChevronRight } from 'react-icons/fa';
-import { Brain, Link } from "lucide-react";
+import { Brain, Link, TagIcon } from "lucide-react";
 
 //components
 import { ScrollArea } from "@components/ui/scroll-area";
@@ -341,6 +341,8 @@ const MiraChatBot: React.FC = () => {
 	// Add state to track expanded reasoning per message
 	const [expandedReasoning, setExpandedReasoning] = useState<{ [id: string]: boolean }>({});
 	const [relatedQuestions, setRelatedQuestions] = useState<{ [messageId: string]: string[] }>({});
+	// Add state to track expanded tags per message
+	const [expandedTags, setExpandedTags] = useState<{ [id: string]: boolean }>({});
 	
 	// Add state to track which messages have already had related questions generated
 	const [processedRelatedQuestions, setProcessedRelatedQuestions] = useState<Set<string>>(new Set());
@@ -749,6 +751,7 @@ const MiraChatBot: React.FC = () => {
 							reasoningTrace,
 							cveDescriptionsMap,
 							sourceLinks,
+							tags: Array.isArray((chat as any).tags) ? (chat as any).tags : undefined,
 						}),
 					};
 				},
@@ -913,7 +916,7 @@ const MiraChatBot: React.FC = () => {
 				chatId: graphChatId // Pass chat ID for graph generation
 			});
 
-			const botMessage: Message = {
+				const botMessage: Message = {
 				id: botMessageId, // Use the same ID that was passed to the API for graph generation
 				message: graphRAGResponse.answer,
 				sender: "ai",
@@ -921,6 +924,7 @@ const MiraChatBot: React.FC = () => {
 				jargons: graphRAGResponse.jargons,
 				cveDescriptionsMap: graphRAGResponse.cveDescriptionsMap,
 				sourceLinks: graphRAGResponse.sourceLinks || [],
+					...(graphRAGResponse.dynamicTag ? { tags: [graphRAGResponse.dynamicTag] as any } : {}),
 				durationSec: thinkingStartRef.current ? (Date.now() - thinkingStartRef.current) / 1000 : undefined,
 			};
 			// Reset start ref after computing
@@ -1058,6 +1062,7 @@ const MiraChatBot: React.FC = () => {
 					jargons: response.jargons,
 					cveDescriptionsMap: response.cveDescriptionsMap,
 					sourceLinks: response.sourceLinks || [],
+					...(response.dynamicTag ? { tags: [response.dynamicTag] as any } : {}),
 					durationSec: thinkingStartRef.current ? (Date.now() - thinkingStartRef.current) / 1000 : undefined,
 				};
 				thinkingStartRef.current = null;
@@ -1586,6 +1591,9 @@ const MiraChatBot: React.FC = () => {
 					jargons: response.jargons,
 					cveDescriptionsMap: response.cveDescriptionsMap,
 					sourceLinks: response.sourceLinks || [],
+					// include tag for UI (single dynamicTag or array from history)
+					// backend saves tags array; for immediate UI, include the dynamicTag
+					...(response.dynamicTag ? { tags: [response.dynamicTag] as any } : {}),
 					durationSec: thinkingStartRef.current ? (Date.now() - thinkingStartRef.current) / 1000 : undefined,
 				};
 				thinkingStartRef.current = null;
@@ -3796,7 +3804,8 @@ const MiraChatBot: React.FC = () => {
 													*/}
 													
 													{/* Action Buttons - Sources, Graph, and TODO List */}
-													<div className="flex items-center gap-2 mt-3 -ml-2">
+													<hr className="mt-4 mb-2 border-t border-sidebar-border/50" />
+													<div className="flex items-center gap-2 -ml-2">
 														{/* Sources */}
 														{(() => {
 															return (
@@ -3851,30 +3860,78 @@ const MiraChatBot: React.FC = () => {
 																/>
 															);
 														})()}
-													</div>
+														
+														{/* Tags toggle */}
+														{Array.isArray((message as any).tags) && (message as any).tags.length > 0 && (
+															<Tooltip>
+																<TooltipTrigger asChild>
+																	<button
+																		className="p-2 rounded-full hover:bg-accent/60 transition-colors group"
+																		title="Show tags"
+																		onClick={() => {
+																			const messageId = String(message.id);
+																			const currentState = expandedTags[messageId] === undefined ? false : expandedTags[messageId];
+																			setExpandedTags(prev => ({ ...prev, [messageId]: !currentState }));
+																		}}
+																		aria-expanded={expandedTags[String(message.id)] === true}
+																		aria-controls={`tags-${String(message.id)}`}
+																	>
+																		<TagIcon size={16} className="text-muted-foreground group-hover:text-black dark:group-hover:text-white transition-colors" />
+																	</button>
+																</TooltipTrigger>
+																<TooltipContent side="top" align="center">
+																	View tags
+																</TooltipContent>
+															</Tooltip>
+														)}
+                                                    </div>
 
-													{/* Related Questions - Positioned below */}
-													{isLastAiMessage && (
-														<div className="mt-3">
-															<div className="text-xs text-sidebar-foreground/70 mb-2 italic">Suggested follow-up questions:</div>
-															<div className="flex flex-wrap gap-2">
-															{messageRelatedQuestions.map((q: string, i: number) => (
-																<motion.button
-																	key={`${message.id}-${q}-${i}`}
-																	onClick={() => handleSend(q, false, true)}
-																	className="rounded-lg px-3 py-1.5 bg-sidebar border border-sidebar-border text-sidebar-foreground text-xs sm:text-sm font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-sidebar-ring"
-																	style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
-																	initial={{ opacity: 0, y: 20 }}
-																	animate={{ opacity: 1, y: 0 }}
-																	transition={{ delay: 0.15 * i, duration: 0.35, type: 'spring', stiffness: 200 }}
-																>
-																	{q}
-																</motion.button>
-															))}
-														</div>
-													</div>
-													)}
-												</div>
+                                                    {/* Tags collapsible content (below icons) */}
+                                                    {message.sender === 'ai' && Array.isArray((message as any).tags) && (message as any).tags.length > 0 && (
+                                                        <AnimatePresence>
+                                                            {expandedTags[String(message.id)] && (
+                                                                <motion.div
+                                                                    id={`tags-${String(message.id)}`}
+                                                                    initial={{ opacity: 0, height: 0, y: -6 }}
+                                                                    animate={{ opacity: 1, height: "auto", y: 0 }}
+                                                                    exit={{ opacity: 0, height: 0, y: -6 }}
+                                                                    transition={{ duration: 0.25, ease: "easeInOut" }}
+                                                                    className="mt-2 mb-2 p-2 bg-accent/20 rounded-lg"
+                                                                >
+                                                                    <div className="flex flex-wrap gap-2">
+                                                                        {((message as any).tags as string[]).map((tag, i) => (
+                                                                            <span key={`${message.id}-tag-${i}`} className="px-2 py-1 rounded-md bg-sidebar text-sidebar-foreground text-xs border border-sidebar-border">
+                                                                                {tag}
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                </motion.div>
+                                                            )}
+                                                        </AnimatePresence>
+                                                    )}
+
+                                                    {/* Suggested Questions - below icons and tags */}
+                                                    {isLastAiMessage && (
+                                                        <div className="mt-3">
+                                                            <div className="text-xs text-sidebar-foreground/70 mb-2 italic">Suggested follow-up questions:</div>
+                                                            <div className="flex flex-wrap gap-2">
+                                                            {messageRelatedQuestions.map((q: string, i: number) => (
+                                                                <motion.button
+                                                                    key={`${message.id}-${q}-${i}`}
+                                                                    onClick={() => handleSend(q, false, true)}
+                                                                    className="rounded-lg px-3 py-1.5 bg-sidebar border border-sidebar-border text-sidebar-foreground text-xs sm:text-sm font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-sidebar-ring"
+                                                                    style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+                                                                    initial={{ opacity: 0, y: 20 }}
+                                                                    animate={{ opacity: 1, y: 0 }}
+                                                                    transition={{ delay: 0.15 * i, duration: 0.35, type: 'spring', stiffness: 200 }}
+                                                                >
+                                                                    {q}
+                                                                </motion.button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                    )}
+                                                </div>
 											)}
 											{isUser && (
 												<div className="mb-3 px-1">
