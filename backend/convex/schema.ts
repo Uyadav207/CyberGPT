@@ -5,6 +5,7 @@ export default defineSchema({
   chats: defineTable({
     userId: v.string(), // External userId as a string
     title: v.string(),
+    tags: v.optional(v.array(v.string())), // Main tags for the chat (optional for backward compatibility)
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_userId", ["userId"]),

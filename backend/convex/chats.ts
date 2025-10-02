@@ -181,13 +181,15 @@ export const saveChat = mutation({
   args: {
     userId: v.string(),
     title: v.string(),
+    tags: v.optional(v.array(v.string())),
   },
-  handler: async (ctx, { userId, title }) => {
+  handler: async (ctx, { userId, title, tags = [] }) => {
     const now = Date.now();
 
     const chatId = await ctx.db.insert("chats", {
       userId,
       title,
+      tags,
       createdAt: now,
       updatedAt: now,
     });

@@ -24,7 +24,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
 //apis
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { chatApis } from "../../api/chat";
+import { chatApis, generateTitleAndTag } from "../../api/chat";
 import { chatWithJargon } from '../../api/chat';
 import { BASE_URL } from '../../api/config.backend';
 import type { Id } from "../../convex/_generated/dataModel";
@@ -1062,7 +1062,7 @@ const MiraChatBot: React.FC = () => {
 					jargons: response.jargons,
 					cveDescriptionsMap: response.cveDescriptionsMap,
 					sourceLinks: response.sourceLinks || [],
-					...(response.dynamicTag ? { tags: [response.dynamicTag] as any } : {}),
+					...(response.dynamicTags ? { tags: response.dynamicTags as any } : {}),
 					durationSec: thinkingStartRef.current ? (Date.now() - thinkingStartRef.current) / 1000 : undefined,
 				};
 				thinkingStartRef.current = null;
@@ -1147,7 +1147,7 @@ const MiraChatBot: React.FC = () => {
 								mitigation: mitigation
 							} : undefined,
 							Severity: "Medium",
-							tags: [response.dynamicTag || "cybersecurity_general"]
+							tags: response.dynamicTags || ["cybersecurity_general"]
 						};
 						
 						console.log('About to save with data:', enhancedData);
@@ -1198,7 +1198,7 @@ const MiraChatBot: React.FC = () => {
 							Answer: response.answer,
 							hasSourceLinks: !!(response.sourceLinks && response.sourceLinks.length > 0),
 							hasJargons: !!(response.jargons && response.jargons.length > 0),
-							hasDynamicTag: !!response.dynamicTag,
+							hasDynamicTag: !!response.dynamicTags,
 							hasContextData: !!response.contextData
 						});
 						
@@ -1297,7 +1297,7 @@ const MiraChatBot: React.FC = () => {
 								mitigation: mitigation
 							} : undefined,
 							Severity: "Medium",
-							tags: [response.dynamicTag || "cybersecurity_general"]
+							tags: response.dynamicTags || ["cybersecurity_general"]
 						});
 						console.log('AI response saved to new chat with enhanced data');
 						
@@ -1391,11 +1391,13 @@ const MiraChatBot: React.FC = () => {
 				if (!graphChatId) {
 					console.log('🔄 [Frontend] No chatId available, creating new chat first...');
 					try {
-						const titleResponse = await generateTitle(userMessage.message);
-						const chatTitle = (titleResponse as { title: string })?.title || "Chat";
+						const titleAndTagResponse = await generateTitleAndTag(userMessage.message);
+						const chatTitle = titleAndTagResponse?.title || "Chat";
+						const chatTags = titleAndTagResponse?.tag ? [titleAndTagResponse.tag] : ["cybersecurity_general"];
 						const newChatResult = await saveChat({
 							userId: String(user?.id || "anonymous"),
 							title: chatTitle,
+							tags: chatTags,
 						});
 						setCreatedChatId(newChatResult);
 						graphChatId = newChatResult;
@@ -1477,10 +1479,10 @@ const MiraChatBot: React.FC = () => {
 					throw new Error('Backend response has empty answer field');
 				}
 				console.log('Dynamic tag validation:', {
-					exists: !!response.dynamicTag,
-					value: response.dynamicTag,
-					type: typeof response.dynamicTag,
-					fallback: response.dynamicTag || "cybersecurity_general"
+					exists: !!response.dynamicTags,
+					value: response.dynamicTags,
+					type: typeof response.dynamicTags,
+					fallback: response.dynamicTags || "cybersecurity_general"
 				});
 				console.log('Context data from backend:', response.contextData);
 				
@@ -1593,7 +1595,7 @@ const MiraChatBot: React.FC = () => {
 					sourceLinks: response.sourceLinks || [],
 					// include tag for UI (single dynamicTag or array from history)
 					// backend saves tags array; for immediate UI, include the dynamicTag
-					...(response.dynamicTag ? { tags: [response.dynamicTag] as any } : {}),
+					...(response.dynamicTags ? { tags: response.dynamicTags as any } : {}),
 					durationSec: thinkingStartRef.current ? (Date.now() - thinkingStartRef.current) / 1000 : undefined,
 				};
 				thinkingStartRef.current = null;
@@ -1700,7 +1702,7 @@ const MiraChatBot: React.FC = () => {
 								mitigation: mitigation
 							} : undefined,
 							Severity: "Medium",
-							tags: [response.dynamicTag || "cybersecurity_general"]
+							tags: response.dynamicTags || ["cybersecurity_general"]
 						};
 						
 						console.log('About to save with data:', enhancedData);
@@ -1820,7 +1822,7 @@ const MiraChatBot: React.FC = () => {
 							Answer: response.answer,
 							hasSourceLinks: !!(response.sourceLinks && response.sourceLinks.length > 0),
 							hasJargons: !!(response.jargons && response.jargons.length > 0),
-							hasDynamicTag: !!response.dynamicTag,
+							hasDynamicTag: !!response.dynamicTags,
 							hasContextData: !!response.contextData
 						});
 						
@@ -1925,7 +1927,7 @@ const MiraChatBot: React.FC = () => {
 								mitigation: mitigation
 							} : undefined,
 							Severity: "Medium",
-							tags: [response.dynamicTag || "cybersecurity_general"],
+							tags: response.dynamicTags || ["cybersecurity_general"],
 							graphVisualization: response.graphData || null // Include graph data from response
 						});
 						
@@ -3805,7 +3807,7 @@ const MiraChatBot: React.FC = () => {
 													
 													{/* Action Buttons - Sources, Graph, and TODO List */}
 													<hr className="mt-4 mb-2 border-t border-sidebar-border/50" />
-													<div className="flex items-center gap-2 -ml-2">
+													<div className="flex items-center gap-2 -ml-2 relative">
 														{/* Sources */}
 														{(() => {
 															return (
@@ -3886,23 +3888,56 @@ const MiraChatBot: React.FC = () => {
 														)}
                                                     </div>
 
-                                                    {/* Tags collapsible content (below icons) */}
+                                                    {/* Tags appearing below tag button */}
                                                     {message.sender === 'ai' && Array.isArray((message as any).tags) && (message as any).tags.length > 0 && (
                                                         <AnimatePresence>
                                                             {expandedTags[String(message.id)] && (
                                                                 <motion.div
                                                                     id={`tags-${String(message.id)}`}
-                                                                    initial={{ opacity: 0, height: 0, y: -6 }}
-                                                                    animate={{ opacity: 1, height: "auto", y: 0 }}
-                                                                    exit={{ opacity: 0, height: 0, y: -6 }}
-                                                                    transition={{ duration: 0.25, ease: "easeInOut" }}
-                                                                    className="mt-2 mb-2 p-2 bg-accent/20 rounded-lg"
+                                                                    initial={{ 
+                                                                        opacity: 0, 
+                                                                        height: 0,
+                                                                        y: -10
+                                                                    }}
+                                                                    animate={{ 
+                                                                        opacity: 1, 
+                                                                        height: "auto",
+                                                                        y: 0
+                                                                    }}
+                                                                    exit={{ 
+                                                                        opacity: 0, 
+                                                                        height: 0,
+                                                                        y: -10
+                                                                    }}
+                                                                    transition={{ 
+                                                                        duration: 0.3, 
+                                                                        ease: "easeOut"
+                                                                    }}
+                                                                    className="mt-2 mb-2 overflow-hidden"
                                                                 >
-                                                                    <div className="flex flex-wrap gap-2">
+                                                                    <div className="flex flex-wrap gap-1.5">
                                                                         {((message as any).tags as string[]).map((tag, i) => (
-                                                                            <span key={`${message.id}-tag-${i}`} className="px-2 py-1 rounded-md bg-sidebar text-sidebar-foreground text-xs border border-sidebar-border">
-                                                                                {tag}
-                                                                            </span>
+                                                                            <motion.span 
+                                                                                key={`${message.id}-tag-${i}`}
+                                                                                initial={{ 
+                                                                                    opacity: 0, 
+                                                                                    y: -10, 
+                                                                                    scale: 0.8 
+                                                                                }}
+                                                                                animate={{ 
+                                                                                    opacity: 1, 
+                                                                                    y: 0, 
+                                                                                    scale: 1 
+                                                                                }}
+                                                                                transition={{ 
+                                                                                    delay: i * 0.08, 
+                                                                                    duration: 0.2,
+                                                                                    ease: "easeOut"
+                                                                                }}
+                                                                                className="px-2 py-1 rounded-full bg-blue-100 text-blue-800 text-[10px] font-medium whitespace-nowrap shadow-sm hover:bg-blue-200 transition-colors duration-200"
+                                                                            >
+                                                                                #{tag.replace(/_/g, '').replace(/([A-Z])/g, (match, p1, offset) => offset > 0 ? p1 : p1).toLowerCase()}
+                                                                            </motion.span>
                                                                         ))}
                                                                     </div>
                                                                 </motion.div>

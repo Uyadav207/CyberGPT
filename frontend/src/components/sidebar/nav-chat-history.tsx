@@ -92,9 +92,29 @@ const renderCategory = (
 					className="w-full justify-between cursor-pointer"
 					onClick={() => navigate(`/chatbot/${chat._id}`)}
 				>
-					<div className="flex items-center">
-						<BotMessageSquare className="h-6 w-6" />
-						<span className="flex-grow truncate">{chat.title}</span>
+					<div className="flex items-center w-full">
+						<BotMessageSquare className="h-6 w-6 flex-shrink-0" />
+						<div className="flex-grow min-w-0 flex flex-col">
+							<span className="truncate">{chat.title}</span>
+							{chat.tags && Array.isArray(chat.tags) && chat.tags.length > 0 && (
+								<div className="flex gap-1 mt-1">
+									{chat.tags.slice(0, 2).map((tag, index) => (
+										<span 
+											key={index}
+											className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded-full truncate max-w-[60px]"
+											title={tag}
+										>
+											{tag.replace('_', ' ')}
+										</span>
+									))}
+									{chat.tags.length > 2 && (
+										<span className="text-xs text-gray-500">
+											+{chat.tags.length - 2}
+										</span>
+									)}
+								</div>
+							)}
+						</div>
 						<DropdownMenu>
 							<DropdownMenuTrigger asChild>
 								<MoreHorizontal className="h-4 w-4 ml-auto right-0 cursor-pointer" />

@@ -1,6 +1,7 @@
 export interface Chats {
   _id: string;
   title: string;
+  tags?: string[]; // Optional for backward compatibility with existing chats
   createdAt: string;
 }
 

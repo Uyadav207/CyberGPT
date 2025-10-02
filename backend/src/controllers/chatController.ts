@@ -29,6 +29,18 @@ export class ChatController {
     }
   }
 
+  async chatTitleAndTag(c: Context) {
+    try {
+      const { botMessage } = await c.req.json();
+      const response = await this.chatService.generateTitleAndTag(botMessage);
+      return c.json(response);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      return c.json({ status: "error", message: errorMessage }, 500);
+    }
+  }
+
   async chatStream(c: Context) {
     try {
       const { message } = await c.req.json();
@@ -38,7 +50,7 @@ export class ChatController {
         reasoningTrace,
         jargons,
         cveDescriptionsMap,
-        dynamicTag,
+        dynamicTags,
         contextData,
         sourceLinks,
       } = await graphRAGAnswer(message);
@@ -53,7 +65,7 @@ export class ChatController {
         trace,
         jargons,
         cveDescriptionsMap,
-        dynamicTag,
+        dynamicTags,
         contextData,
         sourceLinks,
       });
@@ -123,7 +135,7 @@ export class ChatController {
         reasoningTrace,
         jargons,
         cveDescriptionsMap,
-        dynamicTag,
+        dynamicTags,
         contextData,
         sourceLinks,
       } = await graphRAGAnswer(mainMessage, agentPersonality);
@@ -232,7 +244,7 @@ export class ChatController {
         trace,
         jargons,
         cveDescriptionsMap,
-        dynamicTag,
+        dynamicTags,
         contextData,
         sourceLinks,
         graphData, // Include graph data in response if generated

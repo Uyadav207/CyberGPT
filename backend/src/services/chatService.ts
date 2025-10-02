@@ -253,6 +253,38 @@ ${
 		return this.openai.chat(messages);
 	}
 
+	async generateTitleAndTag(botMessage: string): Promise<{title: string, tag: string}> {
+		const systemMessage = `Based on the following conversation content, generate:
+1. A short, concise title (maximum 6 words, no quotations)
+2. A single relevant tag that best categorizes this conversation (e.g., "cybersecurity", "vulnerability_analysis", "security_assessment", "compliance", "penetration_testing", "risk_management")
+
+Content: ${botMessage}
+
+Respond in JSON format: {"title": "Your Title Here", "tag": "your_tag_here"}`;
+
+		const messages: ChatCompletionMessageParam[] = [
+			{ role: "system", content: systemMessage },
+		];
+
+		const response = await this.openai.chat(messages);
+		
+		try {
+			const parsed = JSON.parse(response);
+			return {
+				title: parsed.title || "Chat",
+				tag: parsed.tag || "cybersecurity_general"
+			};
+		} catch (error) {
+			console.error("Failed to parse title and tag response:", error);
+			// Fallback to original title generation
+			const title = await this.generateTitle(botMessage);
+			return {
+				title: title,
+				tag: "cybersecurity_general"
+			};
+		}
+	}
+
 	async processMessageStream(
 		message: string,
 		useRAG: boolean,

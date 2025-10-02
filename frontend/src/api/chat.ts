@@ -64,6 +64,9 @@ interface GenerateTitlePayload {
 const generateTitle = (payload: GenerateTitlePayload) =>
   axiosInstance.post("/chat/title", payload);
 
+export const generateTitleAndTag = (payload: GenerateTitlePayload) =>
+  axiosInstance.post("/chat/title-and-tag", payload);
+
 const chatSummaryOllama = async (payload: { messages: string[] }) => {
   const response = await fetch(`${BASE_URL}/api/chat/summary`, {
     method: "POST",
@@ -129,6 +132,7 @@ export const chatApis = {
   chatOllama,
   scan,
   generateTitle,
+  generateTitleAndTag,
   chatSummaryOllama,
   chatSummaryOpenAI,
 };
