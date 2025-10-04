@@ -11,6 +11,8 @@ import { Spinner } from "@components/loader/spinner";
 import { Progress } from "@components/ui/progress";
 import { HumanInTheLoopOptions } from "./human-in-the-loop-options";
 import { HumanInTheLoopApproval } from "./human-in-the-loop-approval";
+import GraphGenerationModal from "./GraphGenerationModal";
+import { useGraphGenerationModal } from "../../hooks/useGraphGenerationModal";
 import {
 	Dialog,
 	DialogContent,
@@ -268,6 +270,9 @@ const MiraChatBot: React.FC = () => {
 	// Agent Personality State
 	const [selectedAgentMode, setSelectedAgentMode] = useState<'tutor' | 'investigator' | 'analyst' | undefined>('tutor');
 	const [agentButtonsDisabled, setAgentButtonsDisabled] = useState(false);
+
+	// Graph Generation Modal State
+	const { modalState, openModal, closeModal, isModalOpen } = useGraphGenerationModal();
 
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
 	const { chatId: chatIdParam } = useParams<{ chatId: string }>();
@@ -916,6 +921,12 @@ const MiraChatBot: React.FC = () => {
 				chatId: graphChatId // Pass chat ID for graph generation
 			});
 
+			// Graph generation is now manual only - triggered by graph icon click
+			console.log("📝 [Frontend] Graph generation is manual only:", {
+				status: graphRAGResponse.graphGenerationStatus,
+				note: "Click graph icon to generate visualization"
+			});
+
 				const botMessage: Message = {
 				id: botMessageId, // Use the same ID that was passed to the API for graph generation
 				message: graphRAGResponse.answer,
@@ -1044,6 +1055,12 @@ const MiraChatBot: React.FC = () => {
 					agentPersonality: selectedAgentMode,
 					messageId: botMessageId, // Pass message ID for graph generation
 					chatId: graphChatId // Pass chat ID for graph generation
+				});
+
+				// Graph generation is now manual only - triggered by graph icon click
+				console.log("📝 [Frontend] Graph generation is manual only (clarification):", {
+					status: response.graphGenerationStatus,
+					note: "Click graph icon to generate visualization"
 				});
 				
 				// Validate response structure
@@ -1452,6 +1469,13 @@ const MiraChatBot: React.FC = () => {
 					messageId: botMessageId, // Pass message ID for graph generation
 					chatId: graphChatId // Pass chat ID for graph generation
 				});
+
+				// Graph generation is now manual only - triggered by graph icon click
+				console.log("📝 [Frontend] Graph generation is manual only (main flow):", {
+					status: response.graphGenerationStatus,
+					note: "Click graph icon to generate visualization"
+				});
+
 				console.log('Backend response received:', {
 					hasAnswer: !!response.answer,
 					answerLength: response.answer?.length,
@@ -4094,6 +4118,12 @@ const MiraChatBot: React.FC = () => {
 					humanInTheLoopAction={requestHumanInLoop}
 					onOpenChange={setIsCreateDialogOpen}
 					onCreateFolder={handleCreateFolder}
+				/>
+				
+				{/* Graph Generation Modal */}
+				<GraphGenerationModal
+					isOpen={isModalOpen}
+					onClose={closeModal}
 				/>
 			</div>
 		</div>

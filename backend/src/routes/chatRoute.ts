@@ -21,6 +21,7 @@ chatRoutes.post("/detailed/sast-summary", (c) =>
   scanController.detailedSastSummary(c)
 );
 chatRoutes.post("/with-jargon", (c) => chatController.chatWithJargon(c));
+chatRoutes.post("/graph-data", (c) => chatController.getGraphData(c));
 
 // Generate contextual related questions
 chatRoutes.post("/related-questions", async (c) => {

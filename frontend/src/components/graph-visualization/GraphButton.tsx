@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Network, Loader2, EyeOff } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import GraphVisualization from './GraphVisualization';
+import GraphGenerationModal from '../chat/GraphGenerationModal';
+import { useGraphGenerationModal } from '../../hooks/useGraphGenerationModal';
 import { graphApis } from '../../api/graph';
 import { useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
@@ -319,14 +321,53 @@ const GraphButton: React.FC<GraphButtonProps> = ({ message, chatId, className = 
   const [showGraph, setShowGraph] = useState(false);
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [currentStep, setCurrentStep] = useState(0);
 
   const saveGraphMutation = useMutation(api.graphVisualizations.saveGraphVisualization);
+  
+  // Graph Generation Modal
+  const { modalState, openModal, closeModal, isModalOpen } = useGraphGenerationModal();
+
+  // Cleanup AbortController on unmount
+  useEffect(() => {
+    return () => {
+      if (abortController) {
+        abortController.abort();
+      }
+    };
+  }, [abortController]);
+
+  // Cancel graph generation
+  const cancelGeneration = () => {
+    console.log("🚫 [GraphButton] Cancelling graph generation");
+    if (abortController) {
+      abortController.abort();
+      console.log("🚫 [GraphButton] AbortController.abort() called");
+    }
+    setIsGenerating(false);
+    setError(null);
+    setProgress(0);
+    setCurrentStep(0);
+    closeModal();
+  };
 
   const handleGenerateGraph = async () => {
     if (message.sender !== 'ai') return;
 
     setIsGenerating(true);
     setError(null);
+    setProgress(0);
+    setCurrentStep(0);
+
+    // Create AbortController for cancellation
+    const controller = new AbortController();
+    setAbortController(controller);
+
+    // Open the animated modal for graph generation
+    console.log("🚀 [GraphButton] Opening modal for graph generation");
+    openModal(message.id || 'unknown', chatId);
 
     try {
       // Debug chatId value
@@ -338,21 +379,75 @@ const GraphButton: React.FC<GraphButtonProps> = ({ message, chatId, className = 
         throw new Error(`Invalid chat ID provided: "${chatId}"`);
       }
 
+      // Check if cancelled before proceeding
+      if (controller.signal.aborted) {
+        console.log("🚫 [GraphButton] Generation cancelled before checking existing graph");
+        return;
+      }
+
+      // Step 1: Analyzing Response
+      setCurrentStep(0);
+      setProgress(16);
+      console.log('[GraphButton] Step 1: Analyzing Response');
+
+      // Step 2: Extracting Entities
+      setCurrentStep(1);
+      setProgress(33);
+      console.log('[GraphButton] Step 2: Extracting Entities');
+
       // First, try to get existing graph from REST API
       console.log('[GraphButton] Checking for existing graph:', { messageId: message.id, chatId });
       const existingGraph = await graphApis.getGraphByMessageId(message.id || '', chatId);
       
       if (existingGraph) {
         console.log('[GraphButton] Found existing graph:', existingGraph);
+        
+        // Step 3: Querying Knowledge Graph
+        setCurrentStep(2);
+        setProgress(50);
+        console.log('[GraphButton] Step 3: Querying Knowledge Graph');
+        
+        // Step 4: Creating Relationships
+        setCurrentStep(3);
+        setProgress(66);
+        console.log('[GraphButton] Step 4: Creating Relationships');
+        
+        // Step 5: Building Visualization
+        setCurrentStep(4);
+        setProgress(83);
+        console.log('[GraphButton] Step 5: Building Visualization');
+        
         // Convert graphVisualization to GraphData format for the visualization component
         const graphData = convertGraphVisualizationToGraphData(existingGraph as any);
         setGraphData(graphData);
+        
+        // Step 6: Finalizing Graph
+        setCurrentStep(5);
+        setProgress(100);
+        console.log('[GraphButton] Step 6: Finalizing Graph');
+        
         setShowGraph(true);
         setIsGenerating(false);
+        
+        // Auto-close modal after a brief delay to show completion
+        setTimeout(() => {
+          closeModal();
+        }, 1000);
         return;
       }
 
       console.log('[GraphButton] No existing graph found, generating new one...');
+
+      // Check if cancelled before generating new graph
+      if (controller.signal.aborted) {
+        console.log("🚫 [GraphButton] Generation cancelled before generating new graph");
+        return;
+      }
+
+      // Step 3: Querying Knowledge Graph
+      setCurrentStep(2);
+      setProgress(50);
+      console.log('[GraphButton] Step 3: Querying Knowledge Graph');
 
       // Generate new graph if none exists
       const request: GraphGenerationRequest = {
@@ -374,12 +469,24 @@ const GraphButton: React.FC<GraphButtonProps> = ({ message, chatId, className = 
       };
 
       console.log('[GraphButton] Generating graph with request:', request);
+      
+      // Step 4: Creating Relationships
+      setCurrentStep(3);
+      setProgress(66);
+      console.log('[GraphButton] Step 4: Creating Relationships');
+      
       const response = await graphApis.generateGraph(request);
 
       console.log('[GraphButton] Graph generation response:', response);
       
       if (response.success && response.graphData) {
         console.log('[GraphButton] Graph generated successfully, saving to Convex...');
+        
+        // Step 5: Building Visualization
+        setCurrentStep(4);
+        setProgress(83);
+        console.log('[GraphButton] Step 5: Building Visualization');
+        
         // Convert GraphData to graphVisualization format for storage
         const graphVisualization = convertGraphDataToGraphVisualization(response.graphData);
         
@@ -391,17 +498,36 @@ const GraphButton: React.FC<GraphButtonProps> = ({ message, chatId, className = 
         });
 
         console.log('[GraphButton] Graph saved to Convex successfully');
+        
+        // Step 6: Finalizing Graph
+        setCurrentStep(5);
+        setProgress(100);
+        console.log('[GraphButton] Step 6: Finalizing Graph');
+        
         setGraphData(response.graphData);
         setShowGraph(true);
+        
+        // Auto-close modal after a brief delay to show completion
+        setTimeout(() => {
+          closeModal();
+        }, 1000);
       } else {
         console.error('[GraphButton] Graph generation failed:', response.error);
         throw new Error(response.error || 'Failed to generate graph');
       }
     } catch (err) {
-      console.error('[GraphButton] Error generating graph:', err);
-      setError(err instanceof Error ? err.message : 'Failed to generate graph');
+      if (controller.signal.aborted) {
+        console.log("🚫 [GraphButton] Graph generation was cancelled");
+        // Don't show error for cancelled operations
+        setError(null);
+      } else {
+        console.error('[GraphButton] Error generating graph:', err);
+        setError(err instanceof Error ? err.message : 'Failed to generate graph');
+      }
+      closeModal(); // Close modal on error or cancellation
     } finally {
       setIsGenerating(false);
+      setAbortController(null); // Clear the controller
     }
   };
 
@@ -511,6 +637,15 @@ const GraphButton: React.FC<GraphButtonProps> = ({ message, chatId, className = 
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Graph Generation Modal */}
+      <GraphGenerationModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        onCancel={cancelGeneration}
+        progress={progress}
+        currentStep={currentStep}
+      />
     </div>
   );
 };
