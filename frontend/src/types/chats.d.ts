@@ -67,6 +67,9 @@ export interface Message {
   /** Time taken (in seconds) for the AI to respond */
   durationSec?: number;
   tags?: string[];
+  /** DAST scan results if URL was scanned */
+  dastScanResults?: any;
+  scannedUrl?: string;
 }
 
 export interface RequestHumanInLoop {

@@ -1,4 +1,4 @@
-import {useEffect } from 'react';
+import { useEffect } from 'react';
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -50,8 +50,10 @@ const MarkdownViewer = ({ content, isUser = false }: MarkdownViewerProps) => {
                   color: 'hsl(var(--sidebar-foreground))',
                   border: 'none',
                   boxShadow: 'none',
+                  display: 'block',
                 }}
-                PreTag="div"
+                PreTag="pre"
+                CodeTag="code"
                 {...props}
               >
                 {codeText}

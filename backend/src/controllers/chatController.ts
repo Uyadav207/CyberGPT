@@ -233,15 +233,15 @@ export class ChatController {
           // Insert DAST results into knowledge graph
           await dastScanService.insertDASTResultsIntoKG(dastScanResults);
 
-          // Create enhanced message that includes DAST context
+          // Create enhanced message that includes DAST context (sanitized for Convex)
           const dastContext =
-            `\n\n🔍 **SECURITY SCAN RESULTS FOR ${firstUrl}:**\n` +
-            `Risk Level: ${dastScanResults.overallRisk}\n` +
-            `Vulnerabilities Found: ${dastScanResults.vulnerabilities.length}\n` +
-            `Critical Issues: ${dastScanResults.vulnerabilities.filter((v) => v.severity === "Critical").length}\n` +
-            `High Priority Issues: ${dastScanResults.vulnerabilities.filter((v) => v.severity === "High").length}\n` +
-            `Technologies Detected: ${dastScanResults.technologies.join(", ")}\n` +
-            `Security Headers: ${Object.keys(dastScanResults.securityHeaders).length} headers analyzed\n\n` +
+            ` 🔍 **SECURITY SCAN RESULTS FOR ${firstUrl}:** ` +
+            `Risk Level: ${dastScanResults.overallRisk} ` +
+            `Vulnerabilities Found: ${dastScanResults.vulnerabilities.length} ` +
+            `Critical Issues: ${dastScanResults.vulnerabilities.filter((v) => v.severity === "Critical").length} ` +
+            `High Priority Issues: ${dastScanResults.vulnerabilities.filter((v) => v.severity === "High").length} ` +
+            `Technologies Detected: ${dastScanResults.technologies.join(", ")} ` +
+            `Security Headers: ${Object.keys(dastScanResults.securityHeaders).length} headers analyzed ` +
             `Please analyze these security findings using your knowledge graph and provide comprehensive recommendations.`;
 
           // Use the enhanced message with GraphRAG (which will now query KG + web search)

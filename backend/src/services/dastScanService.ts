@@ -636,6 +636,10 @@ export class DASTScanService {
     const enhancedVulnerabilities = await Promise.all(
       vulnerabilities.map(async (vuln) => {
         try {
+          console.log(
+            `🔍 [DAST] Processing vulnerability: ${vuln.name} (${vuln.category})`
+          );
+
           // Create search terms based on vulnerability characteristics
           const searchTerms = [
             vuln.name.toLowerCase(),
@@ -644,12 +648,15 @@ export class DASTScanService {
             ...vuln.category.toLowerCase().split(" "),
           ].filter((term) => term.length > 3);
 
+          console.log(`🔍 [DAST] Search terms for ${vuln.name}:`, searchTerms);
+
           // Search for related CVEs using multiple approaches
           const relatedCVEs = await this.findRelatedCVEs(vuln, searchTerms);
 
           if (relatedCVEs.length > 0) {
             console.log(
-              `✅ [DAST] Found ${relatedCVEs.length} related CVEs for ${vuln.name}`
+              `✅ [DAST] Found ${relatedCVEs.length} related CVEs for ${vuln.name}:`,
+              relatedCVEs.map((cve) => `${cve.cveId} (${cve.severity})`)
             );
             return {
               ...vuln,
@@ -667,6 +674,15 @@ export class DASTScanService {
           return vuln;
         }
       })
+    );
+
+    const totalCVEs = enhancedVulnerabilities.reduce(
+      (sum, vuln) => sum + (vuln.relatedCVEs ? vuln.relatedCVEs.length : 0),
+      0
+    );
+
+    console.log(
+      `✅ [DAST] CVE mapping complete. Total CVEs found: ${totalCVEs}`
     );
 
     return enhancedVulnerabilities;

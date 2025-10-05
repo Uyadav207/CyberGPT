@@ -250,7 +250,7 @@ const GraphGenerationModal: React.FC<GraphGenerationModalProps> = ({
                 {currentStep === 3 && "🔗 Creating intelligent relationships between security concepts"}
                 {currentStep === 4 && "✨ Each graph is uniquely generated for specific question"}
                 {currentStep === 5 && "🎉 Personalized cybersecurity knowledge graph is ready!"}
-              </p>
+              </p>flow
             </div>
 
             {/* Cancel Button */}

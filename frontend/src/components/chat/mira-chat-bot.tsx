@@ -674,10 +674,14 @@ const MiraChatBot: React.FC = () => {
 					// Debug: Check if enhanced data exists
 					if (chat.sender === "ai") {
 						console.log('AI message enhanced data:', {
+							messageId: chat._id,
 							hasJargons: !!chat.Jargons,
 							jargonsKeys: chat.Jargons ? Object.keys(chat.Jargons) : [],
+							jargonsData: chat.Jargons,
 							hasReasoning: !!chat.Reasoning,
-							hasInfo: !!chat.Info
+							hasInfo: !!chat.Info,
+							hasAnswer: !!chat.Answer,
+							answerLength: chat.Answer?.length || 0
 						});
 					}
 					
@@ -748,7 +752,8 @@ const MiraChatBot: React.FC = () => {
 						id: chat._id,
 						humanInTheLoopId: chat.humanInTheLoopId,
 						chatId: chat.chatId,
-						message: chat.message,
+						// Use Answer field for AI messages if available, otherwise fallback to message
+						message: (chat.sender === "ai" && chat.Answer) ? chat.Answer : chat.message,
 						sender: chat.sender as "user" | "ai",
 						// Include enhanced fields for AI messages
 						...(chat.sender === "ai" && {
@@ -1757,16 +1762,66 @@ const MiraChatBot: React.FC = () => {
 							convertedPreview: convertedGraphVisualization ? JSON.stringify(convertedGraphVisualization).substring(0, 200) + '...' : 'No converted data'
 						});
 
-						const enhancedDataWithGraph = {
+						// Sanitize data to remove invalid characters for Convex
+						const sanitizeString = (str: string | undefined): string => {
+							if (!str) return '';
+							return str
+								.replace(/[\x00-\x1F\x7F-\x9F]/g, '') // Remove control characters
+								.replace(/\n/g, ' ') // Replace newlines with spaces
+								.replace(/\r/g, '') // Remove carriage returns
+								.trim();
+						};
+
+						const sanitizedEnhancedData = {
 							...enhancedData,
+							message: sanitizeString(enhancedData.message),
+							Answer: sanitizeString(enhancedData.Answer),
+							Reasoning: sanitizeString(enhancedData.Reasoning),
+							Info: enhancedData.Info ? {
+								...enhancedData.Info,
+								cve_id: sanitizeString(enhancedData.Info.cve_id),
+								cve_desc: sanitizeString(enhancedData.Info.cve_desc),
+								mitigation: sanitizeString(enhancedData.Info.mitigation)
+							} : undefined
+						};
+
+						const enhancedDataWithGraph = {
+							...sanitizedEnhancedData,
 							graphVisualization: convertedGraphVisualization // Use converted graph data
 						};
 						
 						console.log("💾 [Frontend] Saving enhanced chat message with graph visualization to database...");
-						const saveResult = await saveEnhancedChatMessage(enhancedDataWithGraph);
-						console.log("✅ [Frontend] Enhanced chat message with graph visualization saved successfully");
-						console.log("🚀 [Frontend] GRAPH SAVE COMPLETED - TODO generation should start now!");
-						console.log("📊 [Frontend] Save result:", saveResult);
+						console.log("🔍 [Frontend] Enhanced data being saved:", JSON.stringify(enhancedDataWithGraph, null, 2));
+						
+						try {
+							const saveResult = await saveEnhancedChatMessage(enhancedDataWithGraph);
+							console.log("✅ [Frontend] Enhanced chat message with graph visualization saved successfully");
+							console.log("🚀 [Frontend] GRAPH SAVE COMPLETED - TODO generation should start now!");
+							console.log("📊 [Frontend] Save result:", saveResult);
+						} catch (saveError) {
+							console.error("❌ [Frontend] Failed to save enhanced chat message:", saveError);
+							console.error("❌ [Frontend] Enhanced data that failed to save:", JSON.stringify(enhancedDataWithGraph, null, 2));
+							
+							// Try to save with minimal data as fallback
+							const minimalData = {
+								humanInTheLoopId: enhancedDataWithGraph.humanInTheLoopId,
+								chatId: enhancedDataWithGraph.chatId,
+								sender: enhancedDataWithGraph.sender,
+								message: enhancedDataWithGraph.message.substring(0, 1000), // Truncate if too long
+								Answer: enhancedDataWithGraph.Answer.substring(0, 1000), // Truncate if too long
+								Reasoning: enhancedDataWithGraph.Reasoning.substring(0, 500), // Truncate if too long
+								Sources: [],
+								SourceLinks: [],
+								Jargons: {},
+								Info: undefined,
+								Severity: "Medium",
+								tags: ["cybersecurity_general"]
+							};
+							
+							console.log("🔄 [Frontend] Attempting fallback save with minimal data...");
+							await saveEnhancedChatMessage(minimalData);
+							console.log("✅ [Frontend] Fallback save successful");
+						}
 						console.log('AI response saved successfully with enhanced data');
 						console.log("🚀 [Frontend] ABOUT TO START TODO GENERATION - This should appear!");
 						console.log("🔍 [Frontend] CHECKING IF WE REACH TODO GENERATION - This should appear!");
