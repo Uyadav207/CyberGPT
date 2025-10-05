@@ -4,6 +4,7 @@ import { graphRAGAnswer } from "../utils/neo4j-cve-fetch-ingest";
 import { ChatGraphIntegrationService } from "../services/chatGraphIntegrationService";
 import { getConnectionHealth } from "../config/neo4j";
 import { errorHandler } from "../middlewares/errorHandler";
+import { dastScanService } from "../services/dastScanService";
 
 export class ChatController {
   private chatService!: ChatService;
@@ -15,6 +16,30 @@ export class ChatController {
 
   private async init() {
     this.chatService = await ChatService.getInstance();
+  }
+
+  private detectUrlsInMessage(message: string): string[] {
+    const urlRegex =
+      /(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/gi;
+    const urls = message.match(urlRegex) || [];
+
+    // Filter and normalize URLs
+    return urls
+      .map((url) => {
+        // Add protocol if missing
+        if (!url.startsWith("http")) {
+          return "https://" + url;
+        }
+        return url;
+      })
+      .filter((url) => {
+        try {
+          new URL(url);
+          return true;
+        } catch {
+          return false;
+        }
+      });
   }
 
   async chatTitle(c: Context) {
@@ -181,6 +206,89 @@ export class ChatController {
           400
         );
       }
+      // Check for URLs in the message
+      const detectedUrls = this.detectUrlsInMessage(mainMessage);
+      let dastScanResults = null;
+      let scannedUrl = null;
+
+      if (detectedUrls.length > 0) {
+        console.log(
+          `🔍 [ChatController] Detected URLs in message: ${detectedUrls.join(", ")}`
+        );
+
+        // Perform DAST scan on the first URL found
+        try {
+          const firstUrl = detectedUrls[0];
+          scannedUrl = firstUrl;
+          console.log(
+            `🔍 [ChatController] Starting DAST scan for: ${firstUrl}`
+          );
+
+          dastScanResults = await dastScanService.scanUrl(firstUrl);
+
+          console.log(
+            `✅ [ChatController] DAST scan completed for ${firstUrl}. Risk level: ${dastScanResults.overallRisk}`
+          );
+
+          // Insert DAST results into knowledge graph
+          await dastScanService.insertDASTResultsIntoKG(dastScanResults);
+
+          // Create enhanced message that includes DAST context
+          const dastContext =
+            `\n\n🔍 **SECURITY SCAN RESULTS FOR ${firstUrl}:**\n` +
+            `Risk Level: ${dastScanResults.overallRisk}\n` +
+            `Vulnerabilities Found: ${dastScanResults.vulnerabilities.length}\n` +
+            `Critical Issues: ${dastScanResults.vulnerabilities.filter((v) => v.severity === "Critical").length}\n` +
+            `High Priority Issues: ${dastScanResults.vulnerabilities.filter((v) => v.severity === "High").length}\n` +
+            `Technologies Detected: ${dastScanResults.technologies.join(", ")}\n` +
+            `Security Headers: ${Object.keys(dastScanResults.securityHeaders).length} headers analyzed\n\n` +
+            `Please analyze these security findings using your knowledge graph and provide comprehensive recommendations.`;
+
+          // Use the enhanced message with GraphRAG (which will now query KG + web search)
+          const enhancedMessage = mainMessage + dastContext;
+
+          const {
+            answer,
+            reasoningTrace,
+            jargons,
+            cveDescriptionsMap,
+            dynamicTags,
+            contextData,
+            sourceLinks,
+          } = await graphRAGAnswer(
+            enhancedMessage,
+            agentPersonality,
+            dastScanResults
+          );
+
+          // Ensure trace is always an array with a narrative field if reasoningTrace is a string
+          let trace = Array.isArray(reasoningTrace)
+            ? reasoningTrace
+            : reasoningTrace
+              ? [{ narrative: reasoningTrace }]
+              : [];
+
+          return c.json({
+            answer,
+            trace,
+            jargons,
+            cveDescriptionsMap,
+            dynamicTags,
+            contextData,
+            sourceLinks,
+            graphGenerationStatus: "manual_only",
+            dastScanResults,
+            scannedUrl: firstUrl,
+          });
+        } catch (dastError) {
+          console.error(
+            `❌ [ChatController] DAST scan failed for ${detectedUrls[0]}:`,
+            dastError
+          );
+          // Continue with normal processing if DAST scan fails
+        }
+      }
+
       const {
         answer,
         reasoningTrace,
