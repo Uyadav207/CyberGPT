@@ -216,6 +216,7 @@ export default defineSchema({
     reportType: v.optional(
       v.union(v.literal("chatSummaryReport"), v.literal("vulnerabilityReport"))
     ),
+    todoListData: v.optional(v.any()), // Store TODO list data for interactive editing
     createdAt: v.number(),
   }).index("by_folderId", ["folderId"]),
 

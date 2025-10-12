@@ -1341,15 +1341,17 @@ const MiraChatBot: React.FC = () => {
 					hasSourceLinks: !!botMessage.sourceLinks,
 					sourceLinksCount: botMessage.sourceLinks?.length || 0
 				});
-				setMessages((prev) => {
-					console.log('Previous messages count:', prev.length);
-					const newMessages = [...prev, botMessage];
-					console.log('New messages count:', newMessages.length);
-					return newMessages;
-				});
-				console.log('About to stop loading state...');
-				stopLoading(setIsLoading, setAgentButtonsDisabled, loadingIntervalRef, setLoadingMessage);
-				console.log('Loading state stopped');
+				// DUPLICATE CODE REMOVED - Bot message already added to UI immediately after response
+				// setMessages((prev) => {
+				// 	console.log('Previous messages count:', prev.length);
+				// 	const newMessages = [...prev, botMessage];
+				// 	console.log('New messages count:', newMessages.length);
+				// 	return newMessages;
+				// });
+				// DUPLICATE CODE REMOVED - Loading state already stopped immediately after response
+				// console.log('About to stop loading state...');
+				// stopLoading(setIsLoading, setAgentButtonsDisabled, loadingIntervalRef, setLoadingMessage);
+				// console.log('Loading state stopped');
 			} catch (error) {
 				stopLoading(setIsLoading, setAgentButtonsDisabled, loadingIntervalRef, setLoadingMessage);
 				showErrorToast('Failed to get answer.');
@@ -1644,6 +1646,19 @@ const MiraChatBot: React.FC = () => {
 					sourceLinksCount: botMessage.sourceLinks?.length || 0,
 					hasReasoningTrace: !!botMessage.reasoningTrace
 				});
+				
+				// 🚀 IMMEDIATELY add bot message to UI for instant display
+				console.log('🚀 [Frontend] IMMEDIATELY adding bot message to UI for instant display');
+				setMessages((prev) => {
+					console.log('Previous messages count:', prev.length);
+					const newMessages = [...prev, botMessage];
+					console.log('New messages count:', newMessages.length);
+					return newMessages;
+				});
+				
+				// Stop loading state immediately so user sees the response
+				stopLoading(setIsLoading, setAgentButtonsDisabled, loadingIntervalRef, setLoadingMessage);
+				console.log('✅ [Frontend] UI updated immediately - user can now see the response');
 				
 				// Save AI response to database - use the same graphChatId that was used for the API call
 				const currentChatId = graphChatId; // Use the same chatId that was validated and used for the API call
@@ -2077,15 +2092,17 @@ const MiraChatBot: React.FC = () => {
 					hasSourceLinks: !!botMessage.sourceLinks,
 					sourceLinksCount: botMessage.sourceLinks?.length || 0
 				});
-				setMessages((prev) => {
-					console.log('Previous messages count:', prev.length);
-					const newMessages = [...prev, botMessage];
-					console.log('New messages count:', newMessages.length);
-					return newMessages;
-				});
-				console.log('About to stop loading state...');
-				stopLoading(setIsLoading, setAgentButtonsDisabled, loadingIntervalRef, setLoadingMessage);
-				console.log('Loading state stopped');
+				// DUPLICATE CODE REMOVED - Bot message already added to UI immediately after response
+				// setMessages((prev) => {
+				// 	console.log('Previous messages count:', prev.length);
+				// 	const newMessages = [...prev, botMessage];
+				// 	console.log('New messages count:', newMessages.length);
+				// 	return newMessages;
+				// });
+				// DUPLICATE CODE REMOVED - Loading state already stopped immediately after response
+				// console.log('About to stop loading state...');
+				// stopLoading(setIsLoading, setAgentButtonsDisabled, loadingIntervalRef, setLoadingMessage);
+				// console.log('Loading state stopped');
 			} catch (error) {
 				stopLoading(setIsLoading, setAgentButtonsDisabled, loadingIntervalRef, setLoadingMessage);
 				showErrorToast('Failed to get answer.');
@@ -3569,9 +3586,9 @@ const MiraChatBot: React.FC = () => {
 	}, [location.search, uniqueMessages.length]);
 
 	return (
-		<div className={`relative flex h-screen flex-col overflow-hidden${highlightChatBlock ? ' ring-4 ring-yellow-300/60 bg-yellow-50 dark:bg-yellow-900/30 transition-all duration-700' : ''}`}>
+		<div className={`relative flex h-screen flex-col overflow-hidden overflow-x-hidden${highlightChatBlock ? ' ring-4 ring-yellow-300/60 bg-yellow-50 dark:bg-yellow-900/30 transition-all duration-700' : ''}`}>
 			<div className="flex justify-center">
-				<div className="flex flex-col w-full max-w-6xl mx-auto h-[89vh] rounded-lg">
+				<div className="flex flex-col w-full max-w-6xl mx-auto h-[89vh] rounded-lg overflow-x-hidden">
 					{uniqueMessages.length === 0 ? (
 						<div className="flex flex-col items-center justify-end w-full lg:h-1/3 md:h-1 sm:h-full p-4 sm:p-8">
 							<motion.div
@@ -3588,7 +3605,7 @@ const MiraChatBot: React.FC = () => {
 					) : (
 						<ScrollArea
 							ref={scrollAreaRef}
-							className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-12 pb-0 w-full overflow-y-hidden"
+							className="flex-1 px-2 sm:px-4 lg:px-6 xl:px-8 pb-0 w-full overflow-y-auto overflow-x-hidden"
 						>
 							{uniqueMessages.map((message, idx) => {
 								const isPendingAction =
@@ -3707,12 +3724,12 @@ const MiraChatBot: React.FC = () => {
 								}
 
 								const isUser = message.sender === "user";
-								const messageClasses = `inline-block rounded-xl max-w-[80%] sm:max-w-[100%] ${
+								const messageClasses = `inline-block rounded-xl max-w-[95%] sm:max-w-[100%] ${
 									isUser
-										? "bg-secondary dark:bg-primary-900 px-4 py-3 text-sm"
-										: "text-foreground pr-4 overflow-y-auto text-pretty break-normal text-sm leading-relaxed"
+										? "bg-secondary dark:bg-primary-900 px-4 py-3 text-sm break-words"
+										: "text-foreground pr-2 sm:pr-4 overflow-y-auto text-pretty break-words text-sm leading-relaxed"
 								}`;
-								const containerClasses = `mb-3 ${isUser ? "text-right" : "text-left"}`;
+								const containerClasses = `mb-3 ${isUser ? "text-right" : "text-left"} w-full overflow-x-hidden`;
 
 								// Only show related questions for the very last message if it is an AI message
 								const isLastMessage = idx === uniqueMessages.length - 1;
@@ -3865,7 +3882,7 @@ const MiraChatBot: React.FC = () => {
 											</AnimatePresence>
 											
 											{!isUser && (
-												<div className="mb-3 p-5 bg-background">
+												<div className="mb-3 p-3 sm:p-5 bg-background w-full overflow-x-hidden">
 													{(() => {
 														const processedContent = preprocessJargonMarkdown(message.message, message.jargons, message.cveDescriptionsMap);
 														console.log('Rendering message:', {

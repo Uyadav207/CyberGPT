@@ -25,7 +25,7 @@ const MarkdownViewer = ({ content, isUser = false }: MarkdownViewerProps) => {
   }, [content]);
 
   return (
-    <div className={`prose text-sm ${isUser ? 'prose-invert' : 'prose-gray'} max-w-none prose-pre:my-0 prose-pre:rounded-md prose-headings:mb-3 prose-p:mb-3 prose-p:leading-relaxed prose-li:my-0 prose-li:leading-relaxed`}>
+    <div className={`prose text-sm ${isUser ? 'prose-invert' : 'prose-gray'} max-w-none prose-pre:my-0 prose-pre:rounded-md prose-headings:mb-3 prose-headings:mt-4 prose-p:mb-3 prose-p:leading-relaxed prose-li:my-0 prose-li:leading-relaxed prose-h1:mb-4 prose-h2:mb-3 prose-h3:mb-2 overflow-x-hidden break-words hyphens-auto w-full prose-p:break-words prose-li:break-words`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw]}
@@ -51,6 +51,11 @@ const MarkdownViewer = ({ content, isUser = false }: MarkdownViewerProps) => {
                   border: 'none',
                   boxShadow: 'none',
                   display: 'block',
+                  overflowX: 'hidden',
+                  wordWrap: 'break-word',
+                  whiteSpace: 'pre-wrap',
+                  maxWidth: '100%',
+                  width: '100%',
                 }}
                 PreTag="pre"
                 CodeTag="code"
@@ -60,12 +65,21 @@ const MarkdownViewer = ({ content, isUser = false }: MarkdownViewerProps) => {
               </SyntaxHighlighter>
             ) : (
               <code
-                className={`inline whitespace-nowrap bg-sidebar-accent text-sidebar-foreground rounded px-1.5 py-0.5 text-sm font-mono border border-sidebar-border`}
+                className={`inline bg-sidebar-accent text-sidebar-foreground rounded px-1.5 py-0.5 text-sm font-mono border border-sidebar-border break-words`}
                 {...props}
               >
                 {children}
               </code>
             );
+          },
+          h1({ children }) {
+            return <h1 className="text-xl font-bold mb-4 mt-6 first:mt-0">{children}</h1>;
+          },
+          h2({ children }) {
+            return <h2 className="text-lg font-semibold mb-3 mt-5 first:mt-0">{children}</h2>;
+          },
+          h3({ children }) {
+            return <h3 className="text-base font-medium mb-2 mt-4 first:mt-0">{children}</h3>;
           },
           p({ children }) {
             return <p className="mb-3 leading-7">{children}</p>;
@@ -100,8 +114,8 @@ const MarkdownViewer = ({ content, isUser = false }: MarkdownViewerProps) => {
           },
           table({ children }) {
             return (
-              <div className="overflow-x-auto my-3">
-                <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
+              <div className="overflow-x-auto my-3 max-w-full w-full">
+                <table className="w-full divide-y divide-gray-200 border border-gray-200 rounded-lg table-auto">
                   {children}
                 </table>
               </div>
@@ -118,14 +132,14 @@ const MarkdownViewer = ({ content, isUser = false }: MarkdownViewerProps) => {
           },
           th({ children }) {
             return (
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider break-words">
                 {children}
               </th>
             );
           },
           td({ children }) {
             return (
-              <td className="px-6 py-4 whitespace-nowrap text-sm">
+              <td className="px-6 py-4 text-sm break-words">
                 {children}
               </td>
             );

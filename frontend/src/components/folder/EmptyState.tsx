@@ -13,7 +13,7 @@ export function EmptyState({ onCreateFolder }: EmptyStateProps) {
 			</div>
 			<h3 className="text-xl font-semibold">No Folders Created</h3>
 			<p className="text-sm text-muted-foreground">
-				Start creating a new folder to organize your reports.
+				Start creating a new folder to organize your space.
 			</p>
 			<Button onClick={onCreateFolder}>Create Folder</Button>
 		</div>

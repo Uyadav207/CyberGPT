@@ -2,6 +2,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@components/ui/button";
 import { ArrowLeft, DownloadIcon } from "lucide-react";
 import MarkdownViewer from "./MarkdownViewer";
+import { InteractiveTodoList } from "../reports/InteractiveTodoList";
 
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -96,29 +97,46 @@ export function FileView() {
 					<div className="flex justify-between items-center mb-4">
 						<h1 className="text-xl font-bold">{file.name}</h1>
 
-						<Button
-							onClick={downloadAsPDF}
-							// onClick={downloadAsPDF}
-						>
-							<DownloadIcon className="mr-2 h-4 w-4" />
-							Download as PDF
-						</Button>
+						{/* Only show download button for regular reports, not TODO lists */}
+						{!(file.reportType === "vulnerabilityReport" && file.todoListData) && (
+							<Button
+								onClick={downloadAsPDF}
+							>
+								<DownloadIcon className="mr-2 h-4 w-4" />
+								Download as PDF
+							</Button>
+						)}
 					</div>
 
-					<div
-						id="markdown-content"
-						style={{
-							display: "flex",
-							justifyContent: "center",
-							alignItems: "center",
-							flexDirection: "column",
-							border: "4px solid #7156DB", // Your border style
-							padding: "20px", // Optional padding to make the content look neat inside the border
-							borderRadius: "8px",
-						}}
-					>
-						<MarkdownViewer content={file.markdownContent} />
-					</div>
+					{/* Check if this is a TODO list */}
+					{file.reportType === "vulnerabilityReport" && file.todoListData ? (
+						<div className="border border-border rounded-lg">
+							<InteractiveTodoList
+								reportId={file._id}
+								todoListData={file.todoListData}
+								markdownContent={file.markdownContent}
+								onUpdate={(updatedTodoList, updatedMarkdown) => {
+									// The InteractiveTodoList component handles auto-saving
+									console.log('TODO list updated:', updatedTodoList);
+								}}
+							/>
+						</div>
+					) : (
+						<div
+							id="markdown-content"
+							style={{
+								display: "flex",
+								justifyContent: "center",
+								alignItems: "center",
+								flexDirection: "column",
+								border: "4px solid #7156DB", // Your border style
+								padding: "20px", // Optional padding to make the content look neat inside the border
+								borderRadius: "8px",
+							}}
+						>
+							<MarkdownViewer content={file.markdownContent} />
+						</div>
+					)}
 				</div>
 			)}
 		</div>

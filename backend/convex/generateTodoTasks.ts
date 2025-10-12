@@ -94,52 +94,81 @@ export const generateTodoTasks = action({
       // Generate tasks dynamically using AI based on the actual context
       const generatedTasks: TodoItem[] = [];
 
-      // Create a comprehensive prompt for AI to generate TODO tasks
-      const todoGenerationPrompt = `You are a cybersecurity expert tasked with generating actionable TODO tasks based on security analysis.
+      // Create a comprehensive prompt for AI to generate solution-focused TODO tasks
+      const todoGenerationPrompt = `You are a cybersecurity expert tasked with generating actionable SOLUTION-ORIENTED TODO tasks based on a specific security analysis conversation.
 
-CONTEXT:
-- AI Response: ${aiResponse || "No AI response available"}
+🎯 PRIMARY GOAL: Generate tasks that provide SOLUTIONS and ACTIONABLE STEPS to address the issues discussed in the AI response. Focus on WHAT TO DO, not just what the problems are.
+
+CRITICAL INSTRUCTION: Analyze the AI response content carefully and generate tasks that provide concrete solutions, fixes, and implementation steps for the issues mentioned. Every task should be a SOLUTION, not a problem description.
+
+CONTEXT TO ANALYZE:
+- AI Response Content: ${aiResponse || "No AI response available"}
 - Knowledge Graph Context: ${kgContext || "No KG context available"}
 - CVE Information: ${cveInfo ? JSON.stringify(cveInfo) : "No CVE info available"}
 - Reasoning Trace: ${reasoningTrace ? JSON.stringify(reasoningTrace) : "No reasoning trace available"}
 - Source Links: ${sourceLinks ? JSON.stringify(sourceLinks) : "No source links available"}
 - Technical Jargons: ${jargons ? JSON.stringify(jargons) : "No jargons available"}
 
-TASK:
-Generate a MINIMUM of 4 specific, actionable TODO tasks (can be more based on content complexity) based on the security analysis above. Each task should be:
-- Specific and actionable (not generic)
-- Based on the actual content and context provided
-- Prioritized appropriately (high/medium/low)
-- Categorized correctly (Security/Updates/Configuration/Compliance/Technical/Monitoring/Testing)
-- Include appropriate risk levels and CVSS scores
-- Include relevant emojis for visual appeal
+SOLUTION-FOCUSED ANALYSIS:
+1. Identify specific problems or vulnerabilities mentioned in the AI response
+2. Extract any suggested solutions, mitigations, or fixes from the response
+3. Look for specific technologies, systems, or configurations that need attention
+4. Find compliance requirements or standards that need implementation
+5. Identify security gaps that need immediate addressing
 
-REQUIREMENTS:
-- Generate tasks that directly address issues mentioned in the AI response
-- Use CVE information when available to create specific patching tasks
-- Consider compliance requirements from source links
-- Address technical concerns from jargons
-- Ensure tasks are practical and implementable
-- Include confidence scores based on available information
+SOLUTION-ORIENTED TASK GENERATION RULES:
+- Every task must be a SOLUTION, not a problem description
+- If CVE IDs are mentioned, create tasks for PATCHING/UPDATING those specific CVEs
+- If vulnerabilities are discussed, create tasks for FIXING those vulnerabilities
+- If missing security measures are mentioned, create tasks for IMPLEMENTING them
+- If compliance gaps exist, create tasks for ACHIEVING compliance
+- If DAST scan results show issues, create tasks for REMEDIATING those issues
+- If security headers are missing, create tasks for CONFIGURING them
+- If systems are outdated, create tasks for UPGRADING them
+
+SOLUTION TASK EXAMPLES:
+✅ GOOD: "Apply security patch for CVE-2024-3094 to xz Utils library"
+✅ GOOD: "Implement HSTS security header on web servers"
+✅ GOOD: "Update liblzma library to version 5.6.1 or later"
+✅ GOOD: "Configure CSP headers to prevent XSS attacks"
+❌ BAD: "CVE-2024-3094 exists in xz Utils"
+❌ BAD: "Security headers are missing"
+❌ BAD: "System is vulnerable"
+
+REQUIRED OUTPUT:
+Generate a MINIMUM of 4 specific, solution-oriented TODO tasks based on the actual content. Each task should be:
+- A concrete SOLUTION to a problem mentioned in the AI response
+- Actionable with clear implementation steps
+- Prioritized based on the severity and urgency of the issue
+- Categorized appropriately (Security, Updates, Configuration, etc.)
+- Include specific details from the AI response (CVE IDs, technologies, versions, etc.)
 
 OUTPUT FORMAT:
-Return a JSON array of task objects with this exact structure:
+Return a JSON array of solution-focused task objects:
 [
   {
-    "task": "Specific actionable task description",
+    "task": "Implement [SPECIFIC SOLUTION] for [SPECIFIC ISSUE] mentioned in AI response",
     "priority": "high|medium|low",
     "category": "Security|Updates|Configuration|Compliance|Technical|Monitoring|Testing",
-    "description": "Detailed description of what needs to be done",
+    "description": "Step-by-step solution description with specific actions to take",
     "riskLevel": "critical|high|medium|low",
     "cvssScore": 0.0-10.0,
     "confidence": 0.0-1.0,
     "cveIds": ["CVE-XXXX-XXXX"],
-    "affectedSystems": ["System1", "System2"],
-    "emoji": "🔒"
+    "affectedSystems": ["Specific systems mentioned in AI response"],
+    "emoji": "🔧"
   }
 ]
 
-IMPORTANT: Only return valid JSON, no additional text or explanations.`;
+SOLUTION EXTRACTION GUIDELINES:
+- If CVE-2024-3094 is mentioned → Create task: "Apply security patch for CVE-2024-3094"
+- If missing HSTS → Create task: "Implement HSTS security header configuration"
+- If outdated liblzma → Create task: "Update liblzma library to secure version"
+- If DAST scan found XSS → Create task: "Fix XSS vulnerability in web application"
+- If compliance gap → Create task: "Implement [specific] compliance controls"
+- If weak authentication → Create task: "Strengthen authentication mechanisms"
+
+IMPORTANT: Only return valid JSON, no additional text. Every task must be a SOLUTION that directly addresses issues from the AI response.`;
 
       try {
         console.log(
@@ -284,10 +313,22 @@ IMPORTANT: Only return valid JSON, no additional text or explanations.`;
             },
           ];
 
-          // Add default tasks to reach minimum of 4
+          // Add context-aware tasks instead of generic defaults
+          const contextAwareTasks = generateContextAwareFallbackTasks(
+            aiResponse,
+            cveInfo,
+            jargons,
+            sourceLinks
+          );
           const tasksNeeded = 4 - generatedTasks.length;
+
+          // Use context-aware tasks first, then fall back to generic if needed
           for (let i = 0; i < tasksNeeded; i++) {
-            generatedTasks.push(defaultTasks[i]);
+            if (contextAwareTasks[i]) {
+              generatedTasks.push(contextAwareTasks[i]);
+            } else if (defaultTasks[i]) {
+              generatedTasks.push(defaultTasks[i]);
+            }
           }
 
           console.log(
@@ -305,22 +346,22 @@ IMPORTANT: Only return valid JSON, no additional text or explanations.`;
           "🔄 [TODO Generation] Falling back to basic task generation..."
         );
 
-        // Generate minimum 4 fallback tasks
+        // Generate minimum 4 solution-focused fallback tasks
         const fallbackTasks = [
           {
             id: `todo-${Date.now()}-fallback-1`,
-            task: "Review and address security concerns from analysis",
+            task: "Implement security measures based on analysis findings",
             priority: "medium" as const,
             category: "Security",
             description:
-              "Analyze the security response and implement necessary measures",
+              "Apply the security recommendations and fixes mentioned in the AI response analysis",
             completed: false,
             riskLevel: "medium" as const,
             cvssScore: 6.0,
             confidence: 0.7,
             cveIds: [],
             affectedSystems: ["All Systems"],
-            emoji: "🔍",
+            emoji: "🔧",
             createdAt: Date.now(),
           },
           {
@@ -617,3 +658,140 @@ export const getTodoListFromChat = mutation({
     }
   },
 });
+
+// Helper function to generate context-aware fallback tasks
+function generateContextAwareFallbackTasks(
+  aiResponse: string,
+  cveInfo: any,
+  jargons: any,
+  sourceLinks: any
+): TodoItem[] {
+  const fallbackTasks: TodoItem[] = [];
+
+  try {
+    // Check for CVE mentions in AI response
+    const cveMatches = aiResponse.match(/CVE-\d{4}-\d+/g);
+    if (cveMatches && cveMatches.length > 0) {
+      const cveId = cveMatches[0];
+      fallbackTasks.push({
+        id: `todo-${Date.now()}-cve-${cveId}`,
+        task: `Apply security patch for ${cveId}`,
+        priority: "high" as const,
+        category: "Updates",
+        description: `Install security updates to address ${cveId} vulnerability mentioned in the analysis`,
+        completed: false,
+        riskLevel: "high" as const,
+        cvssScore: 8.0,
+        confidence: 0.9,
+        cveIds: [cveId],
+        affectedSystems: ["Affected Systems"],
+        emoji: "🔧",
+        createdAt: Date.now(),
+      });
+    }
+
+    // Check for DAST scan mentions
+    if (
+      aiResponse.toLowerCase().includes("dast") ||
+      aiResponse.toLowerCase().includes("scan")
+    ) {
+      fallbackTasks.push({
+        id: `todo-${Date.now()}-dast-followup`,
+        task: "Fix vulnerabilities found in DAST scan results",
+        priority: "high" as const,
+        category: "Security",
+        description:
+          "Implement security fixes and patches for the vulnerabilities identified in the DAST scan",
+        completed: false,
+        riskLevel: "high" as const,
+        cvssScore: 7.5,
+        confidence: 0.8,
+        cveIds: [],
+        affectedSystems: ["Web Applications"],
+        emoji: "🔧",
+        createdAt: Date.now(),
+      });
+    }
+
+    // Check for security header mentions
+    if (
+      aiResponse.toLowerCase().includes("security header") ||
+      aiResponse.toLowerCase().includes("hsts") ||
+      aiResponse.toLowerCase().includes("csp")
+    ) {
+      fallbackTasks.push({
+        id: `todo-${Date.now()}-headers`,
+        task: "Configure and implement missing security headers",
+        priority: "medium" as const,
+        category: "Configuration",
+        description:
+          "Set up HSTS, CSP, and other security headers on web servers as recommended in the analysis",
+        completed: false,
+        riskLevel: "medium" as const,
+        cvssScore: 6.0,
+        confidence: 0.7,
+        cveIds: [],
+        affectedSystems: ["Web Servers"],
+        emoji: "🔧",
+        createdAt: Date.now(),
+      });
+    }
+
+    // Check for vulnerability mentions
+    if (
+      aiResponse.toLowerCase().includes("vulnerability") ||
+      aiResponse.toLowerCase().includes("exploit")
+    ) {
+      fallbackTasks.push({
+        id: `todo-${Date.now()}-vuln-assessment`,
+        task: "Conduct vulnerability assessment",
+        priority: "medium" as const,
+        category: "Security",
+        description:
+          "Perform comprehensive vulnerability assessment based on the security analysis",
+        completed: false,
+        riskLevel: "medium" as const,
+        cvssScore: 6.5,
+        confidence: 0.7,
+        cveIds: [],
+        affectedSystems: ["All Systems"],
+        emoji: "🔎",
+        createdAt: Date.now(),
+      });
+    }
+
+    // Check for compliance mentions
+    if (
+      aiResponse.toLowerCase().includes("compliance") ||
+      aiResponse.toLowerCase().includes("regulation")
+    ) {
+      fallbackTasks.push({
+        id: `todo-${Date.now()}-compliance`,
+        task: "Review compliance requirements",
+        priority: "medium" as const,
+        category: "Compliance",
+        description:
+          "Review and ensure compliance with security regulations and standards mentioned",
+        completed: false,
+        riskLevel: "medium" as const,
+        cvssScore: 5.0,
+        confidence: 0.6,
+        cveIds: [],
+        affectedSystems: ["All Systems"],
+        emoji: "📋",
+        createdAt: Date.now(),
+      });
+    }
+
+    console.log(
+      `[ContextAwareFallback] Generated ${fallbackTasks.length} context-aware fallback tasks`
+    );
+    return fallbackTasks;
+  } catch (error) {
+    console.error(
+      "[ContextAwareFallback] Error generating context-aware tasks:",
+      error
+    );
+    return [];
+  }
+}
