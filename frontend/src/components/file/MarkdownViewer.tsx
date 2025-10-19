@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -7,20 +7,120 @@ import rehypeRaw from 'rehype-raw';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip";
 import "../file/MarkdownViewer.css";
 
+// Function to process jargon syntax in text content
+const processJargonInText = (content: any): any => {
+  if (typeof content === 'string') {
+    const jargonRegex = /\[JARGON_HIGHLIGHT:([^|]+)\|([^\]]+)\]/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    console.log('Processing jargon in text:', { content: content.substring(0, 100) + '...' });
+
+    while ((match = jargonRegex.exec(content)) !== null) {
+      console.log('Found jargon match:', { match: match[0], term: match[1], description: match[2].substring(0, 50) + '...' });
+      
+      // Add text before the match
+      if (match.index > lastIndex) {
+        parts.push(content.slice(lastIndex, match.index));
+      }
+
+      // Add the jargon tooltip component
+      const term = match[1].trim();
+      const description = match[2].trim().replace(/&quot;/g, '"');
+      
+      // Only create tooltip if we have both term and description
+      if (term && description) {
+        parts.push(
+          <TooltipProvider key={match.index}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span 
+                  className="jargon-highlight"
+                  style={{
+                    cursor: 'pointer',
+                    fontWeight: '500',
+                    padding: '0 4px',
+                    borderRadius: '2px',
+                    borderBottom: '1px dotted #3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    color: '#1e40af'
+                  }}
+                >
+                  {term}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg max-w-md">
+                <div className="p-3">
+                  <div className="font-semibold text-blue-600 dark:text-blue-400 mb-2">{term}</div>
+                  <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed break-words">{description}</div>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      } else {
+        // If malformed, just show the term as plain text
+        parts.push(term);
+      }
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text
+    if (lastIndex < content.length) {
+      parts.push(content.slice(lastIndex));
+    }
+
+    console.log('Jargon processing result:', { partsCount: parts.length, hasJargonComponents: parts.some(p => typeof p === 'object') });
+    return parts.length > 0 ? parts : content;
+  }
+  
+  if (Array.isArray(content)) {
+    return content.map((child, index) => (
+      <span key={index}>{processJargonInText(child)}</span>
+    ));
+  }
+  
+  return content;
+};
+
 interface MarkdownViewerProps {
   content: string;
   isUser?: boolean;
 }
 
 const MarkdownViewer = ({ content, isUser = false }: MarkdownViewerProps) => {
+  // Decode HTML entities in the content
+  const decodeHTMLEntities = (text: string) => {
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    return textarea.value;
+  };
+  
+  // Clean up malformed jargon syntax
+  const cleanJargonSyntax = (text: string) => {
+    // Remove malformed jargon syntax that's missing descriptions
+    return text
+      .replace(/\[JARGON_HIGHLIGHT:([^|]+)\]/g, '$1') // Remove incomplete syntax without description
+      .replace(/\[JARGON_HIGHLIGHT:([^|]+)\|\s*\]/g, '$1'); // Remove syntax with empty description
+  };
+  
+  // Content is already preprocessed by the chat component
+  const processedContent = cleanJargonSyntax(decodeHTMLEntities(content));
+
   // Debug logging for code block detection
   useEffect(() => {
     const codeBlockCount = (content.match(/```/g) || []).length / 2;
+    const jargonSyntaxCount = (content.match(/\[JARGON_HIGHLIGHT:/g) || []).length;
     console.log('MarkdownViewer content analysis:', {
       contentLength: content.length,
       hasCodeBlocks: content.includes('```'),
       codeBlockCount: codeBlockCount,
-      sampleContent: content.substring(0, 200)
+      hasJargonSyntax: content.includes('[JARGON_HIGHLIGHT:'),
+      jargonSyntaxCount: jargonSyntaxCount,
+      sampleContent: content.substring(0, 200),
+      jargonSyntaxSample: content.match(/\[JARGON_HIGHLIGHT:[^\]]+\]/)?.[0]?.substring(0, 100) + '...'
     });
   }, [content]);
 
@@ -29,41 +129,44 @@ const MarkdownViewer = ({ content, isUser = false }: MarkdownViewerProps) => {
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw]}
+        children={processedContent}
+        skipHtml={false}
         components={{
+          // Custom pre component to handle code blocks properly
+          pre({ children, ...props }: any) {
+            // Check if this pre is inside a paragraph (which would be invalid)
+            return (
+              <div className="my-4" {...props}>
+                {children}
+              </div>
+            );
+          },
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           code({ inline, className, children, ...props }: any) {
             const match = /language-(\w+)/.exec(className || '');
             const language = match ? match[1] : 'text';
             const codeText = String(children).replace(/\n$/, '');
             
-            return !inline ? (
-              <SyntaxHighlighter
-                language={language}
-                style={oneDark}
-                customStyle={{
-                  margin: 0,
-                  padding: '0.5rem',
-                  borderRadius: 0,
-                  background: 'transparent',
-                  fontSize: '0.95em',
-                  lineHeight: '1.5',
-                  color: 'hsl(var(--sidebar-foreground))',
-                  border: 'none',
-                  boxShadow: 'none',
-                  display: 'block',
-                  overflowX: 'hidden',
-                  wordWrap: 'break-word',
-                  whiteSpace: 'pre-wrap',
-                  maxWidth: '100%',
-                  width: '100%',
-                }}
-                PreTag="pre"
-                CodeTag="code"
-                {...props}
-              >
-                {codeText}
-              </SyntaxHighlighter>
-            ) : (
+            if (!inline) {
+              // For block code, just return the code element (pre is handled separately)
+              return (
+                <code 
+                  className={`language-${language} block bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto`}
+                  style={{
+                    fontSize: '0.95em',
+                    lineHeight: '1.5',
+                    fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
+                    whiteSpace: 'pre-wrap',
+                    display: 'block',
+                  }}
+                  {...props}
+                >
+                  {codeText}
+                </code>
+              );
+            }
+            
+            return (
               <code
                 className={`inline bg-sidebar-accent text-sidebar-foreground rounded px-1.5 py-0.5 text-sm font-mono border border-sidebar-border break-words`}
                 {...props}
@@ -73,16 +176,16 @@ const MarkdownViewer = ({ content, isUser = false }: MarkdownViewerProps) => {
             );
           },
           h1({ children }) {
-            return <h1 className="text-xl font-bold mb-4 mt-6 first:mt-0">{children}</h1>;
+            return <h1 className="text-xl font-bold mb-4 mt-6 first:mt-0">{processJargonInText(children)}</h1>;
           },
           h2({ children }) {
-            return <h2 className="text-lg font-semibold mb-3 mt-5 first:mt-0">{children}</h2>;
+            return <h2 className="text-lg font-semibold mb-3 mt-5 first:mt-0">{processJargonInText(children)}</h2>;
           },
           h3({ children }) {
-            return <h3 className="text-base font-medium mb-2 mt-4 first:mt-0">{children}</h3>;
+            return <h3 className="text-base font-medium mb-2 mt-4 first:mt-0">{processJargonInText(children)}</h3>;
           },
-          p({ children }) {
-            return <p className="mb-3 leading-7">{children}</p>;
+          p({ children, ...props }: any) {
+            return <p className="mb-3 leading-7" {...props}>{processJargonInText(children)}</p>;
           },
           ul({ children }) {
             return <ul className="my-3 list-disc pl-6 space-y-2">{children}</ul>;
@@ -91,7 +194,7 @@ const MarkdownViewer = ({ content, isUser = false }: MarkdownViewerProps) => {
             return <ol className="my-3 list-decimal pl-6 space-y-2">{children}</ol>;
           },
           li({ children }) {
-            return <li className="leading-relaxed">{children}</li>;
+            return <li className="leading-relaxed">{processJargonInText(children)}</li>;
           },
           blockquote({ children }) {
             return (
@@ -143,37 +246,6 @@ const MarkdownViewer = ({ content, isUser = false }: MarkdownViewerProps) => {
                 {children}
               </td>
             );
-          },
-          span({ className, children, ...props }: any) {
-            // Handle jargon highlights with tooltips
-            if (className && className.includes('jargon-highlight')) {
-              const term = props['data-term'];
-              const description = props['data-description'];
-              
-              if (term && description) {
-                return (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span 
-                          className={`${className} bg-blue-100 dark:bg-sidebar text-blue-800 dark:text-sidebar-foreground border border-blue-200 dark:border-sidebar-border rounded px-1.5 py-0.5 font-medium hover:bg-blue-200 dark:hover:bg-sidebar-accent transition-colors duration-200`}
-                          style={{ cursor: 'pointer' }}
-                          {...props}
-                        >
-                          {children}
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs p-2 bg-gray-900 text-white dark:bg-white dark:text-gray-900 border border-gray-200 dark:border-gray-700 shadow-md">
-                        <div className="text-xs leading-relaxed">{description}</div>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                );
-              }
-            }
-            
-            // Default span rendering
-            return <span className={className} {...props}>{children}</span>;
           }
         }}
       >

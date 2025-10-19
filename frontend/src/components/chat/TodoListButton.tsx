@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckSquare, Loader2, EyeOff, ListTodo, Download, GripVertical, AlertTriangle, Shield, CheckCircle, Save } from 'lucide-react';
+import { CheckSquare, Loader2, EyeOff, ListTodo, Download, GripVertical, AlertTriangle, Shield, CheckCircle, Save, RefreshCw } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
@@ -27,7 +27,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useMutation, useAction } from 'convex/react';
+import { useMutation, useAction, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import type { Message } from '../../types/chats';
 import { MoveTodoToSpaceDialog } from './MoveTodoToSpaceDialog';
@@ -255,9 +255,10 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
   console.log('[TodoListButton] API object:', api);
   console.log('[TodoListButton] generateTodoTasks API:', api?.generateTodoTasks);
   
-  const generateTodoTasksAction = useAction(api.generateTodoTasks.generateTodoTasks);
-  const updateTodoListMutation = useMutation(api.generateTodoTasks.updateTodoList);
-  const getTodoListFromChatMutation = useMutation(api.generateTodoTasks.getTodoListFromChat);
+  const generateTodoTasksAction = useAction(api.todoApi.generateTodoTasksOnDemand);
+  const updateTodoListMutation = useMutation(api.todoApi.saveTodoList);
+  const getTodoListFromChatMutation = useQuery(api.todoApi.getTodoListFromChat, { chatId, messageId: message.id || '' });
+  const chatHistory = useQuery(api.chats.getChatHistory, { chatId });
   
   console.log('[TodoListButton] Convex actions initialized:', {
     generateTodoTasksAction: !!generateTodoTasksAction,
@@ -270,7 +271,7 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
     console.log('[TodoListButton] Testing Convex connection...');
     console.log('[TodoListButton] Convex action is available:', typeof generateTodoTasksAction === 'function');
     console.log('[TodoListButton] API object keys:', Object.keys(api));
-    console.log('[TodoListButton] generateTodoTasks API keys:', api?.generateTodoTasks ? Object.keys(api.generateTodoTasks) : 'No generateTodoTasks API');
+    console.log('[TodoListButton] todoApi keys:', api?.todoApi ? Object.keys(api.todoApi) : 'No todoApi');
     console.log('[TodoListButton] Testing simple Convex call...');
     
     // Test if we can call the action (without actually calling it)
@@ -278,13 +279,15 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
       console.log('[TodoListButton] ✅ Convex action function is available and ready');
       console.log('[TodoListButton] 🔍 Full API structure:', {
         api: api,
-        generateTodoTasks: api?.generateTodoTasks,
+        todoApi: api?.todoApi,
         generateTodoTasksAction: generateTodoTasksAction
       });
     } else {
       console.error('[TodoListButton] ❌ Convex action function is NOT available');
+      console.error('[TodoListButton] Available API modules:', Object.keys(api));
+      console.error('[TodoListButton] API structure:', api);
     }
-  }, [generateTodoTasksAction]);
+  }, [generateTodoTasksAction, chatId, message.id]);
 
   // DnD Sensors
   const sensors = useSensors(
@@ -308,6 +311,7 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
         hasMessage: !!message.message,
         forceRegenerate,
       });
+      console.log("🚨 [TodoListButton] generateTodoList function is being executed!");
       console.log("🚨 [TodoListButton] CRITICAL DEBUG - Message object:", {
         id: message.id,
         sender: message.sender,
@@ -342,70 +346,11 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
         jargonsCount: message.jargons?.length || 0,
       });
 
-      // Check for existing TODO list from chat history (unless force regenerating)
-      if (!forceRegenerate) {
-        console.log('[TodoListButton] Checking for existing TODO list...');
-        const messageIdForLookup = message.humanInTheLoopId || message.id || '';
-        console.log('[TodoListButton] Using messageId for lookup:', {
-          messageId: messageIdForLookup,
-          usingHumanInTheLoopId: !!message.humanInTheLoopId
-        });
-        
-        const existingTodoList = await getTodoListFromChatMutation({
-          chatId: chatId,
-          messageId: messageIdForLookup
-        });
-
-        console.log('[TodoListButton] Existing TODO list check result:', {
-          success: existingTodoList.success,
-          hasTodoList: !!existingTodoList.todoList,
-          todoListId: existingTodoList.todoList?.id,
-          itemsCount: existingTodoList.todoList?.items?.length || 0,
-        });
-
-        if (existingTodoList.success && existingTodoList.todoList) {
-          console.log('[TodoListButton] Found existing TODO list:', {
-            todoListId: existingTodoList.todoList.id,
-            title: existingTodoList.todoList.title,
-            itemsCount: existingTodoList.todoList.items.length,
-          });
-          console.log('✅ [TodoListButton] Using existing TODO list - preserving user changes');
-        
-          // Store the correct messageId separately (not in the todoList object)
-          const correctMessageId = message.humanInTheLoopId || message.id || '';
-          const existingTodoListWithIds = {
-            ...existingTodoList.todoList,
-            // Store messageId and chatId as separate properties for internal use
-            _messageId: correctMessageId,
-            _chatId: chatId
-          };
-          
-          // Create a clean version without the extra fields for state
-          const cleanExistingTodoList = {
-            ...existingTodoList.todoList
-          };
-          
-          console.log('[TodoListButton] Existing TODO list with IDs:', {
-            todoListId: existingTodoListWithIds.id,
-            messageId: existingTodoListWithIds._messageId,
-            chatId: existingTodoListWithIds._chatId,
-            hasMessageId: !!existingTodoListWithIds._messageId,
-            hasChatId: !!existingTodoListWithIds._chatId
-          });
-          
-          setTodoList(cleanExistingTodoList);
-          setLastSavedOrder(cleanExistingTodoList.items.map((item: TodoItem) => item.id));
-          setLastSavedCompletionStatus(cleanExistingTodoList.items.map((item: TodoItem) => ({ id: item.id, completed: item.completed })));
-          setShowTodoList(true);
-          setIsGenerating(false);
-          return;
-        }
-      } else {
-        console.log('🔄 [TodoListButton] Force regenerate mode - skipping existing TODO list check');
-      }
+      // Always generate fresh TODO lists with the new diverse system
+      console.log('[TodoListButton] Generating fresh TODO list with new diverse system...');
 
       // Generate new TODO list using LLM with KG context and retry mechanism
-      console.log('[TodoListButton] No existing TODO list found, generating new one...');
+      console.log('[TodoListButton] Generating new diverse TODO list...');
       
       let result;
       let retryCount = 0;
@@ -441,9 +386,30 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
           });
           
           console.log("🚨 [TodoListButton] CALLING generateTodoTasksAction NOW...");
-          result = await generateTodoTasksAction({
+          console.log("🚨 [TodoListButton] Function check:", {
+            generateTodoTasksAction: typeof generateTodoTasksAction,
+            isFunction: typeof generateTodoTasksAction === 'function',
+            functionName: generateTodoTasksAction?.name
+          });
+          
+          // Get the user question from the chat history
+          const userQuestion = chatHistory ? (() => {
+            // Find the user message that corresponds to this AI response
+            const userMessages = chatHistory.filter((msg: any) => msg.sender === 'user');
+            // Get the most recent user message before this AI response
+            const question = userMessages[userMessages.length - 1]?.message || 'Security analysis request';
+            console.log('[TodoListButton] Extracted user question:', {
+              question: question,
+              userMessagesCount: userMessages.length,
+              chatHistoryLength: chatHistory.length
+            });
+            return question;
+          })() : 'Security analysis request';
+
+          const apiParams = {
             chatId: chatId,
             messageId: messageIdToUse,
+            userQuestion: userQuestion,
             aiResponse: message.message || '',
             kgContext: message.reasoningTrace ? JSON.stringify(message.reasoningTrace) : undefined,
             cveInfo: message.cveDescriptionsMap ? {
@@ -453,7 +419,12 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
             reasoningTrace: message.reasoningTrace,
             sourceLinks: message.sourceLinks,
             jargons: message.jargons,
-          });
+          };
+          
+          console.log("🚨 [TodoListButton] API Parameters:", apiParams);
+          console.log("🚨 [TodoListButton] About to call generateTodoTasksAction with params:", apiParams);
+
+          result = await generateTodoTasksAction(apiParams);
           console.log("🚨 [TodoListButton] generateTodoTasksAction COMPLETED!");
           
           // If successful, break out of retry loop
@@ -557,13 +528,12 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
     if (showTodoList) {
       console.log('[TodoListButton] Hiding TODO list');
       setShowTodoList(false);
-    } else if (todoList) {
-      console.log('[TodoListButton] Showing existing TODO list');
-      setShowTodoList(true);
     } else {
-      console.log('[TodoListButton] No existing TODO list, generating new one...');
+      // Always generate fresh, response-specific TODO lists
+      console.log('[TodoListButton] Generating fresh response-specific TODO list...');
       console.log('[TodoListButton] About to call generateTodoList function');
-      generateTodoList(); // Only generate new TODO list if none exists
+      console.log('[TodoListButton] generateTodoList function exists:', typeof generateTodoList === 'function');
+      generateTodoList(true); // Force regenerate with response-specific content
     }
   };
 
@@ -884,6 +854,22 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
 
   return (
     <div className={`relative ${className}`}>
+      {/* Debug Test Button */}
+      <Button
+        onClick={() => {
+          console.log('[TodoListButton] DEBUG TEST BUTTON CLICKED');
+          console.log('[TodoListButton] API structure:', api);
+          console.log('[TodoListButton] todoApi:', api?.todoApi);
+          console.log('[TodoListButton] generateTodoTasksAction:', generateTodoTasksAction);
+          console.log('[TodoListButton] typeof generateTodoTasksAction:', typeof generateTodoTasksAction);
+        }}
+        variant="outline"
+        size="sm"
+        className="mr-2 text-xs"
+      >
+        Debug API
+      </Button>
+      
       {/* TODO List Button */}
       <Tooltip>
         <TooltipTrigger asChild>
@@ -901,6 +887,7 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
                 apiExists: !!api,
                 generateTodoTasksActionExists: !!generateTodoTasksAction,
               });
+              console.log('[TodoListButton] About to call toggleTodoList...');
               toggleTodoList();
             }}
             disabled={isGenerating}
@@ -956,7 +943,7 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
 
       {/* TODO List Modal */}
       <Dialog open={showTodoList} onOpenChange={setShowTodoList}>
-        <DialogContent className="max-w-4xl w-full max-w-full sm:max-w-3xl h-[80vh] p-0 bg-background text-foreground border border-border rounded-lg overflow-hidden flex flex-col">
+        <DialogContent className="max-w-4xl w-full sm:max-w-3xl h-[80vh] p-0 bg-background text-foreground border border-border rounded-lg overflow-hidden flex flex-col">
           {todoList && (
             <>
               <DialogHeader className="p-4 sm:p-6 border-b border-border bg-card flex-shrink-0">
@@ -984,6 +971,23 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
                       </div>
                     )}
                     <div className="flex gap-2">
+                      <Button
+                        onClick={() => {
+                          console.log('[TodoListButton] Regenerate TODO list clicked');
+                          generateTodoList(true); // Force regenerate with response-specific content
+                        }}
+                        disabled={isGenerating}
+                        variant="outline"
+                        size="sm"
+                        className="text-xs"
+                      >
+                        {isGenerating ? (
+                          <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                        ) : (
+                          <RefreshCw className="h-3 w-3 mr-1" />
+                        )}
+                        Regenerate
+                      </Button>
                       <Button
                         onClick={() => {
                           console.log('[TodoListButton] Move to My Space clicked', { user: !!user, userId: user?.id });
