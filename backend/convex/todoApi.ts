@@ -489,3 +489,42 @@ export const getTodoListFromChat = query({
     }
   },
 });
+
+// Sync TODO list from My Space back to main chat
+export const syncTodoListFromMySpace = mutation({
+  args: {
+    chatId: v.id("chats"),
+    messageId: v.string(),
+    todoListData: v.any(),
+  },
+  handler: async (ctx, args) => {
+    const { chatId, messageId, todoListData } = args;
+
+    try {
+      // Find the chat history entry for this message
+      const chatHistoryEntry = await ctx.db
+        .query("chatHistory")
+        .withIndex("by_chatId", (q) => q.eq("chatId", chatId))
+        .filter((q) => q.eq(q.field("humanInTheLoopId"), messageId))
+        .first();
+
+      if (chatHistoryEntry) {
+        // Update the chat history with the synced TODO list
+        await ctx.db.patch(chatHistoryEntry._id, {
+          todoList: todoListData,
+        });
+
+        console.log(
+          "✅ [TODO API] Synced TODO list from My Space to main chat"
+        );
+        return { success: true, message: "TODO list synced successfully" };
+      } else {
+        console.error("❌ [TODO API] Chat history entry not found for sync");
+        return { success: false, message: "Chat history entry not found" };
+      }
+    } catch (error) {
+      console.error("❌ [TODO API] Error syncing TODO list:", error);
+      return { success: false, message: "Failed to sync TODO list" };
+    }
+  },
+});

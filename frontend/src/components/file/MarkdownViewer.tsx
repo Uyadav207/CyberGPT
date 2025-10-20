@@ -13,14 +13,7 @@ const processJargonInText = (content: any): any => {
     const jargonRegex = /\[JARGON_HIGHLIGHT:([^|]+)\|([^\]]+)\]/g;
     const parts = [];
     let lastIndex = 0;
-    let match;
-
-    console.log('Processing jargon in text:', { content: content.substring(0, 100) + '...' });
-
-    while ((match = jargonRegex.exec(content)) !== null) {
-      console.log('Found jargon match:', { match: match[0], term: match[1], description: match[2].substring(0, 50) + '...' });
-      
-      // Add text before the match
+    let match;while ((match = jargonRegex.exec(content)) !== null) {// Add text before the match
       if (match.index > lastIndex) {
         parts.push(content.slice(lastIndex, match.index));
       }
@@ -70,10 +63,7 @@ const processJargonInText = (content: any): any => {
     // Add remaining text
     if (lastIndex < content.length) {
       parts.push(content.slice(lastIndex));
-    }
-
-    console.log('Jargon processing result:', { partsCount: parts.length, hasJargonComponents: parts.some(p => typeof p === 'object') });
-    return parts.length > 0 ? parts : content;
+    }return parts.length > 0 ? parts : content;
   }
   
   if (Array.isArray(content)) {
@@ -112,17 +102,7 @@ const MarkdownViewer = ({ content, isUser = false }: MarkdownViewerProps) => {
   // Debug logging for code block detection
   useEffect(() => {
     const codeBlockCount = (content.match(/```/g) || []).length / 2;
-    const jargonSyntaxCount = (content.match(/\[JARGON_HIGHLIGHT:/g) || []).length;
-    console.log('MarkdownViewer content analysis:', {
-      contentLength: content.length,
-      hasCodeBlocks: content.includes('```'),
-      codeBlockCount: codeBlockCount,
-      hasJargonSyntax: content.includes('[JARGON_HIGHLIGHT:'),
-      jargonSyntaxCount: jargonSyntaxCount,
-      sampleContent: content.substring(0, 200),
-      jargonSyntaxSample: content.match(/\[JARGON_HIGHLIGHT:[^\]]+\]/)?.[0]?.substring(0, 100) + '...'
-    });
-  }, [content]);
+    const jargonSyntaxCount = (content.match(/\[JARGON_HIGHLIGHT:/g) || []).length;}, [content]);
 
   return (
     <div className={`prose text-sm ${isUser ? 'prose-invert' : 'prose-gray'} max-w-none prose-pre:my-0 prose-pre:rounded-md prose-headings:mb-3 prose-headings:mt-4 prose-p:mb-3 prose-p:leading-relaxed prose-li:my-0 prose-li:leading-relaxed prose-h1:mb-4 prose-h2:mb-3 prose-h3:mb-2 overflow-x-hidden break-words hyphens-auto w-full prose-p:break-words prose-li:break-words`}>

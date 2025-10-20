@@ -4,10 +4,7 @@ import type { DASTScanRequest, DASTScanResponse } from "../types/dastScan";
 
 const dastApi = {
   async scanUrl(request: DASTScanRequest): Promise<DASTScanResponse> {
-    try {
-      console.log("🔍 [DAST API] Starting URL scan:", request.url);
-
-      const response = await axios.post(
+    try {const response = await axios.post(
         `${getBackendUrl()}/dast/scan`,
         { url: request.url },
         {
@@ -16,14 +13,8 @@ const dastApi = {
             "Content-Type": "application/json",
           },
         }
-      );
-
-      console.log("✅ [DAST API] Scan completed:", response.data);
-      return response.data;
-    } catch (error) {
-      console.error("❌ [DAST API] Scan failed:", error);
-
-      if (axios.isAxiosError(error)) {
+      );return response.data;
+    } catch (error) {if (axios.isAxiosError(error)) {
         return {
           status: "error",
           message: error.response?.data?.message || error.message,
@@ -40,13 +31,7 @@ const dastApi = {
   },
 
   async scanUrlFromChat(request: DASTScanRequest): Promise<DASTScanResponse> {
-    try {
-      console.log(
-        "🔍 [DAST API] Starting chat-integrated URL scan:",
-        request.url
-      );
-
-      const response = await axios.post(
+    try {const response = await axios.post(
         `${getBackendUrl()}/dast/scan-chat`,
         request,
         {
@@ -55,14 +40,8 @@ const dastApi = {
             "Content-Type": "application/json",
           },
         }
-      );
-
-      console.log("✅ [DAST API] Chat scan completed:", response.data);
-      return response.data;
-    } catch (error) {
-      console.error("❌ [DAST API] Chat scan failed:", error);
-
-      if (axios.isAxiosError(error)) {
+      );return response.data;
+    } catch (error) {if (axios.isAxiosError(error)) {
         return {
           status: "error",
           message: error.response?.data?.message || error.message,

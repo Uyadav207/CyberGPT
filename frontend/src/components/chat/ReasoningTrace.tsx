@@ -17,7 +17,6 @@ interface ReasoningTraceProps {
   durationSec?: number;
 }
 
-
 const createNarrativeMessage = (step: ReasoningStep, _idx?: number, _trace?: ReasoningStep[]) => {
   const { step: stepType, message } = step;
   const stepLower = (stepType || '').toLowerCase();
@@ -69,7 +68,6 @@ const createNarrativeMessage = (step: ReasoningStep, _idx?: number, _trace?: Rea
   
   return message;
 };
-
 
 // Add a function to create a narrative from the trace
 function createNarrativeFromTrace(trace: ReasoningStep[]): string {

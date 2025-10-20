@@ -1,7 +1,6 @@
 import axiosInstance from "./axios";
 import { BASE_URL } from "./config.backend";
 
-
 interface ChatOllamaPayload {
   prompt: string;
 }
@@ -103,13 +102,7 @@ export const chatWithJargon = async (payload: {
   agentPersonality?: string;
   messageId?: string;
   chatId?: string;
-}) => {
-  console.log(
-    "DEBUG: Calling chatWithJargon endpoint:",
-    `${BASE_URL}/chat/with-jargon`
-  );
-  console.log("DEBUG: Payload:", payload);
-  const response = await fetch(`${BASE_URL}/chat/with-jargon`, {
+}) => {const response = await fetch(`${BASE_URL}/chat/with-jargon`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -123,9 +116,7 @@ export const chatWithJargon = async (payload: {
   const normalized = { ...result } as any;
   if (normalized.trace && !normalized.reasoningTrace) {
     normalized.reasoningTrace = normalized.trace;
-  }
-  console.log("DEBUG: chatWithJargon response:", normalized);
-  return normalized;
+  }return normalized;
 };
 
 export const chatApis = {

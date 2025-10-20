@@ -146,6 +146,9 @@ export function FolderView({ files }: FolderViewProps) {
 											: file.reportType ===
 													"vulnerabilityReport"
 												? "Vulnerability Report"
+												: file.reportType ===
+													"vulnerabilityTodo"
+												? "Vulnerability TODO"
 												: "Report"}
 									</td>
 									<td className="p-3 text-right">

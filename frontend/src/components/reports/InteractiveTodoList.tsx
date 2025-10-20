@@ -65,6 +65,8 @@ interface InteractiveTodoListProps {
   todoListData: TodoList;
   markdownContent: string;
   onUpdate: (updatedTodoList: TodoList, updatedMarkdown: string) => void;
+  chatId?: string;
+  messageId?: string;
 }
 
 // Sortable TODO item component
@@ -212,7 +214,9 @@ export const InteractiveTodoList: React.FC<InteractiveTodoListProps> = ({
   reportId,
   todoListData,
   markdownContent,
-  onUpdate
+  onUpdate,
+  chatId,
+  messageId
 }) => {
   const [todoList, setTodoList] = useState<TodoList>(todoListData);
   const [isSaving, setIsSaving] = useState(false);
@@ -221,6 +225,7 @@ export const InteractiveTodoList: React.FC<InteractiveTodoListProps> = ({
   const [lastSavedCompletionStatus, setLastSavedCompletionStatus] = useState<Array<{id: string, completed: boolean}>>([]);
 
   const updateTodoListMutation = useMutation(api.reports.updateTodoListData);
+  const syncToMainChatMutation = useMutation(api.todoApi.syncTodoListFromMySpace);
 
   // Initialize tracking arrays
   useEffect(() => {
@@ -245,7 +250,6 @@ export const InteractiveTodoList: React.FC<InteractiveTodoListProps> = ({
     const completionChanged = JSON.stringify(currentCompletionStatus) !== JSON.stringify(lastSavedCompletionStatus);
 
     if (orderChanged || completionChanged) {
-      console.log('🔄 [InteractiveTodoList] Auto-saving TODO list changes...');
       setIsSaving(true);
 
       try {
@@ -259,16 +263,29 @@ export const InteractiveTodoList: React.FC<InteractiveTodoListProps> = ({
           markdownContent: updatedMarkdown,
         });
 
+        // Sync changes back to main chat if chatId and messageId are available
+        if (chatId && messageId) {
+          try {
+            await syncToMainChatMutation({
+              chatId: chatId as any,
+              messageId: messageId,
+              todoListData: updatedTodoList,
+            });
+            console.log('✅ Synced TODO list changes back to main chat');
+          } catch (syncError) {
+            console.warn('⚠️ Failed to sync changes to main chat:', syncError);
+            // Don't fail the entire operation if sync fails
+          }
+        }
+
         // Update tracking arrays
         setLastSavedOrder(currentOrder);
         setLastSavedCompletionStatus(currentCompletionStatus);
 
         // Notify parent component
         onUpdate(updatedTodoList, updatedMarkdown);
-
-        console.log('✅ [InteractiveTodoList] TODO list auto-saved successfully');
       } catch (error) {
-        console.error('❌ [InteractiveTodoList] Failed to auto-save TODO list:', error);
+        console.error('Error saving TODO list:', error);
       } finally {
         setIsSaving(false);
       }
@@ -360,12 +377,7 @@ export const InteractiveTodoList: React.FC<InteractiveTodoListProps> = ({
       document.body.removeChild(link);
       
       // Clean up the URL object
-      URL.revokeObjectURL(url);
-      
-      console.log('✅ Markdown file downloaded successfully');
-    } catch (error) {
-      console.error('❌ Error downloading markdown file:', error);
-    } finally {
+      URL.revokeObjectURL(url);} catch (error) {} finally {
       setIsDownloading(false);
     }
   };

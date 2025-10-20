@@ -1,19 +1,20 @@
 import { useState, useCallback } from "react";
 
-interface GraphGenerationModalState {
+interface TodoListGenerationModalState {
   isOpen: boolean;
   messageId: string | null;
   chatId: string | null;
 }
 
-export const useGraphGenerationModal = () => {
-  const [modalState, setModalState] = useState<GraphGenerationModalState>({
+export const useTodoListGenerationModal = () => {
+  const [modalState, setModalState] = useState<TodoListGenerationModalState>({
     isOpen: false,
     messageId: null,
     chatId: null,
   });
 
-  const openModal = useCallback((messageId: string, chatId: string) => {setModalState({
+  const openModal = useCallback((messageId: string, chatId: string) => {
+    setModalState({
       isOpen: true,
       messageId,
       chatId,

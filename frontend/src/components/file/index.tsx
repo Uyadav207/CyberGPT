@@ -98,7 +98,7 @@ export function FileView() {
 						<h1 className="text-xl font-bold">{file.name}</h1>
 
 						{/* Only show download button for regular reports, not TODO lists */}
-						{!(file.reportType === "vulnerabilityReport" && file.todoListData) && (
+						{!(file.reportType === "vulnerabilityTodo" && file.todoListData) && (
 							<Button
 								onClick={downloadAsPDF}
 							>
@@ -109,15 +109,16 @@ export function FileView() {
 					</div>
 
 					{/* Check if this is a TODO list */}
-					{file.reportType === "vulnerabilityReport" && file.todoListData ? (
+					{file.reportType === "vulnerabilityTodo" && file.todoListData ? (
 						<div className="border border-border rounded-lg">
 							<InteractiveTodoList
 								reportId={file._id}
 								todoListData={file.todoListData}
 								markdownContent={file.markdownContent}
+								chatId={file.chatId}
+								messageId={file.messageId}
 								onUpdate={(updatedTodoList, updatedMarkdown) => {
 									// The InteractiveTodoList component handles auto-saving
-									console.log('TODO list updated:', updatedTodoList);
 								}}
 							/>
 						</div>

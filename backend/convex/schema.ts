@@ -214,9 +214,15 @@ export default defineSchema({
     fileUrl: v.string(),
     markdownContent: v.string(),
     reportType: v.optional(
-      v.union(v.literal("chatSummaryReport"), v.literal("vulnerabilityReport"))
+      v.union(
+        v.literal("chatSummaryReport"),
+        v.literal("vulnerabilityReport"),
+        v.literal("vulnerabilityTodo")
+      )
     ),
     todoListData: v.optional(v.any()), // Store TODO list data for interactive editing
+    chatId: v.optional(v.string()), // Chat ID for syncing back to main chat
+    messageId: v.optional(v.string()), // Message ID for syncing back to main chat
     createdAt: v.number(),
   }).index("by_folderId", ["folderId"]),
 

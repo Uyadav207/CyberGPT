@@ -23,6 +23,8 @@ interface MoveTodoToSpaceDialogProps {
   todoList: TodoList | null;
   userId: string;
   onSuccess: () => void;
+  chatId?: string;
+  messageId?: string;
 }
 
 export function MoveTodoToSpaceDialog({
@@ -31,6 +33,8 @@ export function MoveTodoToSpaceDialog({
   todoList,
   userId,
   onSuccess,
+  chatId,
+  messageId,
 }: MoveTodoToSpaceDialogProps) {
   const [todoListName, setTodoListName] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string>('');
@@ -99,6 +103,8 @@ export function MoveTodoToSpaceDialog({
         todoListName: todoListName.trim(),
         todoListData: todoList,
         markdownContent,
+        chatId: chatId,
+        messageId: messageId,
       });
 
       // Show success toast
@@ -112,10 +118,7 @@ export function MoveTodoToSpaceDialog({
       setSelectedFolderId('');
       setNewFolderName('');
       setShowNewFolderInput(false);
-    } catch (error) {
-      console.error('Error saving TODO list:', error);
-      
-      // Show error toast
+    } catch (error) {// Show error toast
       const errorMessage = error instanceof Error ? error.message : 'Failed to save TODO list';
       showErrorToast(`❌ Error: ${errorMessage}`);
     } finally {

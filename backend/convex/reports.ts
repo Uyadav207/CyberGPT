@@ -27,10 +27,12 @@ export const saveTodoListToFolder = mutation({
     todoListName: v.string(),
     todoListData: v.any(), // The complete TODO list object
     markdownContent: v.string(), // Converted markdown content for display
+    chatId: v.optional(v.string()), // Chat ID for syncing back to main chat
+    messageId: v.optional(v.string()), // Message ID for syncing back to main chat
   },
   handler: async (
     ctx,
-    { folderId, todoListName, todoListData, markdownContent }
+    { folderId, todoListName, todoListData, markdownContent, chatId, messageId }
   ) => {
     const now = Date.now();
 
@@ -40,8 +42,10 @@ export const saveTodoListToFolder = mutation({
       fileName: todoListName,
       fileUrl: "", // Not needed for TODO lists
       markdownContent,
-      reportType: "vulnerabilityReport", // Use vulnerability report type for TODO lists
+      reportType: "vulnerabilityTodo", // Use vulnerability todo type for TODO lists
       todoListData, // Store the complete TODO list data for interactive editing
+      chatId, // Store chat ID for syncing
+      messageId, // Store message ID for syncing
       createdAt: now,
     });
 
@@ -126,7 +130,8 @@ export const getReportsByFolder = query({
         .withIndex("by_folderId", (q) => q.eq("folderId", folderId))
         .collect();
 
-      return reports;
+      // Sort by createdAt in descending order (latest first)
+      return reports.sort((a, b) => b.createdAt - a.createdAt);
     }
     return [];
   },

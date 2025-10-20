@@ -147,9 +147,7 @@ export default function RoleButtonGroup({
 								<TooltipTrigger asChild>
 									{/* biome-ignore lint/a11y/useButtonType: <explanation> */}
 									<button
-										onClick={icon === "ArrowUp" ? () => {
-											console.log('Send button clicked!');
-											handleSend();
+										onClick={icon === "ArrowUp" ? () => {handleSend();
 										} : undefined}
 										disabled={icon === "ArrowUp" ? false : agentButtonsDisabled}
                                         className={

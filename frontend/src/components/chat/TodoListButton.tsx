@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckSquare, Loader2, EyeOff, ListTodo, Download, GripVertical, AlertTriangle, Shield, CheckCircle, Save, RefreshCw } from 'lucide-react';
+import { CheckSquare, Loader2, EyeOff, ListTodo, Download, GripVertical, AlertTriangle, Shield, CheckCircle, Save } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
@@ -31,6 +31,8 @@ import { useMutation, useAction, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import type { Message } from '../../types/chats';
 import { MoveTodoToSpaceDialog } from './MoveTodoToSpaceDialog';
+import TodoListGenerationModal from './TodoListGenerationModal';
+import { useTodoListGenerationModal } from '../../hooks/useTodoListGenerationModal';
 import useStore from '../../store/store';
 
 interface TodoItem {
@@ -225,12 +227,6 @@ const itemVariants = {
 };
 
 const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, className = '' }) => {
-  console.log('[TodoListButton] Component rendered:', {
-    messageSender: message.sender,
-    messageId: message.id,
-    chatId,
-    hasMessage: !!message.message,
-  });
   const [isGenerating, setIsGenerating] = useState(false);
   const [showTodoList, setShowTodoList] = useState(false);
   const [todoList, setTodoList] = useState<TodoList | null>(null);
@@ -241,53 +237,34 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
   const [lastSavedOrder, setLastSavedOrder] = useState<string[]>([]);
   const [lastSavedCompletionStatus, setLastSavedCompletionStatus] = useState<Array<{id: string, completed: boolean}>>([]);
   const [showMoveDialog, setShowMoveDialog] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [currentStep, setCurrentStep] = useState(0);
   
   // Get user from store
   const user = useStore((state) => state.user);
   
-  // Debug user state
-  React.useEffect(() => {
-    console.log('[TodoListButton] User state:', { user: !!user, userId: user?.id, hasUser: !!user });
-  }, [user]);
-
-  // Convex mutations and queries
-  console.log('[TodoListButton] Initializing Convex actions and mutations...');
-  console.log('[TodoListButton] API object:', api);
-  console.log('[TodoListButton] generateTodoTasks API:', api?.generateTodoTasks);
+  // TODO List Generation Modal
+  const { openModal, closeModal, isModalOpen } = useTodoListGenerationModal();
   
+  // Convex mutations and queries
   const generateTodoTasksAction = useAction(api.todoApi.generateTodoTasksOnDemand);
   const updateTodoListMutation = useMutation(api.todoApi.saveTodoList);
-  const getTodoListFromChatMutation = useQuery(api.todoApi.getTodoListFromChat, { chatId, messageId: message.id || '' });
-  const chatHistory = useQuery(api.chats.getChatHistory, { chatId });
-  
-  console.log('[TodoListButton] Convex actions initialized:', {
-    generateTodoTasksAction: !!generateTodoTasksAction,
-    updateTodoListMutation: !!updateTodoListMutation,
-    getTodoListFromChatMutation: !!getTodoListFromChatMutation,
+  const getTodoListFromChatQuery = useQuery(api.todoApi.getTodoListFromChat, { 
+    chatId, 
+    messageId: message.humanInTheLoopId || message.id || '' 
   });
+  const chatHistory = useQuery(api.chats.getChatHistory, { chatId });
 
-  // Test Convex connection
+  // Debug the query result
   React.useEffect(() => {
-    console.log('[TodoListButton] Testing Convex connection...');
-    console.log('[TodoListButton] Convex action is available:', typeof generateTodoTasksAction === 'function');
-    console.log('[TodoListButton] API object keys:', Object.keys(api));
-    console.log('[TodoListButton] todoApi keys:', api?.todoApi ? Object.keys(api.todoApi) : 'No todoApi');
-    console.log('[TodoListButton] Testing simple Convex call...');
-    
-    // Test if we can call the action (without actually calling it)
-    if (typeof generateTodoTasksAction === 'function') {
-      console.log('[TodoListButton] ✅ Convex action function is available and ready');
-      console.log('[TodoListButton] 🔍 Full API structure:', {
-        api: api,
-        todoApi: api?.todoApi,
-        generateTodoTasksAction: generateTodoTasksAction
-      });
-    } else {
-      console.error('[TodoListButton] ❌ Convex action function is NOT available');
-      console.error('[TodoListButton] Available API modules:', Object.keys(api));
-      console.error('[TodoListButton] API structure:', api);
-    }
-  }, [generateTodoTasksAction, chatId, message.id]);
+    console.log('[TodoListButton] Query result:', {
+      getTodoListFromChatQuery,
+      hasSuccess: getTodoListFromChatQuery?.success,
+      hasTodoList: !!getTodoListFromChatQuery?.todoList,
+      messageId: message.humanInTheLoopId || message.id,
+      chatId
+    });
+  }, [getTodoListFromChatQuery, message.humanInTheLoopId, message.id, chatId]);
 
   // DnD Sensors
   const sensors = useSensors(
@@ -302,239 +279,137 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
   );
 
     const generateTodoList = async (forceRegenerate = false) => {
-      console.log("🚨 [TodoListButton] GENERATE TODO LIST CALLED - This should appear when button is clicked!");
-      console.log("🚨 [TodoListButton] Function execution started at:", new Date().toISOString());
-      console.log('[TodoListButton] generateTodoList called with:', {
-        messageSender: message.sender,
-        chatId,
-        messageId: message.id || '',
-        hasMessage: !!message.message,
-        forceRegenerate,
-      });
-      console.log("🚨 [TodoListButton] generateTodoList function is being executed!");
-      console.log("🚨 [TodoListButton] CRITICAL DEBUG - Message object:", {
-        id: message.id,
-        sender: message.sender,
-        message: message.message?.substring(0, 100) + '...',
-        hasId: !!message.id,
-        idType: typeof message.id,
-        chatId: chatId,
-        chatIdType: typeof chatId
-      });
-
       if (message.sender !== 'ai') {
-        console.log('[TodoListButton] Skipping TODO generation - not an AI message');
         return;
       }
 
-    setIsGenerating(true);
-    setError(null);
-
-    try {
-      // Log input data for debugging
-      console.log('[TodoListButton] Input data for TODO generation:', {
-        chatId,
-        messageId: message.id || '',
-        aiResponseLength: message.message?.length || 0,
-        hasReasoningTrace: !!message.reasoningTrace,
-        hasCveDescriptionsMap: !!message.cveDescriptionsMap,
-        hasSourceLinks: !!message.sourceLinks,
-        hasJargons: !!message.jargons,
-        reasoningTraceKeys: message.reasoningTrace ? Object.keys(message.reasoningTrace) : [],
-        cveDescriptionsMapKeys: message.cveDescriptionsMap ? Object.keys(message.cveDescriptionsMap) : [],
-        sourceLinksCount: message.sourceLinks?.length || 0,
-        jargonsCount: message.jargons?.length || 0,
-      });
-
-      // Always generate fresh TODO lists with the new diverse system
-      console.log('[TodoListButton] Generating fresh TODO list with new diverse system...');
-
-      // Generate new TODO list using LLM with KG context and retry mechanism
-      console.log('[TodoListButton] Generating new diverse TODO list...');
-      
-      let result;
-      let retryCount = 0;
-      const maxRetries = 3;
-      
-      while (retryCount < maxRetries) {
-        try {
-          console.log("🚨 [TodoListButton] ABOUT TO CALL generateTodoTasksAction with params:", {
-            chatId: chatId,
-            messageId: message.id || '',
-            hasChatId: !!chatId,
-            hasMessageId: !!(message.id || ''),
-            chatIdType: typeof chatId,
-            messageIdType: typeof (message.id || ''),
-            chatIdValue: chatId,
-            messageIdValue: message.id || ''
-          });
-          console.log("🚨 [TodoListButton] CRITICAL - Message object details:", {
-            messageId: message.id,
-            messageSender: message.sender,
-            messageLength: message.message?.length || 0,
-            hasHumanInTheLoopId: !!message.humanInTheLoopId,
-            humanInTheLoopId: message.humanInTheLoopId,
-            messageIdMatchesHumanInTheLoopId: message.id === message.humanInTheLoopId
-          });
-          // Use humanInTheLoopId if available, otherwise fall back to message.id
-          const messageIdToUse = message.humanInTheLoopId || message.id || '';
-          console.log("🚨 [TodoListButton] FIX - Using correct messageId for TODO generation:", {
-            originalMessageId: message.id || '',
-            humanInTheLoopId: message.humanInTheLoopId || '',
-            finalMessageId: messageIdToUse,
-            usingHumanInTheLoopId: !!message.humanInTheLoopId
-          });
-          
-          console.log("🚨 [TodoListButton] CALLING generateTodoTasksAction NOW...");
-          console.log("🚨 [TodoListButton] Function check:", {
-            generateTodoTasksAction: typeof generateTodoTasksAction,
-            isFunction: typeof generateTodoTasksAction === 'function',
-            functionName: generateTodoTasksAction?.name
-          });
-          
-          // Get the user question from the chat history
-          const userQuestion = chatHistory ? (() => {
-            // Find the user message that corresponds to this AI response
-            const userMessages = chatHistory.filter((msg: any) => msg.sender === 'user');
-            // Get the most recent user message before this AI response
-            const question = userMessages[userMessages.length - 1]?.message || 'Security analysis request';
-            console.log('[TodoListButton] Extracted user question:', {
-              question: question,
-              userMessagesCount: userMessages.length,
-              chatHistoryLength: chatHistory.length
-            });
-            return question;
-          })() : 'Security analysis request';
-
-          const apiParams = {
-            chatId: chatId,
-            messageId: messageIdToUse,
-            userQuestion: userQuestion,
-            aiResponse: message.message || '',
-            kgContext: message.reasoningTrace ? JSON.stringify(message.reasoningTrace) : undefined,
-            cveInfo: message.cveDescriptionsMap ? {
-              cve_id: Object.keys(message.cveDescriptionsMap)[0],
-              cve_desc: Object.values(message.cveDescriptionsMap)[0],
-            } : undefined,
-            reasoningTrace: message.reasoningTrace,
-            sourceLinks: message.sourceLinks,
-            jargons: message.jargons,
-          };
-          
-          console.log("🚨 [TodoListButton] API Parameters:", apiParams);
-          console.log("🚨 [TodoListButton] About to call generateTodoTasksAction with params:", apiParams);
-
-          result = await generateTodoTasksAction(apiParams);
-          console.log("🚨 [TodoListButton] generateTodoTasksAction COMPLETED!");
-          
-          // If successful, break out of retry loop
-          break;
-        } catch (error) {
-          retryCount++;
-          console.log(`[TodoListButton] TODO generation attempt ${retryCount} failed:`, error);
-          
-          if (retryCount >= maxRetries) {
-            throw error; // Re-throw if max retries reached
-          }
-          
-          // Wait before retrying (exponential backoff)
-          const delay = Math.pow(2, retryCount) * 1000; // 2s, 4s, 8s
-          console.log(`[TodoListButton] Waiting ${delay}ms before retry ${retryCount + 1}...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-        }
+      // Check if TODO list already exists and we're not forcing regeneration
+      if (!forceRegenerate && getTodoListFromChatQuery?.success && getTodoListFromChatQuery.todoList) {
+        setTodoList(getTodoListFromChatQuery.todoList);
+        setLastSavedOrder(getTodoListFromChatQuery.todoList.items.map((item: TodoItem) => item.id));
+        setLastSavedCompletionStatus(getTodoListFromChatQuery.todoList.items.map((item: TodoItem) => ({ id: item.id, completed: item.completed })));
+        setShowTodoList(true);
+        return;
       }
 
-      console.log('[TodoListButton] generateTodoTasksAction result:', {
-        success: result.success,
-        hasTodoList: !!result.todoList,
-        todoListId: result.todoList?.id,
-        itemsCount: result.todoList?.items?.length || 0,
-        message: result.message,
-      });
+      // Open the animated modal for TODO list generation
+      const messageIdToUse = message.humanInTheLoopId || message.id || '';
+      openModal(messageIdToUse, chatId);
 
-              if (result.success && result.todoList) {
-          console.log('[TodoListButton] Generated TODO list successfully:', {
-            todoListId: result.todoList.id,
-            title: result.todoList.title,
-            itemsCount: result.todoList.items.length,
-            items: result.todoList.items.map((item: TodoItem) => ({
-              id: item.id,
-              task: item.task.substring(0, 50) + '...',
-              priority: item.priority,
-              category: item.category,
-              emoji: item.emoji,
-            })),
-          });
-          
-          // Store the correct messageId separately (not in the todoList object)
-          const correctMessageId = message.humanInTheLoopId || message.id || '';
-          const todoListWithIds = {
-            ...result.todoList,
-            // Store messageId and chatId as separate properties for internal use
-            _messageId: correctMessageId,
-            _chatId: chatId
-          };
-          
-          // Create a clean version without the extra fields for state
-          const cleanTodoList = {
-            ...result.todoList
-          };
-          
-          console.log('[TodoListButton] TODO list with IDs:', {
-            todoListId: todoListWithIds.id,
-            messageId: todoListWithIds._messageId,
-            chatId: todoListWithIds._chatId,
-            hasMessageId: !!todoListWithIds._messageId,
-            hasChatId: !!todoListWithIds._chatId
-          });
-          
-          setTodoList(cleanTodoList);
-          setLastSavedOrder(cleanTodoList.items.map((item: TodoItem) => item.id));
-          setLastSavedCompletionStatus(cleanTodoList.items.map((item: TodoItem) => ({ id: item.id, completed: item.completed })));
+      setIsGenerating(true);
+      setError(null);
+      setProgress(0);
+      setCurrentStep(0);
+
+      try {
+        // Step 1: Analyzing Response
+        setCurrentStep(0);
+        setProgress(33);
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        let result;
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        // Step 2: Generating Tasks
+        setCurrentStep(1);
+        setProgress(66);
+        
+        while (retryCount < maxRetries) {
+          try {
+            // Get the user question from the chat history
+            const userQuestion = chatHistory ? (() => {
+              const userMessages = chatHistory.filter((msg: any) => msg.sender === 'user');
+              return userMessages[userMessages.length - 1]?.message || 'Security analysis request';
+            })() : 'Security analysis request';
+
+            const apiParams = {
+              chatId: chatId,
+              messageId: messageIdToUse,
+              userQuestion: userQuestion,
+              aiResponse: message.message || '',
+              kgContext: message.reasoningTrace ? JSON.stringify(message.reasoningTrace) : undefined,
+              cveInfo: message.cveDescriptionsMap ? {
+                cve_id: Object.keys(message.cveDescriptionsMap)[0],
+                cve_desc: Object.values(message.cveDescriptionsMap)[0],
+              } : undefined,
+              reasoningTrace: message.reasoningTrace,
+              sourceLinks: message.sourceLinks,
+              jargons: message.jargons,
+            };
+
+            result = await generateTodoTasksAction(apiParams);
+            break;
+          } catch (error) {
+            retryCount++;
+            if (retryCount >= maxRetries) {
+              throw error;
+            }
+            const delay = Math.pow(2, retryCount) * 1000;
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+        }
+
+        // Step 3: Finalizing
+        setCurrentStep(2);
+        setProgress(100);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        if (result.success && result.todoList) {
+          setTodoList(result.todoList);
+          setLastSavedOrder(result.todoList.items.map((item: TodoItem) => item.id));
+          setLastSavedCompletionStatus(result.todoList.items.map((item: TodoItem) => ({ id: item.id, completed: item.completed })));
           setShowTodoList(true);
           
-          console.log('[TodoListButton] TODO list state updated successfully');
+          // Auto-close modal after a brief delay to show completion
+          setTimeout(() => {
+            closeModal();
+          }, 1000);
         } else {
-        console.error('[TodoListButton] Failed to generate TODO list:', result);
-        throw new Error('Failed to generate TODO list');
+          throw new Error('Failed to generate TODO list');
+        }
+        
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to generate TODO list';
+        
+        if (errorMessage.includes('Chat history entry not found')) {
+          setError('TODO list generation failed. Please try again.');
+        } else if (errorMessage.includes('setTimeout')) {
+          setError('TODO list generation failed. Please try again.');
+        } else {
+          setError(errorMessage);
+        }
+        closeModal(); // Close modal on error
+      } finally {
+        setIsGenerating(false);
       }
-      
-    } catch (err) {
-      console.error('[TodoListButton] Error generating TODO list:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to generate TODO list';
-      
-      // Provide more user-friendly error messages
-      if (errorMessage.includes('Chat history entry not found')) {
-        setError('TODO list generation failed. Please try again.');
-      } else if (errorMessage.includes('setTimeout')) {
-        setError('TODO list generation failed. Please try again.');
+    };
+
+  const toggleTodoList = async () => {
+    if (showTodoList) {
+      setShowTodoList(false);
+    } else {
+      // Check if TODO list already exists in Convex
+      if (getTodoListFromChatQuery?.success && getTodoListFromChatQuery.todoList) {
+        // Load existing TODO list
+        setTodoList(getTodoListFromChatQuery.todoList);
+        setLastSavedOrder(getTodoListFromChatQuery.todoList.items.map((item: TodoItem) => item.id));
+        setLastSavedCompletionStatus(getTodoListFromChatQuery.todoList.items.map((item: TodoItem) => ({ id: item.id, completed: item.completed })));
+        setShowTodoList(true);
       } else {
-        setError(errorMessage);
+        // Generate new TODO list only if none exists
+        await generateTodoList(false);
       }
-    } finally {
-      setIsGenerating(false);
     }
   };
 
-  const toggleTodoList = () => {
-    console.log('[TodoListButton] toggleTodoList called:', {
-      hasTodoList: !!todoList,
-      showTodoList,
-      messageSender: message.sender,
-      messageId: message.id,
-      chatId,
-    });
-
-    if (showTodoList) {
-      console.log('[TodoListButton] Hiding TODO list');
-      setShowTodoList(false);
-    } else {
-      // Always generate fresh, response-specific TODO lists
-      console.log('[TodoListButton] Generating fresh response-specific TODO list...');
-      console.log('[TodoListButton] About to call generateTodoList function');
-      console.log('[TodoListButton] generateTodoList function exists:', typeof generateTodoList === 'function');
-      generateTodoList(true); // Force regenerate with response-specific content
-    }
+  // Cancel TODO list generation
+  const cancelGeneration = () => {
+    setIsGenerating(false);
+    setError(null);
+    setProgress(0);
+    setCurrentStep(0);
+    closeModal();
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -563,15 +438,7 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
   };
 
   const autoSaveTodoList = async (updatedTodoList: TodoList) => {
-    console.log('[TodoListButton] autoSaveTodoList called with:', {
-      hasUpdatedTodoList: !!updatedTodoList,
-      hasChatId: !!chatId,
-      todoListId: updatedTodoList?.id,
-      itemsCount: updatedTodoList?.items?.length || 0,
-    });
-
     if (!updatedTodoList || !chatId) {
-      console.log('[TodoListButton] Skipping auto-save - missing data');
       return;
     }
     
@@ -582,114 +449,57 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
     // Check if completion status has changed
     const currentCompletionStatus = updatedTodoList.items.map(item => ({ id: item.id, completed: item.completed }));
     const completionHasChanged = JSON.stringify(currentCompletionStatus) !== JSON.stringify(lastSavedCompletionStatus);
-    
-    console.log('[TodoListButton] Change detection:', {
-      currentOrder,
-      lastSavedOrder,
-      orderHasChanged,
-      currentCompletionStatus,
-      lastSavedCompletionStatus,
-      completionHasChanged,
-    });
 
     if (!orderHasChanged && !completionHasChanged) {
-      console.log('[TodoListButton] No changes detected, skipping save');
       return; // No change, don't save
     }
 
     setIsSaving(true);
     try {
-      console.log('[TodoListButton] Calling updateTodoListMutation...');
-      console.log("🚨 [TodoListButton] AUTO-SAVE DEBUG - Parameters being passed:", {
-        chatId: chatId,
-        messageId: message.id || '',
-        hasChatId: !!chatId,
-        hasMessageId: !!(message.id || ''),
-        chatIdType: typeof chatId,
-        messageIdType: typeof (message.id || ''),
-        chatIdValue: chatId,
-        messageIdValue: message.id || '',
-        todoListId: updatedTodoList?.id,
-        itemsCount: updatedTodoList?.items?.length || 0
-      });
-      
-            // Add retry mechanism for auto-save
+      // Add retry mechanism for auto-save
       let retryCount = 0;
       const maxRetries = 2;
-      let result;
       
       while (retryCount < maxRetries) {
         try {
-                console.log("🚨 [TodoListButton] AUTO-SAVE DEBUG - Message IDs:", {
-        messageId: message.id || '',
-        humanInTheLoopId: message.humanInTheLoopId || '',
-        chatId: chatId,
-        doMessageIdsMatch: message.id === message.humanInTheLoopId
-      });
-          
           // Use the messageId from the message object since todoList is now clean
           const messageIdToUse = message.humanInTheLoopId || message.id || '';
-          console.log("🚨 [TodoListButton] AUTO-SAVE FIX - Using messageId:", {
-            originalMessageId: message.id || '',
-            humanInTheLoopId: message.humanInTheLoopId || '',
-            finalMessageId: messageIdToUse,
-            usingHumanInTheLoopId: !!message.humanInTheLoopId
-          });
           
           // Validate that we have the correct messageId
           if (!messageIdToUse) {
-            console.error("🚨 [TodoListButton] CRITICAL ERROR - No messageId available for auto-save!");
             throw new Error("No messageId available for auto-save");
           }
           
-          console.log("🚨 [TodoListButton] ABOUT TO CALL updateTodoListMutation - Function check:", {
-            functionName: updateTodoListMutation.name,
-            functionType: typeof updateTodoListMutation,
-            isFunction: typeof updateTodoListMutation === 'function'
-          });
+          // Remove extra fields that are not allowed by the schema
+          const { chatId: todoListChatId, messageId: todoListMessageId, ...cleanTodoList } = updatedTodoList as any;
           
-                // Remove extra fields that are not allowed by the schema
-      const { chatId: todoListChatId, messageId: todoListMessageId, ...cleanTodoList } = updatedTodoList as any;
-      
-      console.log("🚨 [TodoListButton] CLEANING TODO LIST - Removed extra fields:", {
-        originalKeys: Object.keys(updatedTodoList),
-        cleanedKeys: Object.keys(cleanTodoList),
-        removedFields: ['chatId', 'messageId']
-      });
-      
-      result = await updateTodoListMutation({
-        chatId,
-        messageId: messageIdToUse,
-        todoList: cleanTodoList,
-      });
+          await updateTodoListMutation({
+            chatId,
+            messageId: messageIdToUse,
+            todoList: cleanTodoList,
+          });
           
           // If successful, break out of retry loop
           break;
         } catch (error) {
           retryCount++;
-          console.log(`[TodoListButton] Auto-save attempt ${retryCount} failed:`, error);
-          
           if (retryCount >= maxRetries) {
             throw error; // Re-throw if max retries reached
           }
           
           // Wait before retrying (exponential backoff)
           const delay = Math.pow(2, retryCount) * 1000; // 2s, 4s
-          console.log(`[TodoListButton] Waiting ${delay}ms before auto-save retry ${retryCount + 1}...`);
           await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
       
-      console.log('[TodoListButton] updateTodoListMutation result:', result);
       setLastSavedOrder(currentOrder);
       setLastSavedCompletionStatus(currentCompletionStatus);
-      console.log('[TodoListButton] Auto-saved TODO list changes successfully');
       
       // Show success message briefly
       setShowSaveSuccess(true);
       setTimeout(() => setShowSaveSuccess(false), 2000); // Hide after 2 seconds
     } catch (err) {
-      console.error('[TodoListButton] Failed to auto-save TODO list:', err);
       setError('Failed to save changes. Please try again.');
     } finally {
       setIsSaving(false);
@@ -698,16 +508,6 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
 
   const handleToggleItem = (itemId: string) => {
     if (!todoList) return;
-    
-    console.log('[TodoListButton] handleToggleItem called for itemId:', itemId);
-    console.log("🚨 [TodoListButton] TOGGLE DEBUG - Current state:", {
-      todoListId: todoList?.id,
-      messageId: message.id || '',
-      humanInTheLoopId: message.humanInTheLoopId || '',
-      chatId: chatId,
-      doMessageIdsMatch: message.id === message.humanInTheLoopId,
-      itemToToggle: itemId
-    });
     
     setTodoList(prev => {
       if (!prev) return prev;
@@ -719,8 +519,6 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
         ...prev,
         items: updatedItems
       };
-      
-      console.log('[TodoListButton] Item completion toggled, triggering auto-save...');
       
       // Auto-save when items are toggled
       autoSaveTodoList(updatedTodoList);
@@ -854,22 +652,6 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
 
   return (
     <div className={`relative ${className}`}>
-      {/* Debug Test Button */}
-      <Button
-        onClick={() => {
-          console.log('[TodoListButton] DEBUG TEST BUTTON CLICKED');
-          console.log('[TodoListButton] API structure:', api);
-          console.log('[TodoListButton] todoApi:', api?.todoApi);
-          console.log('[TodoListButton] generateTodoTasksAction:', generateTodoTasksAction);
-          console.log('[TodoListButton] typeof generateTodoTasksAction:', typeof generateTodoTasksAction);
-        }}
-        variant="outline"
-        size="sm"
-        className="mr-2 text-xs"
-      >
-        Debug API
-      </Button>
-      
       {/* TODO List Button */}
       <Tooltip>
         <TooltipTrigger asChild>
@@ -877,17 +659,6 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
             variant="ghost"
             size="sm"
             onClick={() => {
-              console.log('[TodoListButton] Button clicked!', {
-                messageSender: message.sender,
-                messageId: message.id,
-                isGenerating,
-                showTodoList,
-              });
-              console.log('[TodoListButton] Convex client status:', {
-                apiExists: !!api,
-                generateTodoTasksActionExists: !!generateTodoTasksAction,
-              });
-              console.log('[TodoListButton] About to call toggleTodoList...');
               toggleTodoList();
             }}
             disabled={isGenerating}
@@ -946,18 +717,29 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
         <DialogContent className="max-w-4xl w-full sm:max-w-3xl h-[80vh] p-0 bg-background text-foreground border border-border rounded-lg overflow-hidden flex flex-col">
           {todoList && (
             <>
-              <DialogHeader className="p-4 sm:p-6 border-b border-border bg-card flex-shrink-0">
-                <div className="flex items-center justify-between">
+              <DialogHeader className="p-4 sm:p-6 border-b border-border bg-card flex-shrink-0 relative">
+                {/* Title and Close Button Row */}
+                <div className="flex items-center justify-between mb-3">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, ease: 'easeOut' }}
-                    className="flex items-center gap-2 min-w-0 flex-shrink"
+                    className="flex items-center gap-2 min-w-0 flex-1 pr-4"
                   >
-                    <CheckSquare className="h-5 w-5" />
-                    <DialogTitle className="truncate">{todoList.title}</DialogTitle>
+                    <CheckSquare className="h-5 w-5 flex-shrink-0" />
+                    <DialogTitle className="truncate text-lg font-semibold">{todoList.title}</DialogTitle>
                   </motion.div>
-                  <div className="flex flex-row flex-wrap gap-x-2 gap-y-2 items-center justify-end min-w-0">
+                </div>
+                
+                {/* Description */}
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  {todoList.description}
+                </p>
+                
+                {/* Status and Action Buttons Row */}
+                <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+                  {/* Status indicators */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     {isSaving && (
                       <div className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
                         <Loader2 className="h-3 w-3 animate-spin" />
@@ -970,57 +752,40 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
                         <span>Saved!</span>
                       </div>
                     )}
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={() => {
-                          console.log('[TodoListButton] Regenerate TODO list clicked');
-                          generateTodoList(true); // Force regenerate with response-specific content
-                        }}
-                        disabled={isGenerating}
-                        variant="outline"
-                        size="sm"
-                        className="text-xs"
-                      >
-                        {isGenerating ? (
-                          <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                        ) : (
-                          <RefreshCw className="h-3 w-3 mr-1" />
-                        )}
-                        Regenerate
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          console.log('[TodoListButton] Move to My Space clicked', { user: !!user, userId: user?.id });
-                          setShowMoveDialog(true);
-                        }}
-                        disabled={false} // Temporarily enable for debugging
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center gap-2"
-                      >
-                        <Save className="h-4 w-4" />
-                        Move to My Space {!user ? '(No User)' : ''}
-                      </Button>
-                      <Button
-                        onClick={downloadAsPDF}
-                        disabled={isDownloading}
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center gap-2"
-                      >
-                        {isDownloading ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Download className="h-4 w-4" />
-                        )}
-                        {isDownloading ? 'Generating...' : 'Download'}
-                      </Button>
-                    </div>
+                  </div>
+                  
+                  {/* Action buttons */}
+                  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <Button
+                      onClick={() => {
+                        setShowMoveDialog(true);
+                      }}
+                      disabled={false} // Temporarily enable for debugging
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center gap-2 w-full sm:w-auto justify-center min-w-[140px]"
+                    >
+                      <Save className="h-4 w-4" />
+                      <span className="hidden sm:inline">Move to My Space</span>
+                      <span className="sm:hidden">Move to Space</span>
+                      {!user && <span className="text-xs">(No User)</span>}
+                    </Button>
+                    <Button
+                      onClick={downloadAsPDF}
+                      disabled={isDownloading}
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center gap-2 w-full sm:w-auto justify-center min-w-[120px]"
+                    >
+                      {isDownloading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Download className="h-4 w-4" />
+                      )}
+                      {isDownloading ? 'Generating...' : 'Download'}
+                    </Button>
                   </div>
                 </div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  {todoList.description}
-                </p>
               </DialogHeader>
               
               <ScrollArea className="flex-1 p-3 sm:p-6 bg-background min-h-0 scroll-smooth overscroll-behavior-contain scroll-behavior-smooth">
@@ -1098,12 +863,22 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
           onOpenChange={setShowMoveDialog}
           todoList={todoList}
           userId={user.id}
+          chatId={chatId}
+          messageId={message.humanInTheLoopId || message.id}
           onSuccess={() => {
-            console.log('TODO list saved to My Space successfully');
             // Toast notification is handled by MoveTodoToSpaceDialog component
           }}
         />
       )}
+
+      {/* TODO List Generation Modal */}
+      <TodoListGenerationModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        onCancel={cancelGeneration}
+        progress={progress}
+        currentStep={currentStep}
+      />
     </div>
   );
 };

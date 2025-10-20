@@ -124,8 +124,6 @@ export default function Auth() {
 										</div>
 									</div>
 
-
-
 									<p className="text-center text-sm text-muted-foreground">
 										By clicking continue, you agree to our{" "}
 										<Link

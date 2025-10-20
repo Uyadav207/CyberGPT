@@ -210,8 +210,6 @@ export default function ChatHistory({ onOpenSearch }: NavChatHistoryProps) {
 		}
 	});
 
-
-
 	return (
 		<>
 			{/* Search button and shortcut icons above Recent Chats */}
@@ -308,7 +306,6 @@ export default function ChatHistory({ onOpenSearch }: NavChatHistoryProps) {
 
 							{/* <CollapsibleContent> */}
 								<SidebarMenuSub>
-								
 
 									{/* biome-ignore lint/a11y/useValidAnchor: <explanation> */}
 									<a onClick={() => navigate("/reports")}>

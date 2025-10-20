@@ -24,21 +24,12 @@ const DastTestComponent: React.FC = () => {
     setError(null);
     setScanResult(null);
 
-    try {
-      console.log('🔍 [Frontend] Starting DAST scan for:', url);
+    try {const response = await dastApi.scanUrl({ url: url.trim() });
       
-      const response = await dastApi.scanUrl({ url: url.trim() });
-      
-      if (response.status === 'success' && response.data) {
-        console.log('✅ [Frontend] DAST scan completed:', response.data);
-        setScanResult(response.data);
-      } else {
-        console.error('❌ [Frontend] DAST scan failed:', response.message);
-        setError(response.message || 'DAST scan failed');
+      if (response.status === 'success' && response.data) {setScanResult(response.data);
+      } else {setError(response.message || 'DAST scan failed');
       }
-    } catch (err) {
-      console.error('❌ [Frontend] DAST scan error:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error occurred');
+    } catch (err) {setError(err instanceof Error ? err.message : 'Unknown error occurred');
     } finally {
       setIsScanning(false);
     }

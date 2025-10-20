@@ -16,10 +16,3 @@ export const getBackendUrl = () => {
 export const BASE_URL = getBackendUrl();
 
 // Debug logging
-console.log("🔧 Frontend Backend Configuration:", {
-  NODE_ENV: import.meta.env.VITE_NODE_ENV,
-  BASE_URL: BASE_URL,
-  VITE_BACKEND_BASE_URL: import.meta.env.VITE_BACKEND_BASE_URL,
-  VITE_PRODUCTION_BACKEND_BASE_URL: import.meta.env
-    .VITE_PRODUCTION_BACKEND_BASE_URL,
-});
