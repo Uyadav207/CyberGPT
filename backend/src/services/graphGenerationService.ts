@@ -133,32 +133,35 @@ export class GraphGenerationService {
       return graphData;
     } catch (error) {
       console.error("[GraphGenerationService] Error generating graph:", error);
-      
+
       // In production, return a basic graph structure instead of throwing
-      if (process.env.NODE_ENV === 'production') {
-        console.warn('⚠️ Returning basic graph structure due to Neo4j connection issues');
+      if (process.env.NODE_ENV === "production") {
+        console.warn(
+          "⚠️ Returning basic graph structure due to Neo4j connection issues"
+        );
         return {
           nodes: [
             {
-              id: 'main-question',
-              label: question || 'User Question',
-              type: 'question',
+              id: "main-question",
+              label: question || "User Question",
+              type: "question",
               properties: {
-                description: 'Main user question',
-                category: 'question'
-              }
-            }
+                description: "Main user question",
+                category: "question",
+              },
+            },
           ],
           links: [],
           metadata: {
-            summary: 'Graph generation limited due to database connection issues',
+            summary:
+              "Graph generation limited due to database connection issues",
             totalNodes: 1,
             totalLinks: 0,
-            generatedAt: new Date().toISOString()
-          }
+            generatedAt: new Date().toISOString(),
+          },
         };
       }
-      
+
       // In development, re-throw for debugging
       throw new Error(
         `Failed to generate graph: ${error instanceof Error ? error.message : String(error)}`
@@ -256,11 +259,20 @@ Extract entities with the following structure:
 
 7. CVEs: Common Vulnerabilities and Exposures
    - Include: CVE ID, description, severity, CVSS score
+   - CRITICAL: Only include CVEs if they are explicitly mentioned in the text with valid CVE IDs (CVE-YYYY-NNNN format)
+   - DO NOT create or hallucinate fake CVE IDs like "CVE-2021-12345" or "CVE-2023-1234"
+   - If no specific CVEs are mentioned, use an empty array for cves
 
 Return a JSON object with detailed entity arrays. Only include relevant entities with meaningful attributes.
 If a category has no relevant entities, use an empty array.
 
-Example format:
+IMPORTANT CVE EXTRACTION RULES:
+- Only extract CVEs that are explicitly mentioned in the provided text
+- Do NOT generate, create, or hallucinate CVE IDs
+- If the text discusses general concepts like "false positives", "IDS logs", "threat detection" without specific CVEs, leave cves as empty array
+- Only include CVEs when you see actual CVE IDs like "CVE-2025-0762" in the text
+
+Example format (when CVEs are explicitly mentioned):
 {
   "vulnerabilities": [
     {"name": "SQL Injection", "description": "Database injection attack", "severity": "High", "cvss": 8.5}
@@ -281,8 +293,32 @@ Example format:
     {"name": "Unauthorized Access", "level": "High", "probability": 7, "impact": "Data compromise"}
   ],
   "cves": [
-    {"cveId": "CVE-2023-1234", "description": "SQL injection vulnerability", "severity": "High", "cvss": 8.5}
+    {"cveId": "CVE-2025-0762", "description": "Use after free vulnerability in Chrome DevTools", "severity": "High", "cvss": 8.8}
   ]
+}
+
+Example format (when NO CVEs are mentioned - like IDS false positive questions):
+{
+  "vulnerabilities": [
+    {"name": "False Positive Detection", "description": "Incorrect IDS alerts triggered by normal activities", "severity": "Info", "cvss": null}
+  ],
+  "mitigations": [
+    {"name": "IDS Rule Fine-Tuning", "description": "Adjust IDS rules to reduce false positives", "type": "preventive", "effectiveness": 8},
+    {"name": "Log Analysis", "description": "Analyze IDS logs to differentiate real threats", "type": "detective", "effectiveness": 9}
+  ],
+  "sources": [
+    {"name": "IDS Documentation", "type": "tool", "reliability": 8}
+  ],
+  "problems": [
+    {"name": "False Positive Identification", "description": "Challenge of distinguishing real threats from false alarms", "category": "threat_detection", "impact": "Medium"}
+  ],
+  "affected": [
+    {"name": "Security Analysts", "type": "user", "description": "Security professionals analyzing IDS alerts", "impact": "Medium"}
+  ],
+  "risks": [
+    {"name": "Alert Fatigue", "level": "Medium", "probability": 6, "impact": "Reduced security effectiveness"}
+  ],
+  "cves": []
 }
 `;
 
@@ -291,7 +327,7 @@ Example format:
         {
           role: "system",
           content:
-            "You are a cybersecurity entity extraction expert. Return only valid JSON with detailed entity attributes.",
+            "You are a cybersecurity entity extraction expert. Return only valid JSON with detailed entity attributes. CRITICAL: Do NOT create fake CVE IDs. Only extract CVEs that are explicitly mentioned in the provided text with valid CVE-YYYY-NNNN format. If no CVEs are mentioned, use empty array for cves. Keep response concise and focused.",
         },
         {
           role: "user",
@@ -364,7 +400,7 @@ Example format:
       return await executeWithSession(async (session) => {
         // Test connection before proceeding
         await session.run("RETURN 1 as test");
-        
+
         const results: any = {};
 
         // Enhanced vulnerability query with CVE relationships
@@ -446,7 +482,9 @@ Example format:
             .get("mitigations")
             .map((mit: any) => mit.properties),
           affected: record.get("affected").map((aff: any) => aff.properties),
-          severities: record.get("severities").map((sev: any) => sev.properties),
+          severities: record
+            .get("severities")
+            .map((sev: any) => sev.properties),
           sources: record.get("sources").map((src: any) => src.properties),
         }));
 
@@ -465,7 +503,8 @@ Example format:
           const mitigationDescriptions = entities.mitigations
             .map((m: any) => m.description)
             .filter(Boolean);
-          if (cveInfo?.mitigation) mitigationDescriptions.push(cveInfo.mitigation);
+          if (cveInfo?.mitigation)
+            mitigationDescriptions.push(cveInfo.mitigation);
 
           const mitResult = await session.run(mitQuery, {
             descriptions: mitigationDescriptions,
@@ -484,7 +523,9 @@ Example format:
       });
     } catch (error) {
       console.error("❌ Neo4j query error:", error);
-      console.log("⚠️ Returning empty graph data due to Neo4j connection issues");
+      console.log(
+        "⚠️ Returning empty graph data due to Neo4j connection issues"
+      );
       return {
         vulnerabilities: [],
         mitigations: [],

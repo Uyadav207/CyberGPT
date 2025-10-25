@@ -92,9 +92,11 @@ const renderCategory = (
 					className="w-full justify-between cursor-pointer"
 					onClick={() => navigate(`/chatbot/${chat._id}`)}
 				>
-					<div className="flex items-center">
-						<BotMessageSquare className="h-6 w-6" />
-						<span className="flex-grow truncate">{chat.title}</span>
+					<div className="flex items-center w-full">
+						<BotMessageSquare className="h-6 w-6 flex-shrink-0" />
+						<div className="flex-grow min-w-0 flex flex-col">
+							<span className="truncate">{chat.title}</span>
+						</div>
 						<DropdownMenu>
 							<DropdownMenuTrigger asChild>
 								<MoreHorizontal className="h-4 w-4 ml-auto right-0 cursor-pointer" />
@@ -208,8 +210,6 @@ export default function ChatHistory({ onOpenSearch }: NavChatHistoryProps) {
 		}
 	});
 
-
-
 	return (
 		<>
 			{/* Search button and shortcut icons above Recent Chats */}
@@ -293,65 +293,32 @@ export default function ChatHistory({ onOpenSearch }: NavChatHistoryProps) {
 			</div>
 			<SidebarGroup className="sidebar-section mt-auto">
 				<SidebarMenu>
-					<Collapsible defaultOpen={false} className="group/collapsible">
+					{/* <Collapsible defaultOpen={false} className="group/collapsible"> */}
 						<SidebarMenuItem>
-							<CollapsibleTrigger asChild>
+							{/* <CollapsibleTrigger asChild>
 								<SidebarMenuButton tooltip="My Space">
 									<Box className="h-6 w-6" />
 
 									<span>My Space</span>
 									<ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
 								</SidebarMenuButton>
-							</CollapsibleTrigger>
+							</CollapsibleTrigger> */}
 
-							<CollapsibleContent>
+							{/* <CollapsibleContent> */}
 								<SidebarMenuSub>
-									<Collapsible
-										defaultOpen={false}
-										className="group/collapsible"
-									>
-										<SidebarMenuItem>
-											<CollapsibleTrigger asChild>
-												<SidebarMenuButton tooltip="View Analytics">
-													<ChartNetwork className="h-4 w-4" />
-													<span> Analytics</span>
-													<ChevronRight className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-90" />
-												</SidebarMenuButton>
-											</CollapsibleTrigger>
-
-											<CollapsibleContent>
-												<SidebarMenuSub className="pl-4">
-													{/* biome-ignore lint/a11y/useValidAnchor: <explanation> */}
-													<a onClick={() => navigate("/recent-scan")}>
-														<SidebarMenuButton tooltip="Dynamic Scans">
-															<TrendingUpDown className="h-4 w-4" />
-															<span>Dynamic Scans</span>
-														</SidebarMenuButton>
-													</a>
-													{/* biome-ignore lint/a11y/useValidAnchor: <explanation> */}
-													<a onClick={() => navigate("/recent-static-scans")}>
-														<SidebarMenuButton tooltip="Static Scans">
-															<ArrowRight className="h-4 w-4" />
-															<span>Static Scans</span>
-														</SidebarMenuButton>
-													</a>
-												</SidebarMenuSub>
-											</CollapsibleContent>
-										</SidebarMenuItem>
-									</Collapsible>
 
 									{/* biome-ignore lint/a11y/useValidAnchor: <explanation> */}
 									<a onClick={() => navigate("/reports")}>
 										<SidebarMenuButton tooltip="Reports">
 											<Folder className="h-4 w-4" />
-											<span>Reports</span>
+											<span>My Space</span>
 										</SidebarMenuButton>
 										<SidebarMenuBadge>{reportCount}</SidebarMenuBadge>
 									</a>
 								</SidebarMenuSub>
-							</CollapsibleContent>
+							{/* </CollapsibleContent> */}
 						</SidebarMenuItem>
-					</Collapsible>
+					{/* </Collapsible> */}
 				</SidebarMenu>
 			</SidebarGroup>
 		</>

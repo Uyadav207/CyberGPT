@@ -1,6 +1,43 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Prevent horizontal scrolling globally */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+  width: 100%;
+}
+
+/* Ensure all containers respect viewport width */
+* {
+  box-sizing: border-box;
+}
+
+/* Force content to wrap properly without being too restrictive */
+.prose, .prose * {
+  overflow-wrap: break-word !important;
+  word-wrap: break-word !important;
+  word-break: break-word !important;
+  hyphens: auto !important;
+}
+
+/* Ensure inline elements wrap properly */
+pre, code {
+  overflow-x: hidden !important;
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+}
+
+table {
+  max-width: 100% !important;
+  table-layout: fixed !important;
+}
+
+img {
+  max-width: 100% !important;
+  height: auto !important;
+}
 @layer base {
 	:root {
 		--background: 0 0% 100%;

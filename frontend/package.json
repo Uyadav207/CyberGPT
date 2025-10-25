@@ -56,7 +56,7 @@
 		"convex": "^1.17.4",
 		"d3": "^7.9.0",
 		"d3-shape": "^3.2.0",
-		"framer-motion": "^11.14.0",
+		"framer-motion": "^11.18.2",
 		"html2canvas": "^1.4.1",
 		"html2pdf.js": "^0.10.2",
 		"input-otp": "^1.4.1",

@@ -56,7 +56,7 @@ export class ChatGraphIntegrationService {
           hasJargons: !!data.jargons,
           hasCveDescriptionsMap: !!data.cveDescriptionsMap,
           hasSourceLinks: !!data.sourceLinks,
-          hasContextData: !!data.contextData
+          hasContextData: !!data.contextData,
         }
       );
 
@@ -118,7 +118,7 @@ export class ChatGraphIntegrationService {
           nodes: graphData.nodes.length,
           links: graphData.links.length,
           hasGraphData: !!graphData,
-          graphDataKeys: graphData ? Object.keys(graphData) : 'No graph data'
+          graphDataKeys: graphData ? Object.keys(graphData) : "No graph data",
         }
       );
 
@@ -289,6 +289,49 @@ export class ChatGraphIntegrationService {
         error
       );
       return [];
+    }
+  }
+
+  /**
+   * Get graph data for a specific message
+   */
+  async getGraphData(messageId: string, chatId: string): Promise<any | null> {
+    try {
+      console.log("🔍 [ChatGraphIntegrationService] Getting graph data for:", {
+        messageId,
+        chatId,
+      });
+
+      // Query Convex for the graph visualization data
+      const graphVisualization = await convexClient.query(
+        api.graphVisualizations.getByMessageId,
+        { messageId }
+      );
+
+      if (graphVisualization) {
+        console.log("✅ [ChatGraphIntegrationService] Graph data found:", {
+          messageId,
+          hasGraphData: !!graphVisualization.graphData,
+          nodes: graphVisualization.graphData?.nodes?.length || 0,
+          links: graphVisualization.graphData?.links?.length || 0,
+        });
+        return graphVisualization.graphData;
+      } else {
+        console.log(
+          "⏳ [ChatGraphIntegrationService] No graph data found yet:",
+          {
+            messageId,
+            chatId,
+          }
+        );
+        return null;
+      }
+    } catch (error) {
+      console.error(
+        "❌ [ChatGraphIntegrationService] Error getting graph data:",
+        error
+      );
+      return null;
     }
   }
 }

@@ -28,7 +28,6 @@ const getSourceIcon = (type: string) => {
   }
 };
 
-
 export const SourceLinks: React.FC<SourceLinksProps> = ({ sourceLinks, className = '', autoExpand }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 

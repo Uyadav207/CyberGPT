@@ -99,7 +99,7 @@ export function Reports() {
 	return (
 		<div className="flex flex-1 flex-col gap-8 p-8">
 			{/* Reports Section */}
-			<h2 className="text-xl font-bold">Reports</h2>
+			<h2 className="text-xl font-bold">My Space</h2>
 			{!folderData ? (
 				<Spinner />
 			) : (

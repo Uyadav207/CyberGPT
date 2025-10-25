@@ -3,7 +3,7 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { v4 as uuidv4 } from "uuid";
 import { FaChevronRight } from 'react-icons/fa';
-import { Brain, Link } from "lucide-react";
+import { Brain, Link, TagIcon } from "lucide-react";
 
 //components
 import { ScrollArea } from "@components/ui/scroll-area";
@@ -11,6 +11,8 @@ import { Spinner } from "@components/loader/spinner";
 import { Progress } from "@components/ui/progress";
 import { HumanInTheLoopOptions } from "./human-in-the-loop-options";
 import { HumanInTheLoopApproval } from "./human-in-the-loop-approval";
+import GraphGenerationModal from "./GraphGenerationModal";
+import { useGraphGenerationModal } from "../../hooks/useGraphGenerationModal";
 import {
 	Dialog,
 	DialogContent,
@@ -24,7 +26,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
 //apis
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { chatApis } from "../../api/chat";
+import { chatApis, generateTitleAndTag } from "../../api/chat";
 import { chatWithJargon } from '../../api/chat';
 import { BASE_URL } from '../../api/config.backend';
 import type { Id } from "../../convex/_generated/dataModel";
@@ -269,6 +271,9 @@ const MiraChatBot: React.FC = () => {
 	const [selectedAgentMode, setSelectedAgentMode] = useState<'tutor' | 'investigator' | 'analyst' | undefined>('tutor');
 	const [agentButtonsDisabled, setAgentButtonsDisabled] = useState(false);
 
+	// Graph Generation Modal State
+	const { modalState, openModal, closeModal, isModalOpen } = useGraphGenerationModal();
+
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
 	const { chatId: chatIdParam } = useParams<{ chatId: string }>();
 	const chatId = chatIdParam;
@@ -341,9 +346,14 @@ const MiraChatBot: React.FC = () => {
 	// Add state to track expanded reasoning per message
 	const [expandedReasoning, setExpandedReasoning] = useState<{ [id: string]: boolean }>({});
 	const [relatedQuestions, setRelatedQuestions] = useState<{ [messageId: string]: string[] }>({});
+	// Add state to track expanded tags per message
+	const [expandedTags, setExpandedTags] = useState<{ [id: string]: boolean }>({});
 	
 	// Add state to track which messages have already had related questions generated
 	const [processedRelatedQuestions, setProcessedRelatedQuestions] = useState<Set<string>>(new Set());
+	
+	// Force re-render trigger for related questions
+	const [relatedQuestionsUpdateTrigger, setRelatedQuestionsUpdateTrigger] = useState(0);
 	
 	// Add state to track when a related question is being processed
 	const [relatedQuestionFlag, setRelatedQuestionFlag] = useState<boolean>(false);
@@ -417,9 +427,18 @@ const MiraChatBot: React.FC = () => {
 
 	// Generate related questions for new AI messages immediately
 	useEffect(() => {
+		console.log('[Related Questions] useEffect triggered with messages count:', messages.length);
 		if (messages.length > 0) {
 			const lastMessage = messages[messages.length - 1];
 			const messageId = String(lastMessage.id);
+			
+			console.log('[Related Questions] Checking message:', {
+				messageId,
+				sender: lastMessage.sender,
+				hasRelatedQuestions: !!relatedQuestions[messageId],
+				isProcessed: processedRelatedQuestions.has(messageId),
+				isOngoing: ongoingRequestsRef.current.has(messageId)
+			});
 			
 			// Only generate for new AI messages that don't have related questions yet
 			if (lastMessage.sender === 'ai' && 
@@ -427,7 +446,7 @@ const MiraChatBot: React.FC = () => {
 				!processedRelatedQuestions.has(messageId) &&
 				!ongoingRequestsRef.current.has(messageId)) {
 				
-				console.log('[Related Questions] Immediately generating for new AI message:', messageId);
+				console.log('[Related Questions] ✅ Conditions met - immediately generating for new AI message:', messageId);
 				
 				// Mark as processed to prevent duplicate calls
 				setProcessedRelatedQuestions(prev => new Set([...prev, messageId]));
@@ -435,6 +454,8 @@ const MiraChatBot: React.FC = () => {
 				
 				// Find the user question that prompted this AI response
 				const userQuestion = messages.slice(0, -1).reverse().find(m => m.sender === 'user')?.message || '';
+				
+				console.log('[Related Questions] User question found:', userQuestion.substring(0, 50) + '...');
 				
 				// Generate contextual questions immediately
 				getRelatedQuestions(
@@ -444,16 +465,25 @@ const MiraChatBot: React.FC = () => {
 					messages
 				).then(generatedQuestions => {
 					if (generatedQuestions && generatedQuestions.length > 0) {
-						console.log('[Related Questions] Successfully generated context-specific questions:', generatedQuestions);
-						setRelatedQuestions(prev => ({
-							...prev,
-							[messageId]: generatedQuestions
-						}));
+						console.log('[Related Questions] ✅ Successfully generated context-specific questions:', generatedQuestions);
+						setRelatedQuestions(prev => {
+							const newState = {
+								...prev,
+								[messageId]: generatedQuestions
+							};
+							console.log('[Related Questions] Updated relatedQuestions state:', newState);
+							return newState;
+						});
+						// Force re-render to ensure questions are displayed immediately
+						setRelatedQuestionsUpdateTrigger(prev => prev + 1);
+						console.log('[Related Questions] 🔄 Triggered re-render for related questions');
+					} else {
+						console.log('[Related Questions] ⚠️ No questions generated');
 					}
 					// Clean up ongoing request
 					ongoingRequestsRef.current.delete(messageId);
 				}).catch(error => {
-					console.error('[Related Questions] Failed to generate context-specific questions:', error);
+					console.error('[Related Questions] ❌ Failed to generate context-specific questions:', error);
 					// Remove from processed set if it failed so it can be retried
 					setProcessedRelatedQuestions(prev => {
 						const newSet = new Set(prev);
@@ -463,9 +493,11 @@ const MiraChatBot: React.FC = () => {
 					// Clean up ongoing request
 					ongoingRequestsRef.current.delete(messageId);
 				});
+			} else {
+				console.log('[Related Questions] ❌ Conditions not met for message:', messageId);
 			}
 		}
-	}, [messages]); // Removed relatedQuestions and processedRelatedQuestions from dependencies to prevent infinite loop
+	}, [messages]); // Only depend on messages to avoid infinite loops
 
 	// Auto-expand reasoning traces for new AI messages with reasoning data
 	useEffect(() => {
@@ -667,10 +699,19 @@ const MiraChatBot: React.FC = () => {
 					// Debug: Check if enhanced data exists
 					if (chat.sender === "ai") {
 						console.log('AI message enhanced data:', {
+							messageId: chat._id,
 							hasJargons: !!chat.Jargons,
 							jargonsKeys: chat.Jargons ? Object.keys(chat.Jargons) : [],
+							jargonsData: chat.Jargons,
 							hasReasoning: !!chat.Reasoning,
-							hasInfo: !!chat.Info
+							hasInfo: !!chat.Info,
+							hasAnswer: !!chat.Answer,
+							answerLength: chat.Answer?.length || 0,
+							messageLength: chat.message?.length || 0,
+							answerPreview: chat.Answer?.substring(0, 100) + '...',
+							messagePreview: chat.message?.substring(0, 100) + '...',
+							answerHasMarkdown: chat.Answer?.includes('**') || chat.Answer?.includes('*') || chat.Answer?.includes('`'),
+							messageHasMarkdown: chat.message?.includes('**') || chat.message?.includes('*') || chat.message?.includes('`')
 						});
 					}
 					
@@ -741,7 +782,19 @@ const MiraChatBot: React.FC = () => {
 						id: chat._id,
 						humanInTheLoopId: chat.humanInTheLoopId,
 						chatId: chat.chatId,
-						message: chat.message,
+						// Always use message field for consistency (Answer field might have processing issues)
+						message: (() => {
+							const content = chat.message;
+							console.log('Message content selection:', {
+								messageId: chat._id,
+								sender: chat.sender,
+								usingAnswer: false, // Always use message field now
+								contentLength: content?.length || 0,
+								contentPreview: content?.substring(0, 100) + '...',
+								hasMarkdown: content?.includes('**') || content?.includes('*') || content?.includes('`')
+							});
+							return content;
+						})(),
 						sender: chat.sender as "user" | "ai",
 						// Include enhanced fields for AI messages
 						...(chat.sender === "ai" && {
@@ -749,6 +802,7 @@ const MiraChatBot: React.FC = () => {
 							reasoningTrace,
 							cveDescriptionsMap,
 							sourceLinks,
+							tags: Array.isArray((chat as any).tags) ? (chat as any).tags : undefined,
 						}),
 					};
 				},
@@ -913,7 +967,13 @@ const MiraChatBot: React.FC = () => {
 				chatId: graphChatId // Pass chat ID for graph generation
 			});
 
-			const botMessage: Message = {
+			// Graph generation is now manual only - triggered by graph icon click
+			console.log("📝 [Frontend] Graph generation is manual only:", {
+				status: graphRAGResponse.graphGenerationStatus,
+				note: "Click graph icon to generate visualization"
+			});
+
+				const botMessage: Message = {
 				id: botMessageId, // Use the same ID that was passed to the API for graph generation
 				message: graphRAGResponse.answer,
 				sender: "ai",
@@ -921,6 +981,7 @@ const MiraChatBot: React.FC = () => {
 				jargons: graphRAGResponse.jargons,
 				cveDescriptionsMap: graphRAGResponse.cveDescriptionsMap,
 				sourceLinks: graphRAGResponse.sourceLinks || [],
+					...(graphRAGResponse.dynamicTag ? { tags: [graphRAGResponse.dynamicTag] as any } : {}),
 				durationSec: thinkingStartRef.current ? (Date.now() - thinkingStartRef.current) / 1000 : undefined,
 			};
 			// Reset start ref after computing
@@ -928,6 +989,27 @@ const MiraChatBot: React.FC = () => {
 
 			// Add messages to UI
 			setMessages((prev) => [...prev, botMessage]);
+			
+			// Generate related questions immediately after adding bot message
+			console.log('[Related Questions] 🚀 Triggering immediate generation after bot message added');
+			const userQuestion = userMessage.message;
+			getRelatedQuestions(
+				userQuestion,
+				botMessage.message,
+				botMessage.reasoningTrace ? JSON.stringify(botMessage.reasoningTrace) : '',
+				[...messages, userMessage, botMessage]
+			).then(generatedQuestions => {
+				if (generatedQuestions && generatedQuestions.length > 0) {
+					console.log('[Related Questions] ✅ Successfully generated questions immediately:', generatedQuestions);
+					setRelatedQuestions(prev => ({
+						...prev,
+						[botMessage.id]: generatedQuestions
+					}));
+					setRelatedQuestionsUpdateTrigger(prev => prev + 1);
+				}
+			}).catch(error => {
+				console.error('[Related Questions] ❌ Failed to generate questions immediately:', error);
+			});
 
 			// Save messages to database with graph visualization
 			if (!chatId && !createdChatId) {
@@ -1041,6 +1123,12 @@ const MiraChatBot: React.FC = () => {
 					messageId: botMessageId, // Pass message ID for graph generation
 					chatId: graphChatId // Pass chat ID for graph generation
 				});
+
+				// Graph generation is now manual only - triggered by graph icon click
+				console.log("📝 [Frontend] Graph generation is manual only (clarification):", {
+					status: response.graphGenerationStatus,
+					note: "Click graph icon to generate visualization"
+				});
 				
 				// Validate response structure
 				if (!response.answer) {
@@ -1058,6 +1146,7 @@ const MiraChatBot: React.FC = () => {
 					jargons: response.jargons,
 					cveDescriptionsMap: response.cveDescriptionsMap,
 					sourceLinks: response.sourceLinks || [],
+					...(response.dynamicTags ? { tags: response.dynamicTags as any } : {}),
 					durationSec: thinkingStartRef.current ? (Date.now() - thinkingStartRef.current) / 1000 : undefined,
 				};
 				thinkingStartRef.current = null;
@@ -1142,7 +1231,7 @@ const MiraChatBot: React.FC = () => {
 								mitigation: mitigation
 							} : undefined,
 							Severity: "Medium",
-							tags: [response.dynamicTag || "cybersecurity_general"]
+							tags: response.dynamicTags || ["cybersecurity_general"]
 						};
 						
 						console.log('About to save with data:', enhancedData);
@@ -1193,7 +1282,7 @@ const MiraChatBot: React.FC = () => {
 							Answer: response.answer,
 							hasSourceLinks: !!(response.sourceLinks && response.sourceLinks.length > 0),
 							hasJargons: !!(response.jargons && response.jargons.length > 0),
-							hasDynamicTag: !!response.dynamicTag,
+							hasDynamicTag: !!response.dynamicTags,
 							hasContextData: !!response.contextData
 						});
 						
@@ -1218,8 +1307,7 @@ const MiraChatBot: React.FC = () => {
 					// Try to create a new chat if none exists
 					try {
 						console.log('Creating new chat with default title...');
-						const titleResponse = await generateTitle(userMessage.message || response.answer);
-						const chatTitle = (titleResponse as { title: string })?.title || "Chat";
+						const chatTitle = await generateTitle(userMessage.message || response.answer);
 						const newChatResult = await saveChat({
 							userId: String(user?.id || "anonymous"),
 							title: chatTitle,
@@ -1292,7 +1380,7 @@ const MiraChatBot: React.FC = () => {
 								mitigation: mitigation
 							} : undefined,
 							Severity: "Medium",
-							tags: [response.dynamicTag || "cybersecurity_general"]
+							tags: response.dynamicTags || ["cybersecurity_general"]
 						});
 						console.log('AI response saved to new chat with enhanced data');
 						
@@ -1314,13 +1402,37 @@ const MiraChatBot: React.FC = () => {
 					hasSourceLinks: !!botMessage.sourceLinks,
 					sourceLinksCount: botMessage.sourceLinks?.length || 0
 				});
+				
+				// Add bot message to UI for clarification flow
 				setMessages((prev) => {
 					console.log('Previous messages count:', prev.length);
 					const newMessages = [...prev, botMessage];
 					console.log('New messages count:', newMessages.length);
 					return newMessages;
 				});
-				console.log('About to stop loading state...');
+				
+				// Generate related questions immediately after adding bot message in clarification flow
+				console.log('[Related Questions] 🚀 Triggering immediate generation after clarification bot message added');
+				const userQuestion = userMessage.message;
+				getRelatedQuestions(
+					userQuestion,
+					botMessage.message,
+					botMessage.reasoningTrace ? JSON.stringify(botMessage.reasoningTrace) : '',
+					[...messages, userMessage, botMessage]
+				).then(generatedQuestions => {
+					if (generatedQuestions && generatedQuestions.length > 0) {
+						console.log('[Related Questions] ✅ Successfully generated questions immediately (clarification):', generatedQuestions);
+						setRelatedQuestions(prev => ({
+							...prev,
+							[botMessage.id]: generatedQuestions
+						}));
+						setRelatedQuestionsUpdateTrigger(prev => prev + 1);
+					}
+				}).catch(error => {
+					console.error('[Related Questions] ❌ Failed to generate questions immediately (clarification):', error);
+				});
+				
+				// Stop loading state
 				stopLoading(setIsLoading, setAgentButtonsDisabled, loadingIntervalRef, setLoadingMessage);
 				console.log('Loading state stopped');
 			} catch (error) {
@@ -1386,11 +1498,12 @@ const MiraChatBot: React.FC = () => {
 				if (!graphChatId) {
 					console.log('🔄 [Frontend] No chatId available, creating new chat first...');
 					try {
-						const titleResponse = await generateTitle(userMessage.message);
-						const chatTitle = (titleResponse as { title: string })?.title || "Chat";
+						const chatTitle = await generateTitle(userMessage.message);
+						console.log('Generated title:', chatTitle);
 						const newChatResult = await saveChat({
 							userId: String(user?.id || "anonymous"),
 							title: chatTitle,
+							tags: ["cybersecurity_general"], // Default tag
 						});
 						setCreatedChatId(newChatResult);
 						graphChatId = newChatResult;
@@ -1445,6 +1558,13 @@ const MiraChatBot: React.FC = () => {
 					messageId: botMessageId, // Pass message ID for graph generation
 					chatId: graphChatId // Pass chat ID for graph generation
 				});
+
+				// Graph generation is now manual only - triggered by graph icon click
+				console.log("📝 [Frontend] Graph generation is manual only (main flow):", {
+					status: response.graphGenerationStatus,
+					note: "Click graph icon to generate visualization"
+				});
+
 				console.log('Backend response received:', {
 					hasAnswer: !!response.answer,
 					answerLength: response.answer?.length,
@@ -1472,10 +1592,10 @@ const MiraChatBot: React.FC = () => {
 					throw new Error('Backend response has empty answer field');
 				}
 				console.log('Dynamic tag validation:', {
-					exists: !!response.dynamicTag,
-					value: response.dynamicTag,
-					type: typeof response.dynamicTag,
-					fallback: response.dynamicTag || "cybersecurity_general"
+					exists: !!response.dynamicTags,
+					value: response.dynamicTags,
+					type: typeof response.dynamicTags,
+					fallback: response.dynamicTags || "cybersecurity_general"
 				});
 				console.log('Context data from backend:', response.contextData);
 				
@@ -1586,6 +1706,9 @@ const MiraChatBot: React.FC = () => {
 					jargons: response.jargons,
 					cveDescriptionsMap: response.cveDescriptionsMap,
 					sourceLinks: response.sourceLinks || [],
+					// include tag for UI (single dynamicTag or array from history)
+					// backend saves tags array; for immediate UI, include the dynamicTag
+					...(response.dynamicTags ? { tags: response.dynamicTags as any } : {}),
 					durationSec: thinkingStartRef.current ? (Date.now() - thinkingStartRef.current) / 1000 : undefined,
 				};
 				thinkingStartRef.current = null;
@@ -1605,6 +1728,40 @@ const MiraChatBot: React.FC = () => {
 					sourceLinksCount: botMessage.sourceLinks?.length || 0,
 					hasReasoningTrace: !!botMessage.reasoningTrace
 				});
+				
+				// 🚀 IMMEDIATELY add bot message to UI for instant display
+				console.log('🚀 [Frontend] IMMEDIATELY adding bot message to UI for instant display');
+				setMessages((prev) => {
+					console.log('Previous messages count:', prev.length);
+					const newMessages = [...prev, botMessage];
+					console.log('New messages count:', newMessages.length);
+					return newMessages;
+				});
+				
+				// Generate related questions immediately after adding bot message in main flow
+				console.log('[Related Questions] 🚀 Triggering immediate generation after main flow bot message added');
+				const userQuestion = userMessage.message;
+				getRelatedQuestions(
+					userQuestion,
+					botMessage.message,
+					botMessage.reasoningTrace ? JSON.stringify(botMessage.reasoningTrace) : '',
+					[...messages, userMessage, botMessage]
+				).then(generatedQuestions => {
+					if (generatedQuestions && generatedQuestions.length > 0) {
+						console.log('[Related Questions] ✅ Successfully generated questions immediately (main flow):', generatedQuestions);
+						setRelatedQuestions(prev => ({
+							...prev,
+							[botMessage.id]: generatedQuestions
+						}));
+						setRelatedQuestionsUpdateTrigger(prev => prev + 1);
+					}
+				}).catch(error => {
+					console.error('[Related Questions] ❌ Failed to generate questions immediately (main flow):', error);
+				});
+				
+				// Stop loading state immediately so user sees the response
+				stopLoading(setIsLoading, setAgentButtonsDisabled, loadingIntervalRef, setLoadingMessage);
+				console.log('✅ [Frontend] UI updated immediately - user can now see the response');
 				
 				// Save AI response to database - use the same graphChatId that was used for the API call
 				const currentChatId = graphChatId; // Use the same chatId that was validated and used for the API call
@@ -1692,7 +1849,7 @@ const MiraChatBot: React.FC = () => {
 								mitigation: mitigation
 							} : undefined,
 							Severity: "Medium",
-							tags: [response.dynamicTag || "cybersecurity_general"]
+							tags: response.dynamicTags || ["cybersecurity_general"]
 						};
 						
 						console.log('About to save with data:', enhancedData);
@@ -1723,16 +1880,65 @@ const MiraChatBot: React.FC = () => {
 							convertedPreview: convertedGraphVisualization ? JSON.stringify(convertedGraphVisualization).substring(0, 200) + '...' : 'No converted data'
 						});
 
-						const enhancedDataWithGraph = {
+						// Sanitize data to remove invalid characters for Convex while preserving markdown formatting
+						const sanitizeString = (str: string | undefined): string => {
+							if (!str) return '';
+							return str
+								.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '') // Remove control characters but preserve \n and \t
+								.replace(/\r/g, '') // Remove carriage returns
+								.trim();
+						};
+
+						const sanitizedEnhancedData = {
 							...enhancedData,
+							message: sanitizeString(enhancedData.message),
+							Answer: sanitizeString(enhancedData.Answer),
+							Reasoning: sanitizeString(enhancedData.Reasoning),
+							Info: enhancedData.Info ? {
+								...enhancedData.Info,
+								cve_id: sanitizeString(enhancedData.Info.cve_id),
+								cve_desc: sanitizeString(enhancedData.Info.cve_desc),
+								mitigation: sanitizeString(enhancedData.Info.mitigation)
+							} : undefined
+						};
+
+						const enhancedDataWithGraph = {
+							...sanitizedEnhancedData,
 							graphVisualization: convertedGraphVisualization // Use converted graph data
 						};
 						
 						console.log("💾 [Frontend] Saving enhanced chat message with graph visualization to database...");
-						const saveResult = await saveEnhancedChatMessage(enhancedDataWithGraph);
-						console.log("✅ [Frontend] Enhanced chat message with graph visualization saved successfully");
-						console.log("🚀 [Frontend] GRAPH SAVE COMPLETED - TODO generation should start now!");
-						console.log("📊 [Frontend] Save result:", saveResult);
+						console.log("🔍 [Frontend] Enhanced data being saved:", JSON.stringify(enhancedDataWithGraph, null, 2));
+						
+						try {
+							const saveResult = await saveEnhancedChatMessage(enhancedDataWithGraph);
+							console.log("✅ [Frontend] Enhanced chat message with graph visualization saved successfully");
+							console.log("🚀 [Frontend] GRAPH SAVE COMPLETED - TODO generation should start now!");
+							console.log("📊 [Frontend] Save result:", saveResult);
+						} catch (saveError) {
+							console.error("❌ [Frontend] Failed to save enhanced chat message:", saveError);
+							console.error("❌ [Frontend] Enhanced data that failed to save:", JSON.stringify(enhancedDataWithGraph, null, 2));
+							
+							// Try to save with minimal data as fallback
+							const minimalData = {
+								humanInTheLoopId: enhancedDataWithGraph.humanInTheLoopId,
+								chatId: enhancedDataWithGraph.chatId,
+								sender: enhancedDataWithGraph.sender,
+								message: enhancedDataWithGraph.message.substring(0, 1000), // Truncate if too long
+								Answer: enhancedDataWithGraph.Answer.substring(0, 1000), // Truncate if too long
+								Reasoning: enhancedDataWithGraph.Reasoning.substring(0, 500), // Truncate if too long
+								Sources: [],
+								SourceLinks: [],
+								Jargons: {},
+								Info: undefined,
+								Severity: "Medium",
+								tags: ["cybersecurity_general"]
+							};
+							
+							console.log("🔄 [Frontend] Attempting fallback save with minimal data...");
+							await saveEnhancedChatMessage(minimalData);
+							console.log("✅ [Frontend] Fallback save successful");
+						}
 						console.log('AI response saved successfully with enhanced data');
 						console.log("🚀 [Frontend] ABOUT TO START TODO GENERATION - This should appear!");
 						console.log("🔍 [Frontend] CHECKING IF WE REACH TODO GENERATION - This should appear!");
@@ -1769,38 +1975,10 @@ const MiraChatBot: React.FC = () => {
 								message: botMessage.message?.substring(0, 100) + '...',
 								hasId: !!botMessage.id,
 								idType: typeof botMessage.id
-							});
-							
-							console.log("🚀 [Frontend] ABOUT TO CALL TODO GENERATION ACTION - This should appear!");
-							await convexClient.action(api.generateTodoTasks.generateTodoTasks, {
-								chatId: currentChatId as Id<"chats">,
-								messageId: botMessage.id,
-								aiResponse: response.answer,
-								kgContext: response.contextData ? JSON.stringify(response.contextData) : undefined,
-								cveInfo: response.cveDescriptionsMap ? Object.keys(response.cveDescriptionsMap).map(cveId => ({
-									cve_id: cveId,
-									cve_desc: response.cveDescriptionsMap[cveId],
-									mitigation: "Apply security patches and follow vendor recommendations"
-								})) : undefined,
-								reasoningTrace: response.reasoningTrace,
-								sourceLinks: response.sourceLinks,
-								jargons: response.jargons?.reduce((acc: Record<string, string>, jargon: { term: string; description: string }) => {
-									acc[jargon.term] = jargon.description;
-									return acc;
-								}, {}) || {}
-							});
-							console.log("✅ [Frontend] TODO list generation initiated successfully");
-							console.log("🎉 [Frontend] TODO GENERATION ACTION COMPLETED SUCCESSFULLY!");
-						} catch (todoError) {
-							console.error("❌ [Frontend] Failed to generate TODO list:", todoError);
-							console.error("❌ [Frontend] TODO error details:", {
-								error: todoError,
-								errorMessage: todoError instanceof Error ? todoError.message : 'Unknown error',
-								chatId: currentChatId,
-								messageId: botMessage.id
-							});
-							// Don't fail the entire request if TODO list generation fails
-						}
+						});
+						
+					// TODO lists are now generated on-demand when user clicks the TODO button
+					console.log("✅ [Frontend] Chat message saved. TODO list will be generated when user clicks the TODO button.");
 					} catch (saveError) {
 						console.error('Failed to save AI response with enhanced data:', saveError);
 						console.error('Save error details:', saveError);
@@ -1812,7 +1990,7 @@ const MiraChatBot: React.FC = () => {
 							Answer: response.answer,
 							hasSourceLinks: !!(response.sourceLinks && response.sourceLinks.length > 0),
 							hasJargons: !!(response.jargons && response.jargons.length > 0),
-							hasDynamicTag: !!response.dynamicTag,
+							hasDynamicTag: !!response.dynamicTags,
 							hasContextData: !!response.contextData
 						});
 						
@@ -1830,14 +2008,42 @@ const MiraChatBot: React.FC = () => {
 							console.error('Fallback save also failed:', fallbackError);
 						}
 					}
-				} else {
-					console.log('❌ [Frontend] No chatId available after API call - this should not happen since we create chat before API call');
+				} catch (saveError) {
+					console.error('Failed to save AI response with enhanced data:', saveError);
+					console.error('Save error details:', saveError);
+					console.error('Enhanced data that failed to save:', {
+						humanInTheLoopId: botMessage.id || uuidv4(),
+						chatId: currentChatId,
+						sender: botMessage.sender,
+						message: botMessage.message,
+						Answer: response.answer,
+						hasSourceLinks: !!(response.sourceLinks && response.sourceLinks.length > 0),
+						hasJargons: !!(response.jargons && response.jargons.length > 0),
+						hasDynamicTag: !!response.dynamicTags,
+						hasContextData: !!response.contextData
+					});
+					
+					// Fallback: try saving with basic saveChatMessage
+					try {
+						console.log('Attempting fallback save with basic saveChatMessage...');
+						await saveChatMessage({
+							humanInTheLoopId: botMessage.id || uuidv4(),
+							chatId: currentChatId as Id<"chats">,
+							sender: botMessage.sender,
+							message: botMessage.message,
+						});
+						console.log('Fallback save successful');
+					} catch (fallbackError) {
+						console.error('Fallback save also failed:', fallbackError);
+					}
+				}
+			} else {
+				console.log('❌ [Frontend] No chatId available after API call - this should not happen since we create chat before API call');
 					// This should not happen since we now create the chat before the API call
 					// But if it does, we'll handle it gracefully
 					try {
 						console.log('🔄 [Frontend] Creating emergency chat...');
-						const titleResponse2 = await generateTitle(userMessage.message || response.answer);
-						const chatTitle2 = (titleResponse2 as { title: string })?.title || "Chat";
+						const chatTitle2 = await generateTitle(userMessage.message || response.answer);
 						const newChatResult2 = await saveChat({
 							userId: String(user?.id || "anonymous"),
 							title: chatTitle2,
@@ -1917,58 +2123,15 @@ const MiraChatBot: React.FC = () => {
 								mitigation: mitigation
 							} : undefined,
 							Severity: "Medium",
-							tags: [response.dynamicTag || "cybersecurity_general"],
+							tags: response.dynamicTags || ["cybersecurity_general"],
 							graphVisualization: response.graphData || null // Include graph data from response
 						});
 						
 						console.log("✅ [Frontend] New chat message with graph visualization saved successfully");
 						console.log('AI response saved to new chat with enhanced data');
 						
-						// Generate TODO list after new chat message is saved with a small delay to ensure database commit
-						try {
-							console.log("🔄 [Frontend] Waiting 1 second before generating TODO list to ensure database commit...");
-							await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
-							
-							console.log("🔄 [Frontend] Generating TODO list for new chat message...");
-							console.log("📊 [Frontend] TODO generation params:", {
-								chatId: newChatResult2,
-								messageId: botMessage.id,
-								aiResponseLength: response.answer?.length,
-								hasKGContext: !!response.contextData,
-								hasCveInfo: !!response.cveDescriptionsMap,
-								hasReasoningTrace: !!response.reasoningTrace,
-								hasSourceLinks: !!response.sourceLinks,
-								hasJargons: !!response.jargons
-							});
-							
-							await convexClient.action(api.generateTodoTasks.generateTodoTasks, {
-								chatId: newChatResult2 as Id<"chats">,
-								messageId: botMessage.id,
-								aiResponse: response.answer,
-								kgContext: response.contextData ? JSON.stringify(response.contextData) : undefined,
-								cveInfo: response.cveDescriptionsMap ? Object.keys(response.cveDescriptionsMap).map(cveId => ({
-									cve_id: cveId,
-									cve_desc: response.cveDescriptionsMap[cveId],
-									mitigation: "Apply security patches and follow vendor recommendations"
-								})) : undefined,
-								reasoningTrace: response.reasoningTrace,
-								sourceLinks: response.sourceLinks,
-								jargons: response.jargons?.reduce((acc: Record<string, string>, jargon: { term: string; description: string }) => {
-									acc[jargon.term] = jargon.description;
-									return acc;
-								}, {}) || {}
-							});
-							console.log("✅ [Frontend] TODO list generation for new chat initiated successfully");
-						} catch (todoError) {
-							console.error("❌ [Frontend] Failed to generate TODO list for new chat:", todoError);
-							console.error("❌ [Frontend] TODO error details:", {
-								error: todoError,
-								errorMessage: todoError instanceof Error ? todoError.message : 'Unknown error',
-								chatId: newChatResult2,
-								messageId: botMessage.id
-							});
-							// Don't fail the entire request if TODO list generation fails
-						}
+						// TODO lists are now generated on-demand when user clicks the TODO button
+						console.log("✅ [Frontend] Chat message saved. TODO list will be generated when user clicks the TODO button.");
 						
 						// Update URL
 						window.history.pushState(
@@ -1988,15 +2151,17 @@ const MiraChatBot: React.FC = () => {
 					hasSourceLinks: !!botMessage.sourceLinks,
 					sourceLinksCount: botMessage.sourceLinks?.length || 0
 				});
-				setMessages((prev) => {
-					console.log('Previous messages count:', prev.length);
-					const newMessages = [...prev, botMessage];
-					console.log('New messages count:', newMessages.length);
-					return newMessages;
-				});
-				console.log('About to stop loading state...');
-				stopLoading(setIsLoading, setAgentButtonsDisabled, loadingIntervalRef, setLoadingMessage);
-				console.log('Loading state stopped');
+				// DUPLICATE CODE REMOVED - Bot message already added to UI immediately after response
+				// setMessages((prev) => {
+				// 	console.log('Previous messages count:', prev.length);
+				// 	const newMessages = [...prev, botMessage];
+				// 	console.log('New messages count:', newMessages.length);
+				// 	return newMessages;
+				// });
+				// DUPLICATE CODE REMOVED - Loading state already stopped immediately after response
+				// console.log('About to stop loading state...');
+				// stopLoading(setIsLoading, setAgentButtonsDisabled, loadingIntervalRef, setLoadingMessage);
+				// console.log('Loading state stopped');
 			} catch (error) {
 				stopLoading(setIsLoading, setAgentButtonsDisabled, loadingIntervalRef, setLoadingMessage);
 				showErrorToast('Failed to get answer.');
@@ -3200,9 +3365,10 @@ const MiraChatBot: React.FC = () => {
 				botMessage: botMessage,
 			});
 
-			return { title: data.response, userId: user?.id };
+			return data.response || "Chat";
 		} catch (error) {
-			return error;
+			console.error("Error generating title:", error);
+			return "Chat";
 		}
 	};
 
@@ -3417,10 +3583,10 @@ const MiraChatBot: React.FC = () => {
 			const desc = j.description || cveDescriptionsMap[j.term] || '';
 			console.log(`Highlighting term: "${j.term}" with description: "${desc.substring(0, 50)}..."`);
 			
-			// Replace with HTML span that has data attributes for tooltip
+			// Replace with the syntax that MarkdownViewer expects
 			processed = processed.replace(
 				regex,
-				`<span class="jargon-highlight" data-term="${j.term}" data-description="${desc.replace(/"/g, '&quot;')}" style="border-radius: 2px; padding: 0 1px; cursor: pointer; font-weight: 500;">${j.term}</span>`
+				`[JARGON_HIGHLIGHT:${j.term}|${desc.replace(/"/g, '&quot;')}]`
 			);
 		});
 		
@@ -3499,7 +3665,7 @@ const MiraChatBot: React.FC = () => {
 					) : (
 						<ScrollArea
 							ref={scrollAreaRef}
-							className="flex-1 px-4 sm:px-6 lg:px-8 xl:px-12 pb-0 w-full overflow-y-hidden"
+							className="flex-1 px-2 sm:px-4 lg:px-6 xl:px-8 pb-0 w-full overflow-y-auto"
 						>
 							{uniqueMessages.map((message, idx) => {
 								const isPendingAction =
@@ -3618,18 +3784,19 @@ const MiraChatBot: React.FC = () => {
 								}
 
 								const isUser = message.sender === "user";
-								const messageClasses = `inline-block rounded-xl max-w-[80%] sm:max-w-[100%] ${
+								const messageClasses = `inline-block rounded-xl max-w-[95%] sm:max-w-[100%] ${
 									isUser
-										? "bg-secondary dark:bg-primary-900 px-4 py-3 text-sm"
-										: "text-foreground pr-4 overflow-y-auto text-pretty break-normal text-sm leading-relaxed"
+										? "bg-secondary dark:bg-primary-900 px-4 py-3 text-sm break-words"
+										: "text-foreground pr-2 sm:pr-4 overflow-y-auto text-pretty break-words text-sm leading-relaxed"
 								}`;
-								const containerClasses = `mb-3 ${isUser ? "text-right" : "text-left"}`;
+								const containerClasses = `mb-3 ${isUser ? "text-right" : "text-left"} w-full`;
 
 								// Only show related questions for the very last message if it is an AI message
 								const isLastMessage = idx === uniqueMessages.length - 1;
 								const isLastAiMessage = isLastMessage && message.sender === 'ai';
 
 								// Get related questions from state or use fallback
+								// Include trigger to ensure re-render when questions are updated
 								const messageRelatedQuestions = relatedQuestions[String(message.id)] || [
 									'Can you explain this in more detail?',
 									'What are the key takeaways?',
@@ -3776,7 +3943,7 @@ const MiraChatBot: React.FC = () => {
 											</AnimatePresence>
 											
 											{!isUser && (
-												<div className="mb-3 p-5 bg-background">
+												<div className="mb-3 p-3 sm:p-5 bg-background w-full">
 													{(() => {
 														const processedContent = preprocessJargonMarkdown(message.message, message.jargons, message.cveDescriptionsMap);
 														console.log('Rendering message:', {
@@ -3785,7 +3952,13 @@ const MiraChatBot: React.FC = () => {
 															jargonsCount: message.jargons?.length || 0,
 															messageId: message.id,
 															hasCodeBlocks: processedContent.includes('```'),
-															contentLength: processedContent.length
+															contentLength: processedContent.length,
+															originalContent: message.message?.substring(0, 100) + '...',
+															processedContent: processedContent?.substring(0, 100) + '...',
+															originalHasMarkdown: message.message?.includes('**') || message.message?.includes('*') || message.message?.includes('`'),
+															processedHasMarkdown: processedContent?.includes('**') || processedContent?.includes('*') || processedContent?.includes('`'),
+															hasJargonSyntax: processedContent?.includes('[JARGON:'),
+															jargonSyntaxCount: (processedContent?.match(/\[JARGON:/g) || []).length
 														});
 														return <MarkdownViewer content={processedContent} />;
 													})()}
@@ -3796,7 +3969,8 @@ const MiraChatBot: React.FC = () => {
 													*/}
 													
 													{/* Action Buttons - Sources, Graph, and TODO List */}
-													<div className="flex items-center gap-2 mt-3 -ml-2">
+													<hr className="mt-4 mb-2 border-t border-sidebar-border/50" />
+													<div className="flex items-center gap-2 -ml-2 relative">
 														{/* Sources */}
 														{(() => {
 															return (
@@ -3851,30 +4025,111 @@ const MiraChatBot: React.FC = () => {
 																/>
 															);
 														})()}
-													</div>
+														
+														{/* Tags toggle */}
+														{Array.isArray((message as any).tags) && (message as any).tags.length > 0 && (
+															<Tooltip>
+																<TooltipTrigger asChild>
+																	<button
+																		className="p-2 rounded-full hover:bg-accent/60 transition-colors group"
+																		title="Show tags"
+																		onClick={() => {
+																			const messageId = String(message.id);
+																			const currentState = expandedTags[messageId] === undefined ? false : expandedTags[messageId];
+																			setExpandedTags(prev => ({ ...prev, [messageId]: !currentState }));
+																		}}
+																		aria-expanded={expandedTags[String(message.id)] === true}
+																		aria-controls={`tags-${String(message.id)}`}
+																	>
+																		<TagIcon size={16} className="text-muted-foreground group-hover:text-black dark:group-hover:text-white transition-colors" />
+																	</button>
+																</TooltipTrigger>
+																<TooltipContent side="top" align="center">
+																	View tags
+																</TooltipContent>
+															</Tooltip>
+														)}
+                                                    </div>
 
-													{/* Related Questions - Positioned below */}
-													{isLastAiMessage && (
-														<div className="mt-3">
-															<div className="text-xs text-sidebar-foreground/70 mb-2 italic">Suggested follow-up questions:</div>
-															<div className="flex flex-wrap gap-2">
-															{messageRelatedQuestions.map((q: string, i: number) => (
-																<motion.button
-																	key={`${message.id}-${q}-${i}`}
-																	onClick={() => handleSend(q, false, true)}
-																	className="rounded-lg px-3 py-1.5 bg-sidebar border border-sidebar-border text-sidebar-foreground text-xs sm:text-sm font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-sidebar-ring"
-																	style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
-																	initial={{ opacity: 0, y: 20 }}
-																	animate={{ opacity: 1, y: 0 }}
-																	transition={{ delay: 0.15 * i, duration: 0.35, type: 'spring', stiffness: 200 }}
-																>
-																	{q}
-																</motion.button>
-															))}
-														</div>
-													</div>
-													)}
-												</div>
+                                                    {/* Tags appearing below tag button */}
+                                                    {message.sender === 'ai' && Array.isArray((message as any).tags) && (message as any).tags.length > 0 && (
+                                                        <AnimatePresence>
+                                                            {expandedTags[String(message.id)] && (
+                                                                <motion.div
+                                                                    id={`tags-${String(message.id)}`}
+                                                                    initial={{ 
+                                                                        opacity: 0, 
+                                                                        height: 0,
+                                                                        y: -10
+                                                                    }}
+                                                                    animate={{ 
+                                                                        opacity: 1, 
+                                                                        height: "auto",
+                                                                        y: 0
+                                                                    }}
+                                                                    exit={{ 
+                                                                        opacity: 0, 
+                                                                        height: 0,
+                                                                        y: -10
+                                                                    }}
+                                                                    transition={{ 
+                                                                        duration: 0.3, 
+                                                                        ease: "easeOut"
+                                                                    }}
+                                                                    className="mt-2 mb-2 overflow-hidden"
+                                                                >
+                                                                    <div className="flex flex-wrap gap-1.5">
+                                                                        {((message as any).tags as string[]).map((tag, i) => (
+                                                                            <motion.span 
+                                                                                key={`${message.id}-tag-${i}`}
+                                                                                initial={{ 
+                                                                                    opacity: 0, 
+                                                                                    y: -10, 
+                                                                                    scale: 0.8 
+                                                                                }}
+                                                                                animate={{ 
+                                                                                    opacity: 1, 
+                                                                                    y: 0, 
+                                                                                    scale: 1 
+                                                                                }}
+                                                                                transition={{ 
+                                                                                    delay: i * 0.08, 
+                                                                                    duration: 0.2,
+                                                                                    ease: "easeOut"
+                                                                                }}
+                                                                                className="px-2 py-1 rounded-full bg-blue-100 text-blue-800 text-[10px] font-medium whitespace-nowrap shadow-sm hover:bg-blue-200 transition-colors duration-200"
+                                                                            >
+                                                                                #{tag.replace(/_/g, '').replace(/([A-Z])/g, (match, p1, offset) => offset > 0 ? p1 : p1).toLowerCase()}
+                                                                            </motion.span>
+                                                                        ))}
+                                                                    </div>
+                                                                </motion.div>
+                                                            )}
+                                                        </AnimatePresence>
+                                                    )}
+
+                                                    {/* Suggested Questions - below icons and tags */}
+                                                    {isLastAiMessage && (
+                                                        <div className="mt-3">
+                                                            <div className="text-xs text-sidebar-foreground/70 mb-2 italic">Suggested follow-up questions:</div>
+                                                            <div className="flex flex-wrap gap-2">
+                                                            {messageRelatedQuestions.map((q: string, i: number) => (
+                                                                <motion.button
+                                                                    key={`${message.id}-${q}-${i}`}
+                                                                    onClick={() => handleSend(q, false, true)}
+                                                                    className="rounded-lg px-3 py-1.5 bg-sidebar border border-sidebar-border text-sidebar-foreground text-xs sm:text-sm font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-sidebar-ring"
+                                                                    style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+                                                                    initial={{ opacity: 0, y: 20 }}
+                                                                    animate={{ opacity: 1, y: 0 }}
+                                                                    transition={{ delay: 0.15 * i, duration: 0.35, type: 'spring', stiffness: 200 }}
+                                                                >
+                                                                    {q}
+                                                                </motion.button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                    )}
+                                                </div>
 											)}
 											{isUser && (
 												<div className="mb-3 px-1">
@@ -4002,6 +4257,12 @@ const MiraChatBot: React.FC = () => {
 					humanInTheLoopAction={requestHumanInLoop}
 					onOpenChange={setIsCreateDialogOpen}
 					onCreateFolder={handleCreateFolder}
+				/>
+				
+				{/* Graph Generation Modal */}
+				<GraphGenerationModal
+					isOpen={isModalOpen}
+					onClose={closeModal}
 				/>
 			</div>
 		</div>

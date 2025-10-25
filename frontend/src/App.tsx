@@ -28,6 +28,7 @@ import ScanIssues from "./pages/static-scans/ScanIssues";
 import ScanIssuesDetails from "./pages/static-scans/ScanIssuesDetails";
 import { FAQs } from "./pages/FAQs";
 import Subscriptions from "./pages/Subscriptions";
+import DastTest from "./pages/DastTest";
 
 const App = () => {
 	return (
@@ -116,6 +117,10 @@ const App = () => {
 							<Route
 								path="/subscription"
 								element={<Subscriptions />}
+							/>
+							<Route
+								path="/dast-test"
+								element={<DastTest />}
 							/>
 						</Route>
 						<Route path="*" element={<NotFound />} />

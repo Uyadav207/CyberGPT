@@ -1,7 +1,6 @@
 import axiosInstance from "./axios";
 import { BASE_URL } from "./config.backend";
 
-
 interface ChatOllamaPayload {
   prompt: string;
 }
@@ -64,6 +63,9 @@ interface GenerateTitlePayload {
 const generateTitle = (payload: GenerateTitlePayload) =>
   axiosInstance.post("/chat/title", payload);
 
+export const generateTitleAndTag = (payload: GenerateTitlePayload) =>
+  axiosInstance.post("/chat/title-and-tag", payload);
+
 const chatSummaryOllama = async (payload: { messages: string[] }) => {
   const response = await fetch(`${BASE_URL}/api/chat/summary`, {
     method: "POST",
@@ -100,13 +102,7 @@ export const chatWithJargon = async (payload: {
   agentPersonality?: string;
   messageId?: string;
   chatId?: string;
-}) => {
-  console.log(
-    "DEBUG: Calling chatWithJargon endpoint:",
-    `${BASE_URL}/chat/with-jargon`
-  );
-  console.log("DEBUG: Payload:", payload);
-  const response = await fetch(`${BASE_URL}/chat/with-jargon`, {
+}) => {const response = await fetch(`${BASE_URL}/chat/with-jargon`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -116,14 +112,18 @@ export const chatWithJargon = async (payload: {
     throw new Error(error.error || "Failed to get answer");
   }
   const result = await response.json();
-  console.log("DEBUG: chatWithJargon response:", result);
-  return result;
+  // Normalize reasoning field for consumers: ensure reasoningTrace always exists
+  const normalized = { ...result } as any;
+  if (normalized.trace && !normalized.reasoningTrace) {
+    normalized.reasoningTrace = normalized.trace;
+  }return normalized;
 };
 
 export const chatApis = {
   chatOllama,
   scan,
   generateTitle,
+  generateTitleAndTag,
   chatSummaryOllama,
   chatSummaryOpenAI,
 };

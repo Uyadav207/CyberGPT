@@ -80,7 +80,7 @@ export function FolderView({ files }: FolderViewProps) {
 						<div className="flex px--5">
 							<TriangleAlert className="w-10 h-10 mr-5" />
 							<AlertTitle className="text-3xl font-semibold mb-5">
-								No Reports Found Yet!
+								No Folders Found Yet!
 							</AlertTitle>
 						</div>
 						<AlertDescription className="text-muted-foreground text-base">
@@ -110,7 +110,7 @@ export function FolderView({ files }: FolderViewProps) {
 							<tr className="bg-sidebar border">
 								<th className="p-3">Name</th>
 								<th className="p-3">Created on</th>
-								<th className="p-3">Report Type</th>
+								<th className="p-3">Type</th>
 								<th className="p-3 text-right">Actions</th>
 							</tr>
 						</thead>
@@ -146,6 +146,9 @@ export function FolderView({ files }: FolderViewProps) {
 											: file.reportType ===
 													"vulnerabilityReport"
 												? "Vulnerability Report"
+												: file.reportType ===
+													"vulnerabilityTodo"
+												? "Vulnerability TODO"
 												: "Report"}
 									</td>
 									<td className="p-3 text-right">

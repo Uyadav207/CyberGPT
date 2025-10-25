@@ -11,17 +11,21 @@ import { chatRoutes } from "./routes/chatRoute";
 import { ragRoutes } from "./routes/rag";
 import { paymentRoutes } from "./routes/paymentRoutes";
 import graphRoutes from "./routes/graphRoutes";
+import { dastRoutes } from "./routes/dastRoutes";
 
 const app = new Hono();
 
 // CORS middleware - MUST be first, before other middleware
-app.use("*", cors({
-  origin: ["https://appcybergpt.vercel.app", "http://localhost:3000"],
-  allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowHeaders: ["Content-Type", "Authorization"],
-  credentials: true,
-  maxAge: 600,
-}));
+app.use(
+  "*",
+  cors({
+    origin: ["https://appcybergpt.vercel.app", "http://localhost:3000", "http://localhost:3001"],
+    allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+    maxAge: 600,
+  })
+);
 
 // Logging
 app.use("*", logger());
@@ -39,6 +43,7 @@ app.route("/reports", reportRoutes);
 app.route("/zap", zapRoutes);
 app.route("/subscription", paymentRoutes);
 app.route("/graph", graphRoutes);
+app.route("/dast", dastRoutes);
 
 // Health check
 app.get("/health", async (c) => {
@@ -48,14 +53,17 @@ app.get("/health", async (c) => {
       status: "healthy",
       timestamp: new Date().toISOString(),
       services: {
-        neo4j: "connected"
-      }
+        neo4j: "connected",
+      },
     });
   } catch (error) {
-    return c.json({
-      status: "unhealthy",
-      error: error instanceof Error ? error.message : "Unknown error"
-    }, 503);
+    return c.json(
+      {
+        status: "unhealthy",
+        error: error instanceof Error ? error.message : "Unknown error",
+      },
+      503
+    );
   }
 });
 

@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Network, Loader2, EyeOff } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import GraphVisualization from './GraphVisualization';
+import GraphGenerationModal from '../chat/GraphGenerationModal';
+import { useGraphGenerationModal } from '../../hooks/useGraphGenerationModal';
 import { graphApis } from '../../api/graph';
 import { useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
@@ -293,18 +295,7 @@ export const convertGraphDataToGraphVisualization = (graphData: GraphData): Grap
   if (affected.length > 0) graphVisualization.affected = affected;
   if (risks.length > 0) graphVisualization.risks = risks;
   if (relationships.length > 0) graphVisualization.relationships = relationships;
-
-  console.log('[GraphButton] Converted graph visualization:', {
-    vulnerabilities: vulnerabilities.length,
-    mitigations: mitigations.length,
-    sources: sources.length,
-    cves: cves.length,
-    problems: problems.length,
-    affected: affected.length,
-    risks: risks.length,
-    relationships: relationships.length,
-  });
-
+  
   return graphVisualization;
 };
 
@@ -319,41 +310,101 @@ const GraphButton: React.FC<GraphButtonProps> = ({ message, chatId, className = 
   const [showGraph, setShowGraph] = useState(false);
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [currentStep, setCurrentStep] = useState(0);
 
   const saveGraphMutation = useMutation(api.graphVisualizations.saveGraphVisualization);
+  
+  // Graph Generation Modal
+  const { openModal, closeModal, isModalOpen } = useGraphGenerationModal();
+
+  // Cleanup AbortController on unmount
+  useEffect(() => {
+    return () => {
+      if (abortController) {
+        abortController.abort();
+      }
+    };
+  }, [abortController]);
+
+  // Cancel graph generation
+  const cancelGeneration = () => {
+    if (abortController) {
+      abortController.abort();
+    }
+    setIsGenerating(false);
+    setError(null);
+    setProgress(0);
+    setCurrentStep(0);
+    closeModal();
+  };
 
   const handleGenerateGraph = async () => {
     if (message.sender !== 'ai') return;
 
     setIsGenerating(true);
     setError(null);
+    setProgress(0);
+    setCurrentStep(0);
+
+    // Create AbortController for cancellation
+    const controller = new AbortController();
+    setAbortController(controller);
+
+    // Open the animated modal for graph generation
+    openModal(message.id || 'unknown', chatId);
 
     try {
       // Debug chatId value
-      console.log('[GraphButton] Received chatId:', { chatId, type: typeof chatId, length: chatId?.length });
-      
       // Validate chatId before proceeding
       if (!chatId || chatId === 'undefined' || chatId === 'null' || chatId.trim() === '') {
-        console.error('[GraphButton] Invalid chatId detected:', { chatId, type: typeof chatId });
         throw new Error(`Invalid chat ID provided: "${chatId}"`);
       }
 
-      // First, try to get existing graph from REST API
-      console.log('[GraphButton] Checking for existing graph:', { messageId: message.id, chatId });
-      const existingGraph = await graphApis.getGraphByMessageId(message.id || '', chatId);
-      
-      if (existingGraph) {
-        console.log('[GraphButton] Found existing graph:', existingGraph);
-        // Convert graphVisualization to GraphData format for the visualization component
-        const graphData = convertGraphVisualizationToGraphData(existingGraph as any);
-        setGraphData(graphData);
-        setShowGraph(true);
-        setIsGenerating(false);
+      // Check if cancelled before proceeding
+      if (controller.signal.aborted) {
         return;
       }
 
-      console.log('[GraphButton] No existing graph found, generating new one...');
+      // Step 1: Analyzing Response
+      setCurrentStep(0);
+      setProgress(33);
+      
+      // First, try to get existing graph from REST API
+      const existingGraph = await graphApis.getGraphByMessageId(message.id || '', chatId);
+      
+      if (existingGraph) {
+        // Step 2: Querying Knowledge Graph
+        setCurrentStep(1);
+        setProgress(66);
+        
+        // Convert graphVisualization to GraphData format for the visualization component
+        const graphData = convertGraphVisualizationToGraphData(existingGraph as any);
+        setGraphData(graphData);
+        
+        // Step 3: Building Visualization
+        setCurrentStep(2);
+        setProgress(100);
+        setShowGraph(true);
+        setIsGenerating(false);
+        
+        // Auto-close modal after a brief delay to show completion
+        setTimeout(() => {
+          closeModal();
+        }, 1000);
+        return;
+      }
+      
+      // Check if cancelled before generating new graph
+      if (controller.signal.aborted) {
+        return;
+      }
 
+      // Step 2: Querying Knowledge Graph
+      setCurrentStep(1);
+      setProgress(66);
+      
       // Generate new graph if none exists
       const request: GraphGenerationRequest = {
         messageId: message.id || message.humanInTheLoopId || '',
@@ -372,14 +423,14 @@ const GraphButton: React.FC<GraphButtonProps> = ({ message, chatId, className = 
           mitigation: undefined
         } : undefined
       };
-
-      console.log('[GraphButton] Generating graph with request:', request);
+      
       const response = await graphApis.generateGraph(request);
-
-      console.log('[GraphButton] Graph generation response:', response);
       
       if (response.success && response.graphData) {
-        console.log('[GraphButton] Graph generated successfully, saving to Convex...');
+        // Step 3: Building Visualization
+        setCurrentStep(2);
+        setProgress(100);
+        
         // Convert GraphData to graphVisualization format for storage
         const graphVisualization = convertGraphDataToGraphVisualization(response.graphData);
         
@@ -389,19 +440,28 @@ const GraphButton: React.FC<GraphButtonProps> = ({ message, chatId, className = 
           chatId,
           graphVisualization: graphVisualization
         });
-
-        console.log('[GraphButton] Graph saved to Convex successfully');
+        
         setGraphData(response.graphData);
         setShowGraph(true);
+        
+        // Auto-close modal after a brief delay to show completion
+        setTimeout(() => {
+          closeModal();
+        }, 1000);
       } else {
-        console.error('[GraphButton] Graph generation failed:', response.error);
         throw new Error(response.error || 'Failed to generate graph');
       }
     } catch (err) {
-      console.error('[GraphButton] Error generating graph:', err);
-      setError(err instanceof Error ? err.message : 'Failed to generate graph');
+      if (controller.signal.aborted) {
+        // Don't show error for cancelled operations
+        setError(null);
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to generate graph');
+      }
+      closeModal(); // Close modal on error or cancellation
     } finally {
       setIsGenerating(false);
+      setAbortController(null); // Clear the controller
     }
   };
 
@@ -414,14 +474,7 @@ const GraphButton: React.FC<GraphButtonProps> = ({ message, chatId, className = 
   };
 
   // Only show for AI messages
-  console.log('[GraphButton] Checking message sender:', {
-    messageId: message.id,
-    sender: message.sender,
-    shouldShow: message.sender === 'ai'
-  });
-  
   if (message.sender !== 'ai') {
-    console.log('[GraphButton] Not showing for non-AI message');
     return null;
   }
 
@@ -495,22 +548,36 @@ const GraphButton: React.FC<GraphButtonProps> = ({ message, chatId, className = 
               className="relative w-full max-w-6xl h-[80vh] bg-white dark:bg-gray-900 rounded-lg shadow-2xl overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
+              {/* Close Button */}
+              <button
+                onClick={() => setShowGraph(false)}
+                className="absolute top-4 right-4 z-50 w-8 h-8 bg-gray-800/90 hover:bg-gray-700/90 text-white rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 shadow-lg"
+                aria-label="Close graph visualization"
+              >
+                <EyeOff className="w-4 h-4" />
+              </button>
+              
               <GraphVisualization
                 data={graphData}
                 width={800}
                 height={600}
                 className="w-full h-full"
-                onNodeClick={(node) => {
-                  console.log('Node clicked:', node);
-                }}
-                onLinkClick={(link) => {
-                  console.log('Link clicked:', link);
-                }}
+                onNodeClick={() => {}}
+                onLinkClick={() => {}}
               />
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Graph Generation Modal */}
+      <GraphGenerationModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        onCancel={cancelGeneration}
+        progress={progress}
+        currentStep={currentStep}
+      />
     </div>
   );
 };

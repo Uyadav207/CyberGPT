@@ -9,6 +9,7 @@ const chatController = new ChatController(); // Not needed for /message/stream
 const scanController = new ScanController();
 
 chatRoutes.post("/title", (c) => chatController.chatTitle(c)); // Leave other endpoints as is
+chatRoutes.post("/title-and-tag", (c) => chatController.chatTitleAndTag(c));
 // Old /message/stream route removed - now using /with-jargon
 chatRoutes.get("/health", healthCheckHandler);
 chatRoutes.get("/neo4j-health", (c) => getNeo4jHealth(c.req, c.res));
@@ -20,6 +21,7 @@ chatRoutes.post("/detailed/sast-summary", (c) =>
   scanController.detailedSastSummary(c)
 );
 chatRoutes.post("/with-jargon", (c) => chatController.chatWithJargon(c));
+chatRoutes.post("/graph-data", (c) => chatController.getGraphData(c));
 
 // Generate contextual related questions
 chatRoutes.post("/related-questions", async (c) => {

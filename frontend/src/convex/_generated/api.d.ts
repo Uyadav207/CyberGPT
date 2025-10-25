@@ -14,12 +14,12 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as chats from "../chats.js";
-import type * as generateTodoTasks from "../generateTodoTasks.js";
 import type * as graphVisualizations from "../graphVisualizations.js";
 import type * as reports from "../reports.js";
 import type * as sastScans from "../sastScans.js";
 import type * as scans from "../scans.js";
 import type * as summaries from "../summaries.js";
+import type * as todoApi from "../todoApi.js";
 import type * as todoLists from "../todoLists.js";
 import type * as vulnerabilities from "../vulnerabilities.js";
 import type * as vulnerabilityInfo from "../vulnerabilityInfo.js";
@@ -34,12 +34,12 @@ import type * as vulnerabilityInfo from "../vulnerabilityInfo.js";
  */
 declare const fullApi: ApiFromModules<{
   chats: typeof chats;
-  generateTodoTasks: typeof generateTodoTasks;
   graphVisualizations: typeof graphVisualizations;
   reports: typeof reports;
   sastScans: typeof sastScans;
   scans: typeof scans;
   summaries: typeof summaries;
+  todoApi: typeof todoApi;
   todoLists: typeof todoLists;
   vulnerabilities: typeof vulnerabilities;
   vulnerabilityInfo: typeof vulnerabilityInfo;

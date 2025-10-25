@@ -27,9 +27,7 @@ export const graphApis = {
       }
 
       return await response.json();
-    } catch (error) {
-      console.error("[GraphAPI] Error generating graph:", error);
-      throw error;
+    } catch (error) {throw error;
     }
   },
 
@@ -55,9 +53,7 @@ export const graphApis = {
 
       const data = await response.json();
       return data.graphData || null;
-    } catch (error) {
-      console.error("[GraphAPI] Error getting graph:", error);
-      throw error;
+    } catch (error) {throw error;
     }
   },
 
@@ -80,9 +76,7 @@ export const graphApis = {
 
       const data = await response.json();
       return data.graphs || [];
-    } catch (error) {
-      console.error("[GraphAPI] Error getting graphs:", error);
-      throw error;
+    } catch (error) {throw error;
     }
   },
 };

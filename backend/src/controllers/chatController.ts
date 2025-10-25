@@ -3,6 +3,8 @@ import { ChatService } from "../services/chatService";
 import { graphRAGAnswer } from "../utils/neo4j-cve-fetch-ingest";
 import { ChatGraphIntegrationService } from "../services/chatGraphIntegrationService";
 import { getConnectionHealth } from "../config/neo4j";
+import { errorHandler } from "../middlewares/errorHandler";
+import { dastScanService } from "../services/dastScanService";
 
 export class ChatController {
   private chatService!: ChatService;
@@ -16,11 +18,47 @@ export class ChatController {
     this.chatService = await ChatService.getInstance();
   }
 
+  private detectUrlsInMessage(message: string): string[] {
+    const urlRegex =
+      /(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:\/[^\s]*)?)/gi;
+    const urls = message.match(urlRegex) || [];
+
+    // Filter and normalize URLs
+    return urls
+      .map((url) => {
+        // Add protocol if missing
+        if (!url.startsWith("http")) {
+          return "https://" + url;
+        }
+        return url;
+      })
+      .filter((url) => {
+        try {
+          new URL(url);
+          return true;
+        } catch {
+          return false;
+        }
+      });
+  }
+
   async chatTitle(c: Context) {
     try {
       const { botMessage } = await c.req.json();
       const response = await this.chatService.generateTitle(botMessage);
       return c.json({ response });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      return c.json({ status: "error", message: errorMessage }, 500);
+    }
+  }
+
+  async chatTitleAndTag(c: Context) {
+    try {
+      const { botMessage } = await c.req.json();
+      const response = await this.chatService.generateTitleAndTag(botMessage);
+      return c.json(response);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
@@ -37,7 +75,7 @@ export class ChatController {
         reasoningTrace,
         jargons,
         cveDescriptionsMap,
-        dynamicTag,
+        dynamicTags,
         contextData,
         sourceLinks,
       } = await graphRAGAnswer(message);
@@ -52,12 +90,63 @@ export class ChatController {
         trace,
         jargons,
         cveDescriptionsMap,
-        dynamicTag,
+        dynamicTags,
         contextData,
         sourceLinks,
       });
     } catch (error) {
       console.error("Controller error:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      return c.json({ status: "error", message: errorMessage }, 500);
+    }
+  }
+
+  // New endpoint to fetch graph data after background generation
+  async getGraphData(c: Context) {
+    try {
+      const { messageId, chatId } = await c.req.json();
+
+      if (!messageId || !chatId) {
+        return c.json(
+          { status: "error", message: "messageId and chatId are required" },
+          400
+        );
+      }
+
+      console.log("🔍 [ChatController] Fetching graph data for:", {
+        messageId,
+        chatId,
+      });
+
+      // Get graph data from the database
+      const graphData = await this.chatGraphService.getGraphData(
+        messageId,
+        chatId
+      );
+
+      if (graphData) {
+        console.log("✅ [ChatController] Graph data retrieved:", {
+          messageId,
+          nodes: graphData.nodes?.length || 0,
+          links: graphData.links?.length || 0,
+        });
+        return c.json({
+          status: "success",
+          graphData,
+        });
+      } else {
+        console.log("⏳ [ChatController] Graph data not ready yet:", {
+          messageId,
+          chatId,
+        });
+        return c.json({
+          status: "pending",
+          message: "Graph generation still in progress",
+        });
+      }
+    } catch (error) {
+      console.error("❌ [ChatController] Error fetching graph data:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Unknown error";
       return c.json({ status: "error", message: errorMessage }, 500);
@@ -117,12 +206,95 @@ export class ChatController {
           400
         );
       }
+      // Check for URLs in the message
+      const detectedUrls = this.detectUrlsInMessage(mainMessage);
+      let dastScanResults = null;
+      let scannedUrl = null;
+
+      if (detectedUrls.length > 0) {
+        console.log(
+          `🔍 [ChatController] Detected URLs in message: ${detectedUrls.join(", ")}`
+        );
+
+        // Perform DAST scan on the first URL found
+        try {
+          const firstUrl = detectedUrls[0];
+          scannedUrl = firstUrl;
+          console.log(
+            `🔍 [ChatController] Starting DAST scan for: ${firstUrl}`
+          );
+
+          dastScanResults = await dastScanService.scanUrl(firstUrl);
+
+          console.log(
+            `✅ [ChatController] DAST scan completed for ${firstUrl}. Risk level: ${dastScanResults.overallRisk}`
+          );
+
+          // Insert DAST results into knowledge graph
+          await dastScanService.insertDASTResultsIntoKG(dastScanResults);
+
+          // Create enhanced message that includes DAST context (sanitized for Convex)
+          const dastContext =
+            ` 🔍 **SECURITY SCAN RESULTS FOR ${firstUrl}:** ` +
+            `Risk Level: ${dastScanResults.overallRisk} ` +
+            `Vulnerabilities Found: ${dastScanResults.vulnerabilities.length} ` +
+            `Critical Issues: ${dastScanResults.vulnerabilities.filter((v) => v.severity === "Critical").length} ` +
+            `High Priority Issues: ${dastScanResults.vulnerabilities.filter((v) => v.severity === "High").length} ` +
+            `Technologies Detected: ${dastScanResults.technologies.join(", ")} ` +
+            `Security Headers: ${Object.keys(dastScanResults.securityHeaders).length} headers analyzed ` +
+            `Please analyze these security findings using your knowledge graph and provide comprehensive recommendations.`;
+
+          // Use the enhanced message with GraphRAG (which will now query KG + web search)
+          const enhancedMessage = mainMessage + dastContext;
+
+          const {
+            answer,
+            reasoningTrace,
+            jargons,
+            cveDescriptionsMap,
+            dynamicTags,
+            contextData,
+            sourceLinks,
+          } = await graphRAGAnswer(
+            enhancedMessage,
+            agentPersonality,
+            dastScanResults
+          );
+
+          // Ensure trace is always an array with a narrative field if reasoningTrace is a string
+          let trace = Array.isArray(reasoningTrace)
+            ? reasoningTrace
+            : reasoningTrace
+              ? [{ narrative: reasoningTrace }]
+              : [];
+
+          return c.json({
+            answer,
+            trace,
+            jargons,
+            cveDescriptionsMap,
+            dynamicTags,
+            contextData,
+            sourceLinks,
+            graphGenerationStatus: "manual_only",
+            dastScanResults,
+            scannedUrl: firstUrl,
+          });
+        } catch (dastError) {
+          console.error(
+            `❌ [ChatController] DAST scan failed for ${detectedUrls[0]}:`,
+            dastError
+          );
+          // Continue with normal processing if DAST scan fails
+        }
+      }
+
       const {
         answer,
         reasoningTrace,
         jargons,
         cveDescriptionsMap,
-        dynamicTag,
+        dynamicTags,
         contextData,
         sourceLinks,
       } = await graphRAGAnswer(mainMessage, agentPersonality);
@@ -133,8 +305,7 @@ export class ChatController {
           ? [{ narrative: reasoningTrace }]
           : [];
 
-      // Automatically generate graph visualization if messageId and chatId are provided
-      let graphData = null;
+      // Start background graph generation if messageId and chatId are provided
       console.log("🔍 [ChatController] Checking graph generation conditions:", {
         messageId,
         chatId,
@@ -142,99 +313,41 @@ export class ChatController {
         hasChatId: !!chatId,
         willGenerateGraph: !!(messageId && chatId),
       });
-      if (messageId && chatId) {
-        try {
-          console.log(
-            "🔄 [ChatController] Automatically generating graph for message:",
-            {
-              messageId,
-              chatId,
-              question: mainMessage.substring(0, 50) + "...",
-              hasAnswer: !!answer,
-              answerLength: answer.length,
-            }
-          );
 
-          console.log(
-            "🔄 [ChatController] Calling graph generation service with data:",
-            {
-              messageId,
-              chatId,
-              questionLength: mainMessage.length,
-              answerLength: answer.length,
-              hasReasoningTrace: !!trace,
-              hasJargons: !!jargons,
-              hasCveDescriptionsMap: !!cveDescriptionsMap,
-              hasSourceLinks: !!sourceLinks,
-              hasContextData: !!contextData,
-            }
-          );
-
-          const graphResult =
-            await this.chatGraphService.processChatMessageWithGraph({
-              messageId,
-              chatId,
-              question: mainMessage,
-              answer,
-              reasoningTrace: trace,
-              jargons,
-              cveDescriptionsMap,
-              sourceLinks,
-              contextData: contextData || undefined,
-            });
-
-          if (graphResult.success) {
-            graphData = graphResult.graphData;
-            console.log("✅ [ChatController] Graph generated successfully:", {
-              messageId,
-              nodes: graphData.nodes.length,
-              links: graphData.links.length,
-              mainProblemNode: graphData.nodes.find(
-                (n:any) => n.id === "main-problem"
-              ),
-              problemConnections: graphData.links.filter(
-                (l:any) =>
-                  l.source === "main-problem" || l.target === "main-problem"
-              ).length,
-            });
-          } else {
-            console.error(
-              "❌ [ChatController] Graph generation failed:",
-              graphResult.error
-            );
-          }
-        } catch (graphError) {
-          console.error(
-            "❌ [ChatController] Error in automatic graph generation:",
-            graphError
-          );
-          // Don't fail the entire request if graph generation fails
+      // Graph generation is now handled manually when user clicks graph icon
+      // No automatic background generation
+      console.log(
+        "📝 [ChatController] Graph generation disabled - will be triggered manually via graph icon",
+        {
+          messageId,
+          chatId,
+          question: mainMessage.substring(0, 50) + "...",
+          hasAnswer: !!answer,
+          answerLength: answer.length,
         }
-      }
+      );
 
-      console.log("📤 [ChatController] Sending response with graph data:", {
-        hasAnswer: !!answer,
-        hasGraphData: !!graphData,
-        graphDataSummary: graphData
-          ? {
-              nodes: graphData.nodes?.length || 0,
-              links: graphData.links?.length || 0,
-              hasMainProblem: !!graphData.nodes?.find(
-                (n:any) => n.id === "main-problem"
-              ),
-            }
-          : "No graph data",
-      });
+      console.log(
+        "📤 [ChatController] Sending immediate response (no background graph generation):",
+        {
+          hasAnswer: !!answer,
+          answerLength: answer.length,
+          hasTrace: !!trace,
+          hasJargons: !!jargons,
+          hasDynamicTags: !!dynamicTags,
+          manualGraphGeneration: "Click graph icon to generate",
+        }
+      );
 
       return c.json({
         answer,
         trace,
         jargons,
         cveDescriptionsMap,
-        dynamicTag,
+        dynamicTags,
         contextData,
         sourceLinks,
-        graphData, // Include graph data in response if generated
+        graphGenerationStatus: "manual_only",
       });
     } catch (error) {
       const errorMessage =
@@ -246,18 +359,10 @@ export class ChatController {
 
 export const getNeo4jHealth = async (req: Request, res: Response) => {
   try {
-    const health = getConnectionHealth();
-    res.json({
-      success: true,
-      neo4j: health,
-      timestamp: new Date().toISOString(),
-    });
+    const health = getConnectionHealth;
+    return health;
+    res.json();
   } catch (error) {
-    console.error("❌ Health check error:", error);
-    res.status(500).json({
-      success: false,
-      error: "Health check failed",
-      timestamp: new Date().toISOString(),
-    });
+    throw errorHandler;
   }
 };
