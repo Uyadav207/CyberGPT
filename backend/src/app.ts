@@ -19,7 +19,7 @@ const app = new Hono();
 app.use(
   "*",
   cors({
-    origin: ["https://appcybergpt.vercel.app", "http://localhost:3000"],
+    origin: ["https://appcybergpt.vercel.app", "http://localhost:3000", "http://localhost:3001"],
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowHeaders: ["Content-Type", "Authorization"],
     credentials: true,
