@@ -15,12 +15,6 @@
 		"tooltip": "Analyzes data and trends"
 	},
 	{
-		"label": "More",
-		"icon": "MoreHorizontal",
-		"tooltip": "More options",
-		"iconOnly": true
-	},
-	{
 		"label": "Submit",
 		"icon": "ArrowUp",
 		"tooltip": "Submit or send",

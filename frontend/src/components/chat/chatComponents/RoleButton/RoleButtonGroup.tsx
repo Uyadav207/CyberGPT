@@ -8,30 +8,20 @@ import {
 } from "../../../ui/tooltip";
 
 import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "../../../ui/dropdown-menu";
-
-import {
 	Glasses as GlassesIcon,
 	Search,
 	Globe,
 	ArrowUp,
-	MoreHorizontal,
 } from "lucide-react";
 
 import tooltipData from "../data/tooltipData.json";
-import { actionCards } from "../../actions.ts";
-import React from "react"; // Added missing import for React
+import React from "react";
 import { motion } from "framer-motion";
 
 const iconMap = {
 	GlassesIcon: <GlassesIcon size={14} className="mr-0.5 sm:mr-1 text-[#5E5E5D] w-3.5 h-3.5 sm:w-4 sm:h-4" />,
 	Search: <Search size={14} className="mr-0.5 sm:mr-1 text-[#5E5E5D] w-3.5 h-3.5 sm:w-4 sm:h-4" />,
 	Globe: <Globe size={14} className="mr-0.5 sm:mr-1 text-[#5E5E5D] w-3.5 h-3.5 sm:w-4 sm:h-4" />,
-	MoreHorizontal: <MoreHorizontal size={14} className="text-[#5E5E5D] w-3.5 h-3.5 sm:w-4 sm:h-4" />,
 	ArrowUp: <ArrowUp size={16} className="text-[#5E5E5D] w-4 h-4 sm:w-5 sm:h-5" />,
 };
 
@@ -100,48 +90,7 @@ export default function RoleButtonGroup({
 				{/* Right Group */}
 				<div className="flex items-center space-x-1 sm:space-x-2 mt-0">
 					{rightButtons.map(({ label, icon, tooltip }) => {
-						// Special handling for MoreHorizontal icon - add dropdown
-						if (icon === "MoreHorizontal") {
-							return (
-								<DropdownMenu key={label}>
-									<Tooltip>
-										<TooltipTrigger asChild>
-											<DropdownMenuTrigger asChild>
-												{/* biome-ignore lint/a11y/useButtonType: <explanation> */}
-												<button className="w-8 h-8 sm:w-10 sm:h-10 p-1.5 sm:p-2 rounded-full border border-sidebar-border text-muted-foreground bg-transparent flex items-center justify-center touch-manipulation">
-													{iconMap[icon]}
-												</button>
-											</DropdownMenuTrigger>
-										</TooltipTrigger>
-										<TooltipContent side="top" align="center">
-											Choose actions
-										</TooltipContent>
-									</Tooltip>
-									<DropdownMenuContent align="end" className="w-56">
-										{actionCards.map((action, index) => (
-											<DropdownMenuItem
-												// biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
-												key={index}
-												onClick={() => handleActionClick(action.title, true)}
-												className="flex items-center py-2 cursor-pointer"
-											>
-												<action.icon
-													className={`mr-2 h-4 w-4 ${action.color}`}
-												/>
-												<span>{action.title}</span>
-												{action.useRAG && (
-													<span className="ml-auto text-xs bg-gray-100 px-2 py-1 rounded-full">
-														RAG
-													</span>
-												)}
-											</DropdownMenuItem>
-										))}
-									</DropdownMenuContent>
-								</DropdownMenu>
-							);
-						}
-
-						// Regular button for other icons
+						// Regular button for all icons
 						return (
 							<Tooltip key={label}>
 								<TooltipTrigger asChild>
