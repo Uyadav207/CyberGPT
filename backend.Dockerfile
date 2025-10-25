@@ -33,6 +33,10 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /app/backend
 
+# Accept database URLs as build arguments
+ARG DATABASE_URL
+ARG SHADOW_DATABASE_URL
+
 # Tell Puppeteer to use system Chromium instead of downloading its own
 # MUST be set BEFORE bun install to prevent Puppeteer's postinstall download
 ENV PUPPETEER_SKIP_DOWNLOAD=true
@@ -50,6 +54,7 @@ COPY backend/src/prisma ./src/prisma
 RUN bun install --frozen-lockfile --ignore-scripts
 
 # Manually run only the necessary Prisma generation
+# Use the DATABASE_URL passed as build argument
 RUN bunx prisma generate --schema=./src/prisma/schema.prisma
 
 # Copy the rest of the source code
