@@ -3641,17 +3641,10 @@ const MiraChatBot: React.FC = () => {
 
 	return (
 		<div className={`relative flex h-screen flex-col overflow-hidden${highlightChatBlock ? ' ring-4 ring-yellow-300/60 bg-yellow-50 dark:bg-yellow-900/30 transition-all duration-700' : ''}`}>
-			<div className="flex justify-center">
-				<div className="flex flex-col w-full max-w-6xl mx-auto h-[89vh] rounded-lg">
+			<div className={`flex flex-col h-full ${uniqueMessages.length === 0 ? 'justify-between md:justify-center' : 'justify-between'}`}>
+				<div className={`flex flex-col w-full max-w-6xl mx-auto ${uniqueMessages.length === 0 ? 'flex-1 md:flex-none' : 'flex-1 overflow-hidden'}`}>
 					{uniqueMessages.length === 0 ? (
-						<div className="flex flex-col items-center justify-end w-full lg:h-1/3 md:h-1 sm:h-full p-4 sm:p-8">
-							<motion.div
-								className="flex flex-col items-center text-center text-xl sm:text-2xl font-semibold mt-4 sm:mt-6 space-y-1 sm:space-y-1"
-								initial={{ opacity: 0, y: 10 }}
-								animate={{ opacity: 1, y: 0 }}
-								transition={{ delay: 0.3 }}
-							/>
-						</div>
+						<div className="flex-1 md:flex-none flex items-center justify-center" />
 					) : chatsLoader ? (
 						<div className="flex items-center justify-center w-full h-full">
 							<Spinner />
@@ -3659,7 +3652,7 @@ const MiraChatBot: React.FC = () => {
 					) : (
 						<ScrollArea
 							ref={scrollAreaRef}
-							className="flex-1 px-2 sm:px-4 lg:px-6 xl:px-8 pb-0 w-full overflow-y-auto"
+							className="flex-1 px-3 sm:px-4 md:px-6 lg:px-8 pb-2 w-full overflow-y-auto"
 						>
 							{uniqueMessages.map((message, idx) => {
 								const isPendingAction =
@@ -3777,13 +3770,13 @@ const MiraChatBot: React.FC = () => {
 									);
 								}
 
-								const isUser = message.sender === "user";
-								const messageClasses = `inline-block rounded-xl max-w-[95%] sm:max-w-[100%] ${
-									isUser
-										? "bg-secondary dark:bg-primary-900 px-4 py-3 text-sm break-words"
-										: "text-foreground pr-2 sm:pr-4 overflow-y-auto text-pretty break-words text-sm leading-relaxed"
-								}`;
-								const containerClasses = `mb-3 ${isUser ? "text-right" : "text-left"} w-full`;
+							const isUser = message.sender === "user";
+							const messageClasses = `inline-block rounded-2xl max-w-[98%] sm:max-w-[95%] md:max-w-[90%] lg:max-w-[85%] ${
+								isUser
+									? "bg-primary/10 dark:bg-primary/20 border border-primary/20 dark:border-primary/30 px-4 py-3 sm:px-5 sm:py-3.5 text-sm sm:text-base break-words text-foreground font-normal text-left"
+									: "text-foreground pr-2 sm:pr-4 overflow-y-auto text-pretty break-words text-xs sm:text-sm leading-relaxed"
+							}`;
+							const containerClasses = `mb-3 sm:mb-4 ${isUser ? "text-right" : "text-left"} w-full`;
 
 								// Only show related questions for the very last message if it is an AI message
 								const isLastMessage = idx === uniqueMessages.length - 1;
@@ -3845,7 +3838,7 @@ const MiraChatBot: React.FC = () => {
 										<div className={`${messageClasses}`}>
 											{/* Reasoning summary indicator (before every message if present) */}
 											{message.reasoningTrace && (
-																									<div className="flex items-center mb-2 text-xs text-sidebar-foreground cursor-pointer select-none hover:text-sidebar-accent-foreground transition-colors"
+																									<div className="flex items-center mb-2 text-[10px] sm:text-xs text-sidebar-foreground cursor-pointer select-none hover:text-sidebar-accent-foreground transition-colors"
 														onClick={() => {
 															const messageId = String(message.id);
 															// Ensure the state is always defined
@@ -3886,10 +3879,10 @@ const MiraChatBot: React.FC = () => {
 														aria-expanded={expandedReasoning[String(message.id)] === true}
 														aria-controls={`reasoning-summary-${String(message.id)}`}
 													>
-														<Brain className="mr-2 text-sidebar-foreground w-4 h-4" />
-														<span>Reasoning</span>
+														<Brain className="mr-1 sm:mr-2 text-sidebar-foreground w-3 h-3 sm:w-4 sm:h-4" />
+														<span className="text-[10px] sm:text-xs">Reasoning</span>
 														{typeof message.durationSec === 'number' && (
-															<span className="ml-2 text-sidebar-foreground/60">Thought for {Math.round(message.durationSec)}s</span>
+															<span className="ml-1 sm:ml-2 text-sidebar-foreground/60 text-[10px] sm:text-xs hidden sm:inline">Thought for {Math.round(message.durationSec)}s</span>
 														)}
 
 														<motion.div
@@ -3914,13 +3907,13 @@ const MiraChatBot: React.FC = () => {
 															opacity: { duration: 0.2 },
 															height: { duration: 0.3 }
 														}}
-														className="mb-2 p-3 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900 dark:to-purple-800 rounded-lg border-l-4 border-purple-400 dark:border-purple-500 shadow-sm relative overflow-hidden"
-														style={{ fontSize: '0.875rem', lineHeight: 1.5 }}
+														className="mb-2 p-2 sm:p-3 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/50 dark:to-purple-800/50 rounded-lg border-l-2 sm:border-l-4 border-purple-400 dark:border-purple-400 shadow-sm relative overflow-hidden"
+														style={{ fontSize: '0.75rem', lineHeight: 1.5 }}
 													>
 																												<div className="flex items-center mb-2 mt-1">
 															<span className="text-lg mr-1">🤔</span>
 														</div>
-														<div className="text-purple-600 dark:text-purple-300 text-xs opacity-80">
+														<div className="text-purple-700 dark:text-purple-200 text-xs">
 															{(() => {
 																const reasoningContent = getReasoningString(message.reasoningTrace);
 																console.log('[Reasoning Display] Rendering reasoning for message:', {
@@ -3937,7 +3930,7 @@ const MiraChatBot: React.FC = () => {
 											</AnimatePresence>
 											
 											{!isUser && (
-												<div className="mb-3 p-3 sm:p-5 bg-background w-full">
+												<div className="mb-2 sm:mb-3 p-2 sm:p-3 md:p-5 bg-muted/30 dark:bg-muted/10 rounded-lg w-full">
 													{(() => {
 														const processedContent = preprocessJargonMarkdown(message.message, message.jargons, message.cveDescriptionsMap);
 														console.log('Rendering message:', {
@@ -3963,8 +3956,8 @@ const MiraChatBot: React.FC = () => {
 													*/}
 													
 													{/* Action Buttons - Sources, Graph, and TODO List */}
-													<hr className="mt-4 mb-2 border-t border-sidebar-border/50" />
-													<div className="flex items-center gap-2 -ml-2 relative">
+													<hr className="mt-2 sm:mt-4 mb-2 border-t border-sidebar-border/50" />
+													<div className="flex items-center gap-1 sm:gap-2 -ml-1 sm:-ml-2 relative">
 														{/* Sources */}
 														{(() => {
 															return (
@@ -3972,8 +3965,8 @@ const MiraChatBot: React.FC = () => {
 																	<Tooltip>
 																		<TooltipTrigger asChild>
 																			<SheetTrigger asChild>
-																				<button className="p-2 rounded-full hover:bg-accent/60 transition-colors group" title="Show sources">
-																					<Link className="w-4 h-4 text-muted-foreground group-hover:text-black dark:group-hover:text-white transition-colors" />
+																				<button className="p-1.5 sm:p-2 rounded-full hover:bg-accent/60 transition-colors group touch-manipulation" title="Show sources">
+																					<Link className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground group-hover:text-black dark:group-hover:text-white transition-colors" />
 																				</button>
 																			</SheetTrigger>
 																		</TooltipTrigger>
@@ -3981,7 +3974,7 @@ const MiraChatBot: React.FC = () => {
 																			View sources
 																		</TooltipContent>
 																	</Tooltip>
-																	<SheetContent side="right" className="max-w-md w-full">
+																	<SheetContent side="right" className="max-w-full sm:max-w-md w-full">
 																		<div className="p-4">
 																			<SourceLinks sourceLinks={message.sourceLinks || []} autoExpand={true} />
 																		</div>
@@ -4025,7 +4018,7 @@ const MiraChatBot: React.FC = () => {
 															<Tooltip>
 																<TooltipTrigger asChild>
 																	<button
-																		className="p-2 rounded-full hover:bg-accent/60 transition-colors group"
+																		className="p-1.5 sm:p-2 rounded-full hover:bg-accent/60 transition-colors group touch-manipulation"
 																		title="Show tags"
 																		onClick={() => {
 																			const messageId = String(message.id);
@@ -4035,7 +4028,7 @@ const MiraChatBot: React.FC = () => {
 																		aria-expanded={expandedTags[String(message.id)] === true}
 																		aria-controls={`tags-${String(message.id)}`}
 																	>
-																		<TagIcon size={16} className="text-muted-foreground group-hover:text-black dark:group-hover:text-white transition-colors" />
+																		<TagIcon size={14} className="sm:w-4 sm:h-4 text-muted-foreground group-hover:text-black dark:group-hover:text-white transition-colors" />
 																	</button>
 																</TooltipTrigger>
 																<TooltipContent side="top" align="center">
@@ -4072,7 +4065,7 @@ const MiraChatBot: React.FC = () => {
                                                                     }}
                                                                     className="mt-2 mb-2 overflow-hidden"
                                                                 >
-                                                                    <div className="flex flex-wrap gap-1.5">
+                                                                    <div className="flex flex-wrap gap-1 sm:gap-1.5">
                                                                         {((message as any).tags as string[]).map((tag, i) => (
                                                                             <motion.span 
                                                                                 key={`${message.id}-tag-${i}`}
@@ -4091,7 +4084,7 @@ const MiraChatBot: React.FC = () => {
                                                                                     duration: 0.2,
                                                                                     ease: "easeOut"
                                                                                 }}
-                                                                                className="px-2 py-1 rounded-full bg-blue-100 text-blue-800 text-[10px] font-medium whitespace-nowrap shadow-sm hover:bg-blue-200 transition-colors duration-200"
+                                                                                className="px-1.5 py-0.5 sm:px-2 sm:py-1 rounded-full bg-blue-100 text-blue-800 text-[9px] sm:text-[10px] font-medium whitespace-nowrap shadow-sm hover:bg-blue-200 transition-colors duration-200"
                                                                             >
                                                                                 #{tag.replace(/_/g, '').replace(/([A-Z])/g, (_match, p1, offset) => offset > 0 ? p1 : p1).toLowerCase()}
                                                                             </motion.span>
@@ -4104,14 +4097,14 @@ const MiraChatBot: React.FC = () => {
 
                                                     {/* Suggested Questions - below icons and tags */}
                                                     {isLastAiMessage && (
-                                                        <div className="mt-3">
-                                                            <div className="text-xs text-sidebar-foreground/70 mb-2 italic">Suggested follow-up questions:</div>
-                                                            <div className="flex flex-wrap gap-2">
+                                                        <div className="mt-2 sm:mt-3">
+                                                            <div className="text-[10px] sm:text-xs text-sidebar-foreground/70 mb-1.5 sm:mb-2 italic">Suggested follow-up questions:</div>
+                                                            <div className="flex flex-wrap gap-1.5 sm:gap-2">
                                                             {messageRelatedQuestions.map((q: string, i: number) => (
                                                                 <motion.button
                                                                     key={`${message.id}-${q}-${i}`}
                                                                     onClick={() => handleSend(q, false, true)}
-                                                                    className="rounded-lg px-3 py-1.5 bg-sidebar border border-sidebar-border text-sidebar-foreground text-xs sm:text-sm font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-sidebar-ring"
+                                                                    className="rounded-lg px-2 py-1 sm:px-3 sm:py-1.5 bg-sidebar border border-sidebar-border text-sidebar-foreground text-[11px] sm:text-xs md:text-sm font-medium hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-sidebar-ring touch-manipulation"
                                                                     style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
                                                                     initial={{ opacity: 0, y: 20 }}
                                                                     animate={{ opacity: 1, y: 0 }}
@@ -4126,7 +4119,7 @@ const MiraChatBot: React.FC = () => {
                                                 </div>
 											)}
 											{isUser && (
-												<div className="mb-3 px-1">
+												<div className="leading-relaxed text-foreground">
 													{message.message}
 												</div>
 											)}
@@ -4161,17 +4154,39 @@ const MiraChatBot: React.FC = () => {
 							</p>
 						</div>
 					)}
-					<div className="flex justify-center w-full px-4 sm:px-6 lg:px-8 xl:px-12">
+				</div>
+				
+				{/* Input Section - Always at bottom on mobile, centered on desktop when empty */}
+				<div className={`w-full px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12 ${uniqueMessages.length === 0 ? 'pb-6 sm:pb-8' : 'py-3 sm:py-4'} bg-background ${uniqueMessages.length === 0 ? 'md:pb-0' : ''}`}>
+						{/* Welcome Message - GPT-style */}
+						{uniqueMessages.length === 0 && (
+							<motion.div
+								initial={{ opacity: 0, y: 20 }}
+								animate={{ opacity: 1, y: 0 }}
+								exit={{ opacity: 0, y: -20 }}
+								transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+								className="flex flex-col items-center justify-center text-center mb-8 sm:mb-10 md:mb-12 px-4 sm:px-6"
+							>
+								{/* Main message - GPT-style sizing */}
+								<h1 
+									className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-semibold text-foreground text-center"
+									style={{ lineHeight: '1.2' }}
+								>
+									How can I help you?
+								</h1>
+							</motion.div>
+						)}
+						
 						<motion.div
 							key={`chat-input-${uniqueMessages.length === 0 ? 'new' : 'existing'}`}
 							initial={{
-								width: uniqueMessages.length === 0 ? '42rem' : '100%',
+								width: uniqueMessages.length === 0 ? '100%' : '100%',
 								opacity: 0,
 								y: uniqueMessages.length === 0 ? 50 : 20,
 								scale: uniqueMessages.length === 0 ? 0.9 : 1
 							}}
 							animate={{
-								width: uniqueMessages.length === 0 ? '42rem' : '100%',
+								width: '100%',
 								opacity: 1,
 								y: 0,
 								scale: 1
@@ -4181,8 +4196,7 @@ const MiraChatBot: React.FC = () => {
 								ease: 'easeOut',
 								delay: uniqueMessages.length === 0 ? 0.2 : 0.1
 							}}
-							className={`chat-input flex flex-col p-2 rounded-2xl border border-sidebar-border bg-sidebar text-sidebar-foreground w-full ${uniqueMessages.length === 0 ? 'max-w-2xl' : 'max-w-6xl'} shadow-sm transition-all`}
-							style={{ margin: uniqueMessages.length === 0 ? '2.5rem auto' : '0 auto' }}
+							className={`chat-input flex flex-col p-2 sm:p-2 rounded-xl sm:rounded-2xl border border-sidebar-border bg-sidebar text-sidebar-foreground w-full ${uniqueMessages.length === 0 ? 'max-w-full sm:max-w-2xl' : 'max-w-full lg:max-w-6xl'} shadow-md sm:shadow-sm transition-all mx-auto`}
 						>
 							{/* Input Field */}
 							<motion.textarea
@@ -4202,7 +4216,7 @@ const MiraChatBot: React.FC = () => {
 										handleSend();
 									}
 								}}
-								className="w-full text-sm bg-sidebar text-sidebar-foreground rounded-md px-3 py-2 placeholder:text-muted-foreground focus:outline-none border-none resize-none transition-colors overflow-hidden"
+								className="w-full text-sm sm:text-base bg-sidebar text-sidebar-foreground rounded-md px-3 py-2 sm:px-3 sm:py-2 placeholder:text-muted-foreground focus:outline-none border-none resize-none transition-colors overflow-hidden touch-manipulation"
 								placeholder="Type your message here..."
 								disabled={isLoading || !!pendingAction}
 							/>
@@ -4216,9 +4230,10 @@ const MiraChatBot: React.FC = () => {
 								handleSend={handleSend}
 							/>
 						</motion.div>
-					</div>
+				</div>
+			</div>
 
-					<Dialog open={showInfo} onOpenChange={setShowInfo}>
+			<Dialog open={showInfo} onOpenChange={setShowInfo}>
 						<DialogContent className="dialog-content">
 							<DialogHeader>
 								<DialogTitle className="dialog-title">Information</DialogTitle>
@@ -4244,8 +4259,8 @@ const MiraChatBot: React.FC = () => {
 								</div>
 							</ScrollArea>
 						</DialogContent>
-					</Dialog>
-				</div>
+				</Dialog>
+				
 				<CreateFolderDialog
 					open={isCreateDialogOpen}
 					humanInTheLoopAction={requestHumanInLoop}
@@ -4258,7 +4273,6 @@ const MiraChatBot: React.FC = () => {
 					isOpen={isModalOpen}
 					onClose={closeModal}
 				/>
-			</div>
 		</div>
 	);
 };

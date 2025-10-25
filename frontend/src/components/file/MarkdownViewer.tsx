@@ -153,16 +153,16 @@ const MarkdownViewer = ({ content, isUser = false }: MarkdownViewerProps) => {
             );
           },
           h1({ children }) {
-            return <h1 className="text-xl font-bold mb-4 mt-6 first:mt-0">{processJargonInText(children)}</h1>;
+            return <h1 className="text-xl font-bold mb-4 mt-6 first:mt-0 text-gray-900 dark:text-gray-100">{processJargonInText(children)}</h1>;
           },
           h2({ children }) {
-            return <h2 className="text-lg font-semibold mb-3 mt-5 first:mt-0">{processJargonInText(children)}</h2>;
+            return <h2 className="text-lg font-semibold mb-3 mt-5 first:mt-0 text-gray-800 dark:text-gray-200">{processJargonInText(children)}</h2>;
           },
           h3({ children }) {
-            return <h3 className="text-base font-medium mb-2 mt-4 first:mt-0">{processJargonInText(children)}</h3>;
+            return <h3 className="text-base font-medium mb-2 mt-4 first:mt-0 text-gray-800 dark:text-gray-200">{processJargonInText(children)}</h3>;
           },
           p({ children, ...props }: any) {
-            return <p className="mb-3 leading-7" {...props}>{processJargonInText(children)}</p>;
+            return <p className="mb-3 leading-7 text-gray-700 dark:text-gray-300" {...props}>{processJargonInText(children)}</p>;
           },
           ul({ children }) {
             return <ul className="my-3 list-disc pl-6 space-y-2">{children}</ul>;
@@ -171,11 +171,11 @@ const MarkdownViewer = ({ content, isUser = false }: MarkdownViewerProps) => {
             return <ol className="my-3 list-decimal pl-6 space-y-2">{children}</ol>;
           },
           li({ children }) {
-            return <li className="leading-relaxed">{processJargonInText(children)}</li>;
+            return <li className="leading-relaxed text-gray-700 dark:text-gray-300">{processJargonInText(children)}</li>;
           },
           blockquote({ children }) {
             return (
-              <blockquote className={`border-l-4 ${isUser ? 'border-gray-500 bg-[#ffffff1a]' : 'border-gray-200 bg-gray-50'} pl-4 py-2 my-3 italic rounded-r`}>
+              <blockquote className={`border-l-4 ${isUser ? 'border-gray-500 bg-[#ffffff1a]' : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50'} pl-4 py-2 my-3 italic rounded-r text-gray-700 dark:text-gray-300`}>
                 {children}
               </blockquote>
             );
@@ -195,31 +195,31 @@ const MarkdownViewer = ({ content, isUser = false }: MarkdownViewerProps) => {
           table({ children }) {
             return (
               <div className="overflow-x-auto my-3 max-w-full w-full">
-                <table className="w-full divide-y divide-gray-200 border border-gray-200 rounded-lg table-auto">
+                <table className="w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg table-auto">
                   {children}
                 </table>
               </div>
             );
           },
           thead({ children }) {
-            return <thead className={`${isUser ? 'bg-[#ffffff1a]' : 'bg-gray-50'}`}>{children}</thead>;
+            return <thead className={`${isUser ? 'bg-[#ffffff1a]' : 'bg-gray-50 dark:bg-gray-800'}`}>{children}</thead>;
           },
           tbody({ children }) {
-            return <tbody className="divide-y divide-gray-200">{children}</tbody>;
+            return <tbody className="divide-y divide-gray-200 dark:divide-gray-700">{children}</tbody>;
           },
           tr({ children }) {
             return <tr className="hover:bg-opacity-50 transition-colors">{children}</tr>;
           },
           th({ children }) {
             return (
-              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider break-words">
+              <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider break-words text-gray-700 dark:text-gray-300">
                 {children}
               </th>
             );
           },
           td({ children }) {
             return (
-              <td className="px-6 py-4 text-sm break-words">
+              <td className="px-6 py-4 text-sm break-words text-gray-700 dark:text-gray-300">
                 {children}
               </td>
             );

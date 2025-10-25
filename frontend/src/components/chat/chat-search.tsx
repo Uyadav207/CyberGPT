@@ -107,13 +107,13 @@ export function ChatSearch({ isOpen, onClose }: ChatSearchProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center">
+    <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-start sm:items-center justify-center p-2 sm:p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.98, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.98, y: 20 }}
         transition={{ duration: 0.2 }}
-        className="relative w-full max-w-2xl mx-auto"
+        className="relative w-full max-w-[95vw] sm:max-w-2xl mx-auto mt-2 sm:mt-0"
       >
         {/* Animated tag cloud above search bar when filter is open */}
         <AnimatePresence>
@@ -126,7 +126,7 @@ export function ChatSearch({ isOpen, onClose }: ChatSearchProps) {
                 hidden: { opacity: 0, y: -10 },
                 visible: { opacity: 1, y: 0, transition: { staggerChildren: 0.04 } },
               }}
-              className="flex flex-wrap gap-2 justify-center mb-4"
+              className="flex flex-wrap gap-1.5 sm:gap-2 justify-center mb-3 sm:mb-4 px-2"
             >
               {availableTags.map((tag) => (
                 <motion.div
@@ -139,7 +139,7 @@ export function ChatSearch({ isOpen, onClose }: ChatSearchProps) {
                 >
                   <Badge
                     variant={selectedTags.includes(tag) ? "default" : "outline"}
-                    className="cursor-pointer text-base px-3 py-1 rounded-full font-medium transition-all min-w-[48px] text-center"
+                    className="cursor-pointer text-xs sm:text-sm md:text-base px-2 sm:px-3 py-0.5 sm:py-1 rounded-full font-medium transition-all min-w-[40px] sm:min-w-[48px] text-center touch-manipulation"
                     onClick={() => toggleTag(tag)}
                   >
                     {`#${tag}`}
@@ -150,35 +150,34 @@ export function ChatSearch({ isOpen, onClose }: ChatSearchProps) {
           )}
         </AnimatePresence>
         {/* Floating pill search bar */}
-        <div className="flex items-center w-full bg-sidebar/70 shadow-lg rounded-full px-6 py-3 backdrop-blur-lg border border-sidebar-border">
-          <Search className="h-5 w-5 text-muted-foreground mr-2" />
+        <div className="flex items-center w-full bg-sidebar/70 shadow-lg rounded-full px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 backdrop-blur-lg border border-sidebar-border">
+          <Search className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground mr-1.5 sm:mr-2 flex-shrink-0" />
           <input
             autoFocus
             placeholder="Search messages..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 bg-transparent outline-none text-base placeholder:text-sidebar-foreground/60"
-            style={{ minWidth: 0 }}
+            className="flex-1 bg-transparent outline-none text-sm sm:text-base placeholder:text-sidebar-foreground/60 min-w-0"
           />
           <Button
             variant={showFilter ? "default" : "ghost"}
             size="icon"
-            className="ml-2"
+            className="ml-1 sm:ml-2 h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 touch-manipulation"
             onClick={() => setShowFilter((v) => !v)}
             aria-label="Filter"
             type="button"
           >
-            <Filter className="h-5 w-5" />
+            <Filter className="h-3.5 w-3.5 sm:h-5 sm:w-5" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="ml-2"
+            className="ml-1 sm:ml-2 h-7 w-7 sm:h-9 sm:w-9 flex-shrink-0 touch-manipulation"
             onClick={onClose}
             aria-label="Close"
             type="button"
           >
-            <X className="h-5 w-5" />
+            <X className="h-3.5 w-3.5 sm:h-5 sm:w-5" />
           </Button>
         </div>
         {/* Show filtered chats by tag below search bar if tag is selected and no search query */}
@@ -189,7 +188,7 @@ export function ChatSearch({ isOpen, onClose }: ChatSearchProps) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
               transition={{ duration: 0.18 }}
-              className="absolute left-0 right-0 mt-4 mx-auto w-full max-w-2xl z-20 flex flex-col gap-0 max-h-[132px] overflow-y-auto scrollbar-hide"
+              className="absolute left-0 right-0 mt-3 sm:mt-4 mx-auto w-full max-w-[95vw] sm:max-w-2xl z-20 flex flex-col gap-0 max-h-[120px] sm:max-h-[132px] overflow-y-auto scrollbar-hide px-2 sm:px-0"
               style={{ background: "none", boxShadow: "none", scrollSnapType: 'y mandatory' }}
             >
               {chatsWithSelectedTag.length > 0 ? chatsWithSelectedTag.map((chat, i) => (
@@ -199,7 +198,7 @@ export function ChatSearch({ isOpen, onClose }: ChatSearchProps) {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}
                   transition={{ delay: i * 0.03, duration: 0.18 }}
-                  className="flex items-start gap-2 px-4 py-2 cursor-pointer hover:bg-sidebar-accent/60 rounded-md transition-colors text-sm min-h-[44px]"
+                  className="flex items-start gap-2 px-3 sm:px-4 py-2 cursor-pointer hover:bg-sidebar-accent/60 rounded-md transition-colors text-sm min-h-[44px] touch-manipulation"
                   style={{ border: "none", background: "none", scrollSnapAlign: 'start' }}
                   onClick={() => {
                     navigate(`/chatbot/${chat._id}?tag=${encodeURIComponent(selectedTags[0])}`);
@@ -207,12 +206,12 @@ export function ChatSearch({ isOpen, onClose }: ChatSearchProps) {
                   }}
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate text-[15px] text-foreground mb-0.5">{chat.title}</div>
-                    <div className="text-muted-foreground whitespace-pre-line leading-snug text-[13px]">
+                    <div className="font-medium truncate text-xs sm:text-sm md:text-[15px] text-foreground mb-0.5">{chat.title}</div>
+                    <div className="text-muted-foreground whitespace-pre-line leading-snug text-xs sm:text-[13px] line-clamp-2">
                       {chat.title}
                     </div>
                   </div>
-                  <span className="text-xs text-muted-foreground mt-0.5 min-w-fit">
+                  <span className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 min-w-fit flex-shrink-0">
                     {chat.createdAt ? new Date(chat.createdAt).toLocaleDateString() : ""}
                   </span>
                 </motion.li>
@@ -221,7 +220,7 @@ export function ChatSearch({ isOpen, onClose }: ChatSearchProps) {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="text-center text-muted-foreground py-8"
+                  className="text-center text-muted-foreground py-6 sm:py-8 text-sm"
                 >No results found.</motion.li>
               )}
             </motion.ul>
@@ -235,7 +234,7 @@ export function ChatSearch({ isOpen, onClose }: ChatSearchProps) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 10 }}
               transition={{ duration: 0.18 }}
-              className="absolute left-0 right-0 mt-4 mx-auto w-full max-w-2xl z-20 flex flex-col gap-0 max-h-[132px] overflow-y-auto scrollbar-hide"
+              className="absolute left-0 right-0 mt-3 sm:mt-4 mx-auto w-full max-w-[95vw] sm:max-w-2xl z-20 flex flex-col gap-0 max-h-[120px] sm:max-h-[132px] overflow-y-auto scrollbar-hide px-2 sm:px-0"
               style={{ background: "none", boxShadow: "none", scrollSnapType: 'y mandatory' }}
             >
               {filteredMessages && filteredMessages.length > 0 ? filteredMessages.map((msg, i) => (
@@ -245,7 +244,7 @@ export function ChatSearch({ isOpen, onClose }: ChatSearchProps) {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}
                   transition={{ delay: i * 0.03, duration: 0.18 }}
-                  className="flex items-start gap-2 px-4 py-2 cursor-pointer hover:bg-sidebar-accent/60 rounded-md transition-colors text-sm min-h-[44px]"
+                  className="flex items-start gap-2 px-3 sm:px-4 py-2 cursor-pointer hover:bg-sidebar-accent/60 rounded-md transition-colors text-sm min-h-[44px] touch-manipulation"
                   style={{ border: "none", background: "none", scrollSnapAlign: 'start' }}
                   onClick={() => {
                     navigate(`/chatbot/${msg.chatId}?messageId=${msg._id}`);
@@ -253,12 +252,12 @@ export function ChatSearch({ isOpen, onClose }: ChatSearchProps) {
                   }}
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate text-[15px] text-foreground mb-0.5">{getChatTitle(msg.chatId)}</div>
-                    <div className="text-muted-foreground whitespace-pre-line leading-snug text-[13px]">
+                    <div className="font-medium truncate text-xs sm:text-sm md:text-[15px] text-foreground mb-0.5">{getChatTitle(msg.chatId)}</div>
+                    <div className="text-muted-foreground whitespace-pre-line leading-snug text-xs sm:text-[13px] line-clamp-2">
                       {getMessagePreview(msg.message)}
                     </div>
                   </div>
-                  <span className="text-xs text-muted-foreground mt-0.5 min-w-fit">
+                  <span className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 min-w-fit flex-shrink-0">
                     {getChatCreatedAt(msg.chatId) ? new Date(getChatCreatedAt(msg.chatId)!).toLocaleDateString() : ""}
                   </span>
                 </motion.li>
@@ -267,7 +266,7 @@ export function ChatSearch({ isOpen, onClose }: ChatSearchProps) {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="text-center text-muted-foreground py-8"
+                  className="text-center text-muted-foreground py-6 sm:py-8 text-sm"
                 >No results found.</motion.li>
               )}
             </motion.ul>

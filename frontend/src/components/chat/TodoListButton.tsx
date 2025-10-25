@@ -105,86 +105,89 @@ const SortableTodoItem: React.FC<{
         damping: 30,
         duration: 0.3
       }}
-      className={`p-4 sm:p-5 rounded-lg transition-all duration-200 bg-card border border-border text-foreground shadow-sm w-full max-w-full relative group
+      className={`p-2.5 sm:p-4 md:p-5 rounded-lg transition-all duration-200 bg-card border border-border text-foreground shadow-sm w-full max-w-full relative group
         ${item.completed ? 'opacity-80 bg-green-50 dark:bg-green-900/30' : ''}
         ${isDragging ? 'shadow-lg ring-2 ring-primary/20 z-20' : ''}
         hover:border-primary hover:ring-2 hover:ring-primary/60 hover:shadow-lg`}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-2 sm:gap-3">
         {/* Drag Handle for Reordering */}
-        <div className="flex flex-col items-center gap-1">
+        <div className="flex flex-col items-center gap-1 flex-shrink-0">
           <div
             {...attributes}
             {...listeners}
-            className="cursor-grab active:cursor-grabbing rounded p-1 hover:bg-muted/60 transition-colors"
+            className="cursor-grab active:cursor-grabbing rounded p-1 hover:bg-muted/60 transition-colors touch-none"
           >
-            <GripVertical className="h-4 w-4 text-gray-400 group-hover:text-primary transition-colors" />
+            <GripVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400 group-hover:text-primary transition-colors" />
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => onToggle(item.id)}
-            className={`h-6 w-6 p-0 rounded ${
+            className={`h-5 w-5 sm:h-6 sm:w-6 p-0 rounded touch-manipulation ${
               item.completed 
                 ? 'text-green-600 dark:text-green-400' 
                 : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
             }`}
           >
             {item.completed ? (
-              <CheckSquare className="h-4 w-4" />
+              <CheckSquare className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             ) : (
-              <div className="h-4 w-4 border-2 border-current rounded" />
+              <div className="h-3.5 w-3.5 sm:h-4 sm:w-4 border-2 border-current rounded" />
             )}
           </Button>
         </div>
         
-        <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-2">
-                            <h4 className={`font-medium ${
-                              item.completed 
-                                ? 'line-through text-gray-500 dark:text-gray-400' 
-                                : 'text-gray-900 dark:text-gray-100'
-                            }`}>
-                              {index + 1}. {item.emoji} {item.task}
-                            </h4>
-            <Badge className={`text-xs bg-sidebar text-sidebar-foreground border border-border hover:bg-sidebar/90 hover:text-sidebar-foreground focus:ring-2 focus:ring-primary/20 transition-colors duration-150 ${getPriorityColor(item.priority)}`}>{item.priority}</Badge>
-            <Badge className={`text-xs bg-sidebar text-sidebar-foreground border border-border hover:bg-sidebar/90 hover:text-sidebar-foreground focus:ring-2 focus:ring-primary/20 transition-colors duration-150 ${getCategoryColor(item.category)}`}>{item.category}</Badge>
+        <div className="flex-1 min-w-0 overflow-hidden">
+          {/* Title and Category Badges */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 mb-2">
+            <h4 className={`font-medium text-xs sm:text-sm md:text-base break-words ${
+              item.completed 
+                ? 'line-through text-gray-500 dark:text-gray-400' 
+                : 'text-gray-900 dark:text-gray-100'
+            }`}>
+              {index + 1}. {item.emoji} {item.task}
+            </h4>
+            <div className="flex flex-wrap gap-1 sm:gap-1.5">
+              <Badge className={`text-[10px] sm:text-xs px-1.5 py-0.5 bg-sidebar text-sidebar-foreground border border-border hover:bg-sidebar/90 hover:text-sidebar-foreground focus:ring-2 focus:ring-primary/20 transition-colors duration-150 ${getPriorityColor(item.priority)}`}>{item.priority}</Badge>
+              <Badge className={`text-[10px] sm:text-xs px-1.5 py-0.5 bg-sidebar text-sidebar-foreground border border-border hover:bg-sidebar/90 hover:text-sidebar-foreground focus:ring-2 focus:ring-primary/20 transition-colors duration-150 ${getCategoryColor(item.category)}`}>{item.category}</Badge>
+            </div>
           </div>
           
           {/* Risk and CVSS Information */}
-          <div className="flex items-center gap-4 mb-3">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-orange-500" />
-              <Badge className={`text-xs border bg-card text-foreground border-border hover:bg-card/90 hover:text-foreground focus:ring-2 focus:ring-primary/20 transition-colors duration-150 ${getRiskColor(item.riskLevel)}`}>Risk: {item.riskLevel.toUpperCase()}</Badge>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <AlertTriangle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-orange-500 flex-shrink-0" />
+              <Badge className={`text-[10px] sm:text-xs px-1.5 py-0.5 border bg-card text-foreground border-border hover:bg-card/90 hover:text-foreground focus:ring-2 focus:ring-primary/20 transition-colors duration-150 ${getRiskColor(item.riskLevel)}`}>Risk: {item.riskLevel.toUpperCase()}</Badge>
             </div>
-            <div className="flex items-center gap-2">
-              <Shield className="h-4 w-4 text-blue-500" />
-              <span className={`text-sm font-semibold ${getCVSSColor(item.cvssScore)}`}>
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <Shield className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-500 flex-shrink-0" />
+              <span className={`text-xs sm:text-sm font-semibold whitespace-nowrap ${getCVSSColor(item.cvssScore)}`}>
                 CVSS: {item.cvssScore.toFixed(1)}
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600 dark:text-gray-400">
+            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+              <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
                 Confidence: {(item.confidence * 100).toFixed(0)}%
               </span>
-              <Progress value={item.confidence * 100} className="w-16 h-2" />
+              <Progress value={item.confidence * 100} className="w-12 sm:w-16 h-1.5 sm:h-2 flex-shrink-0" />
             </div>
           </div>
           
           {/* CVE IDs and Affected Systems */}
           {(item.cveIds && item.cveIds.length > 0) || (item.affectedSystems && item.affectedSystems.length > 0) ? (
-            <div className="flex flex-wrap gap-2 mb-3">
+            <div className="flex flex-wrap gap-1 sm:gap-1.5 mb-2 sm:mb-3">
               {item.cveIds && item.cveIds.map((cveId, idx) => (
-                <Badge key={idx} variant="outline" className="text-xs bg-muted text-muted-foreground border border-border hover:bg-muted/90 hover:text-muted-foreground focus:ring-2 focus:ring-primary/20 transition-colors duration-150">{cveId}</Badge>
+                <Badge key={idx} variant="outline" className="text-[10px] sm:text-xs px-1.5 py-0.5 bg-muted text-muted-foreground border border-border hover:bg-muted/90 hover:text-muted-foreground focus:ring-2 focus:ring-primary/20 transition-colors duration-150">{cveId}</Badge>
               ))}
               {item.affectedSystems && item.affectedSystems.map((system, idx) => (
-                <Badge key={idx} variant="secondary" className="text-xs bg-muted text-muted-foreground border border-border hover:bg-muted/90 hover:text-muted-foreground focus:ring-2 focus:ring-primary/20 transition-colors duration-150">{system}</Badge>
+                <Badge key={idx} variant="secondary" className="text-[10px] sm:text-xs px-1.5 py-0.5 bg-muted text-muted-foreground border border-border hover:bg-muted/90 hover:text-muted-foreground focus:ring-2 focus:ring-primary/20 transition-colors duration-150 break-all">{system}</Badge>
               ))}
             </div>
           ) : null}
           
           {item.description && (
-            <p className={`text-sm mb-3 ${
+            <p className={`text-xs sm:text-sm mb-2 sm:mb-3 break-words ${
               item.completed 
                 ? 'text-gray-400 dark:text-gray-500' 
                 : 'text-gray-600 dark:text-gray-400'
@@ -663,18 +666,18 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
               toggleTodoList();
             }}
             disabled={isGenerating}
-            className={`h-8 w-8 p-0 rounded-full transition-all duration-200 ${
+            className={`h-7 w-7 sm:h-8 sm:w-8 p-0 rounded-full transition-all duration-200 touch-manipulation ${
               showTodoList 
                 ? 'bg-sidebar-accent text-sidebar-primary hover:bg-sidebar-accent/80' 
                 : 'hover:bg-sidebar-accent'
             }`}
           >
             {isGenerating ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />
             ) : showTodoList ? (
-              <EyeOff className="h-4 w-4" />
+              <EyeOff className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             ) : (
-              <ListTodo className="h-4 w-4" />
+              <ListTodo className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             )}
           </Button>
         </TooltipTrigger>
@@ -715,48 +718,48 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
 
       {/* TODO List Modal */}
       <Dialog open={showTodoList} onOpenChange={setShowTodoList}>
-        <DialogContent className="max-w-4xl w-full sm:max-w-3xl h-[80vh] p-0 bg-background text-foreground border border-border rounded-lg overflow-hidden flex flex-col">
+        <DialogContent className="max-w-[95vw] sm:max-w-3xl md:max-w-4xl w-full h-[95vh] sm:h-[85vh] md:h-[80vh] p-0 bg-background text-foreground border border-border rounded-lg overflow-hidden flex flex-col">
           {todoList && (
             <>
-              <DialogHeader className="p-4 sm:p-6 border-b border-border bg-card flex-shrink-0 relative">
+              <DialogHeader className="p-3 sm:p-4 md:p-6 border-b border-border bg-card flex-shrink-0 relative">
                 {/* Title and Close Button Row */}
-                <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center justify-between mb-2 sm:mb-3">
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, ease: 'easeOut' }}
-                    className="flex items-center gap-2 min-w-0 flex-1 pr-4"
+                    className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 pr-8 sm:pr-4"
                   >
-                    <CheckSquare className="h-5 w-5 flex-shrink-0" />
-                    <DialogTitle className="truncate text-lg font-semibold">{todoList.title}</DialogTitle>
+                    <CheckSquare className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+                    <DialogTitle className="truncate text-sm sm:text-base md:text-lg font-semibold">{todoList.title}</DialogTitle>
                   </motion.div>
                 </div>
                 
                 {/* Description */}
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-2 sm:mb-3 md:mb-4 line-clamp-2 sm:line-clamp-none">
                   {todoList.description}
                 </p>
                 
                 {/* Status and Action Buttons Row */}
-                <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-start sm:items-center justify-between">
                   {/* Status indicators */}
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-2 flex-shrink-0 order-2 sm:order-1">
                     {isSaving && (
                       <div className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400">
                         <Loader2 className="h-3 w-3 animate-spin" />
-                        <span>Saving...</span>
+                        <span className="hidden xs:inline">Saving...</span>
                       </div>
                     )}
                     {showSaveSuccess && (
                       <div className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
                         <CheckCircle className="h-3 w-3" />
-                        <span>Saved!</span>
+                        <span className="hidden xs:inline">Saved!</span>
                       </div>
                     )}
                   </div>
                   
                   {/* Action buttons */}
-                  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                  <div className="flex flex-row gap-2 w-full sm:w-auto order-1 sm:order-2">
                     <Button
                       onClick={() => {
                         setShowMoveDialog(true);
@@ -764,32 +767,32 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
                       disabled={false} // Temporarily enable for debugging
                       variant="outline"
                       size="sm"
-                      className="flex items-center gap-2 w-full sm:w-auto justify-center min-w-[140px]"
+                      className="flex items-center gap-1.5 flex-1 sm:flex-initial sm:w-auto justify-center text-xs sm:text-sm px-2 sm:px-3"
                     >
-                      <Save className="h-4 w-4" />
-                      <span className="hidden sm:inline">Move to My Space</span>
-                      <span className="sm:hidden">Move to Space</span>
-                      {!user && <span className="text-xs">(No User)</span>}
+                      <Save className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                      <span className="hidden sm:inline whitespace-nowrap">Move to My Space</span>
+                      <span className="sm:hidden whitespace-nowrap">Move</span>
+                      {!user && <span className="text-xs hidden md:inline">(No User)</span>}
                     </Button>
                     <Button
                       onClick={downloadAsPDF}
                       disabled={isDownloading}
                       variant="outline"
                       size="sm"
-                      className="flex items-center gap-2 w-full sm:w-auto justify-center min-w-[120px]"
+                      className="flex items-center gap-1.5 flex-1 sm:flex-initial sm:w-auto justify-center text-xs sm:text-sm px-2 sm:px-3"
                     >
                       {isDownloading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin flex-shrink-0" />
                       ) : (
-                        <Download className="h-4 w-4" />
+                        <Download className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
                       )}
-                      {isDownloading ? 'Generating...' : 'Download'}
+                      <span className="whitespace-nowrap">{isDownloading ? 'Generating...' : 'Download'}</span>
                     </Button>
                   </div>
                 </div>
               </DialogHeader>
               
-              <ScrollArea className="flex-1 p-3 sm:p-6 bg-background min-h-0 scroll-smooth overscroll-behavior-contain scroll-behavior-smooth">
+              <ScrollArea className="flex-1 p-2 sm:p-3 md:p-6 bg-background min-h-0 scroll-smooth overscroll-contain">
                 <DndContext
                   sensors={sensors}
                   collisionDetection={closestCenter}
@@ -801,7 +804,7 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
                   >
                     <AnimatePresence>
                       <motion.div
-                        className="space-y-2 pt-4 pb-4"
+                        className="space-y-2 sm:space-y-3 pt-2 pb-2 sm:pt-4 sm:pb-4"
                         variants={listVariants}
                         initial="hidden"
                         animate="visible"
@@ -830,22 +833,22 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
                 </DndContext>
               </ScrollArea>
               
-              <div className="p-4 sm:p-6 border-t border-border bg-sidebar flex-shrink-0">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-sm gap-3">
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1">
-                      <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-                      <span className="text-sidebar-foreground font-medium">
+              <div className="p-2 sm:p-3 md:p-6 border-t border-border bg-sidebar flex-shrink-0">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center text-xs sm:text-sm gap-2">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 w-full sm:w-auto">
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                      <span className="text-sidebar-foreground font-medium text-xs sm:text-sm">
                         {todoList.items.filter(item => item.completed).length} of {todoList.items.length} completed
                       </span>
                     </div>
-                    <div className="h-1 w-1 rounded-full bg-sidebar-foreground/30" />
-                    <span className="text-sidebar-foreground/70">
+                    <div className="hidden sm:block h-1 w-1 rounded-full bg-sidebar-foreground/30" />
+                    <span className="text-sidebar-foreground/70 text-xs sm:text-sm">
                       {Math.round((todoList.items.filter(item => item.completed).length / todoList.items.length) * 100)}% done
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 text-sidebar-foreground/60">
-                    <span className="text-xs">Created</span>
+                  <div className="flex items-center gap-1.5 text-sidebar-foreground/60 text-xs">
+                    <span>Created</span>
                     <span className="text-sidebar-foreground font-medium">
                       {new Date(todoList.createdAt).toLocaleDateString()}
                     </span>

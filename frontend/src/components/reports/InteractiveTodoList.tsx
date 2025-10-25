@@ -111,44 +111,44 @@ const SortableTodoItem: React.FC<{
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className={`group relative bg-card border border-border rounded-lg p-4 mb-3 transition-all duration-200 hover:shadow-md ${
+      className={`group relative bg-card border border-border rounded-lg p-2.5 sm:p-3 md:p-4 mb-2 sm:mb-3 transition-all duration-200 hover:shadow-md ${
         item.completed ? 'opacity-75' : ''
       }`}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-2 sm:gap-3">
         {/* Drag Handle */}
         <div
           {...attributes}
           {...listeners}
-          className="cursor-grab active:cursor-grabbing p-1 hover:bg-sidebar-accent rounded"
+          className="cursor-grab active:cursor-grabbing p-0.5 sm:p-1 hover:bg-sidebar-accent rounded touch-none flex-shrink-0"
         >
-          <GripVertical className="h-4 w-4 text-sidebar-foreground" />
+          <GripVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-sidebar-foreground" />
         </div>
 
         {/* Checkbox */}
         <button
           onClick={() => onToggle(item.id)}
-          className="mt-1 flex-shrink-0"
+          className="mt-0.5 sm:mt-1 flex-shrink-0 touch-manipulation"
         >
           {item.completed ? (
-            <CheckSquare className="h-5 w-5 text-green-600" />
+            <CheckSquare className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
           ) : (
-            <Square className="h-5 w-5 text-sidebar-foreground hover:text-green-600" />
+            <Square className="h-4 w-4 sm:h-5 sm:w-5 text-sidebar-foreground hover:text-green-600" />
           )}
         </button>
 
         {/* Content */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 overflow-hidden">
           <div className="flex items-start justify-between gap-2">
-            <div className="flex-1">
-              <h4 className={`font-medium text-sm leading-relaxed ${
+            <div className="flex-1 min-w-0">
+              <h4 className={`font-medium text-xs sm:text-sm leading-relaxed break-words ${
                 item.completed ? 'line-through text-muted-foreground' : ''
               }`}>
-                <span className="mr-2">{item.emoji}</span>
+                <span className="mr-1.5 sm:mr-2">{item.emoji}</span>
                 {item.task}
               </h4>
               {item.description && (
-                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 leading-relaxed break-words">
                   {item.description}
                 </p>
               )}
@@ -156,27 +156,27 @@ const SortableTodoItem: React.FC<{
           </div>
 
           {/* Badges */}
-          <div className="flex flex-wrap gap-1 mt-2">
+          <div className="flex flex-wrap gap-1 mt-1.5 sm:mt-2">
             <Badge 
               variant="secondary" 
-              className={`text-xs ${getPriorityColor(item.priority)}`}
+              className={`text-[10px] sm:text-xs px-1.5 py-0.5 ${getPriorityColor(item.priority)}`}
             >
               {item.priority.toUpperCase()}
             </Badge>
             <Badge 
               variant="secondary" 
-              className={`text-xs ${getRiskColor(item.riskLevel)}`}
+              className={`text-[10px] sm:text-xs px-1.5 py-0.5 ${getRiskColor(item.riskLevel)}`}
             >
               {item.riskLevel.toUpperCase()}
             </Badge>
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 py-0.5">
               CVSS {item.cvssScore.toFixed(1)}
             </Badge>
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 py-0.5">
               {item.category}
             </Badge>
             {item.cveIds.length > 0 && (
-              <Badge variant="destructive" className="text-xs">
+              <Badge variant="destructive" className="text-[10px] sm:text-xs px-1.5 py-0.5">
                 {item.cveIds.length} CVE{item.cveIds.length > 1 ? 's' : ''}
               </Badge>
             )}
@@ -184,8 +184,8 @@ const SortableTodoItem: React.FC<{
 
           {/* CVE IDs */}
           {item.cveIds.length > 0 && (
-            <div className="mt-2">
-              <p className="text-xs text-muted-foreground">
+            <div className="mt-1.5 sm:mt-2">
+              <p className="text-[10px] sm:text-xs text-muted-foreground break-words">
                 <strong>CVE IDs:</strong> {item.cveIds.join(', ')}
               </p>
             </div>
@@ -194,7 +194,7 @@ const SortableTodoItem: React.FC<{
           {/* Affected Systems */}
           {item.affectedSystems.length > 0 && (
             <div className="mt-1">
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[10px] sm:text-xs text-muted-foreground break-words">
                 <strong>Affected Systems:</strong> {item.affectedSystems.join(', ')}
               </p>
             </div>
@@ -382,23 +382,23 @@ export const InteractiveTodoList: React.FC<InteractiveTodoListProps> = ({
   const completionPercentage = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-4xl mx-auto p-3 sm:p-4 md:p-6">
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground mb-2">
+      <div className="mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4 mb-4">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground mb-2 break-words">
               {todoList.title}
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground break-words">
               {todoList.description}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-row sm:flex-col md:flex-row gap-2 items-center sm:items-end md:items-center flex-shrink-0">
             {isSaving && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Saving...
+              <div className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin flex-shrink-0" />
+                <span className="hidden xs:inline">Saving...</span>
               </div>
             )}
             <Button
@@ -406,26 +406,27 @@ export const InteractiveTodoList: React.FC<InteractiveTodoListProps> = ({
               disabled={isDownloading}
               variant="outline"
               size="sm"
-              className="flex items-center gap-2"
+              className="flex items-center gap-1.5 text-xs sm:text-sm px-2 sm:px-3 whitespace-nowrap"
             >
               {isDownloading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin flex-shrink-0" />
               ) : (
-                <FileText className="h-4 w-4" />
+                <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
               )}
-              {isDownloading ? 'Downloading...' : 'Download Markdown'}
+              <span className="hidden xs:inline">{isDownloading ? 'Downloading...' : 'Download Markdown'}</span>
+              <span className="xs:hidden">{isDownloading ? 'Downloading...' : 'Download'}</span>
             </Button>
           </div>
         </div>
 
         {/* Progress Bar */}
-        <div className="w-full bg-secondary rounded-full h-2 mb-2">
+        <div className="w-full bg-secondary rounded-full h-1.5 sm:h-2 mb-2">
           <div
-            className="bg-green-600 h-2 rounded-full transition-all duration-300"
+            className="bg-green-600 h-1.5 sm:h-2 rounded-full transition-all duration-300"
             style={{ width: `${completionPercentage}%` }}
           />
         </div>
-        <div className="flex justify-between text-sm text-muted-foreground">
+        <div className="flex flex-col xs:flex-row justify-between gap-1 xs:gap-2 text-xs sm:text-sm text-muted-foreground">
           <span>{completedCount} of {totalCount} tasks completed</span>
           <span>{completionPercentage}% complete</span>
         </div>
@@ -442,7 +443,7 @@ export const InteractiveTodoList: React.FC<InteractiveTodoListProps> = ({
             items={todoList.items.map(item => item.id)}
             strategy={verticalListSortingStrategy}
           >
-            <ScrollArea className="h-[60vh] pr-4">
+            <ScrollArea className="h-[50vh] sm:h-[55vh] md:h-[60vh] pr-2 sm:pr-4">
               <AnimatePresence>
                 {todoList.items.map((item) => (
                   <SortableTodoItem

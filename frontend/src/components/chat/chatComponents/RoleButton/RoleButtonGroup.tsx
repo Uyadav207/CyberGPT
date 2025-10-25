@@ -28,11 +28,11 @@ import React from "react"; // Added missing import for React
 import { motion } from "framer-motion";
 
 const iconMap = {
-	GlassesIcon: <GlassesIcon size={16} className="mr-1 text-[#5E5E5D]" />,
-	Search: <Search size={16} className="mr-1 text-[#5E5E5D]" />,
-	Globe: <Globe size={16} className="mr-1 text-[#5E5E5D]" />,
-	MoreHorizontal: <MoreHorizontal size={16} className="text-[#5E5E5D]" />,
-	ArrowUp: <ArrowUp size={18} className="text-[#5E5E5D]" />,
+	GlassesIcon: <GlassesIcon size={14} className="mr-0.5 sm:mr-1 text-[#5E5E5D] w-3.5 h-3.5 sm:w-4 sm:h-4" />,
+	Search: <Search size={14} className="mr-0.5 sm:mr-1 text-[#5E5E5D] w-3.5 h-3.5 sm:w-4 sm:h-4" />,
+	Globe: <Globe size={14} className="mr-0.5 sm:mr-1 text-[#5E5E5D] w-3.5 h-3.5 sm:w-4 sm:h-4" />,
+	MoreHorizontal: <MoreHorizontal size={14} className="text-[#5E5E5D] w-3.5 h-3.5 sm:w-4 sm:h-4" />,
+	ArrowUp: <ArrowUp size={16} className="text-[#5E5E5D] w-4 h-4 sm:w-5 sm:h-5" />,
 };
 
 interface RoleButtonGroupProps {
@@ -62,15 +62,15 @@ export default function RoleButtonGroup({
 
 	return (
 		<TooltipProvider>
-			<div className="flex justify-between items-center mt-3 flex-wrap">
+			<div className="flex justify-between items-center mt-2 sm:mt-3 flex-wrap gap-2">
 				{/* Left Group - Agent Personality Buttons */}
-				<div className="flex space-x-2">
+				<div className="flex space-x-1 sm:space-x-2 flex-wrap gap-y-1">
 					{leftButtons.map(({ label, icon, tooltip }) => {
 						const agentMode = label.toLowerCase() as 'tutor' | 'investigator' | 'analyst';
 						const isSelected = selectedAgentMode === agentMode;
 						// Update iconElement logic to use text-white dark:text-black for selected, text-muted-foreground otherwise
 						const iconElement = React.cloneElement(iconMap[icon], {
-							className: isSelected ? 'mr-1 text-white dark:text-black' : 'mr-1 text-muted-foreground'
+							className: isSelected ? 'mr-0.5 sm:mr-1 text-white dark:text-black w-3.5 h-3.5 sm:w-4 sm:h-4' : 'mr-0.5 sm:mr-1 text-muted-foreground w-3.5 h-3.5 sm:w-4 sm:h-4'
 						});
 						return (
 							<Tooltip key={label}>
@@ -78,7 +78,7 @@ export default function RoleButtonGroup({
 									<button
 										onClick={() => !agentButtonsDisabled && onAgentModeChange(isSelected ? undefined : agentMode)}
 										disabled={agentButtonsDisabled}
-										className={`flex items-center space-x-1 px-3 py-1 rounded-full border transition-all duration-200 font-medium focus:outline-none focus:ring-2 focus:ring-black/30 focus:z-10
+										className={`flex items-center space-x-0.5 sm:space-x-1 px-2 py-1 sm:px-3 sm:py-1 rounded-full border transition-all duration-200 font-medium focus:outline-none focus:ring-2 focus:ring-black/30 focus:z-10 touch-manipulation
   ${isSelected
     ? 'border-sidebar-border bg-black text-white dark:bg-white dark:text-black font-bold'
     : 'border-sidebar-border text-muted-foreground hover:bg-accent/60'}
@@ -86,7 +86,7 @@ export default function RoleButtonGroup({
 `}
 									>
 										{iconElement}
-										<span className="text-sm">{label}</span>
+										<span className="text-xs sm:text-sm whitespace-nowrap">{label}</span>
 									</button>
 								</TooltipTrigger>
 								<TooltipContent>
@@ -98,7 +98,7 @@ export default function RoleButtonGroup({
 				</div>
 
 				{/* Right Group */}
-				<div className="flex items-center space-x-2 mt-2 sm:mt-0">
+				<div className="flex items-center space-x-1 sm:space-x-2 mt-0">
 					{rightButtons.map(({ label, icon, tooltip }) => {
 						// Special handling for MoreHorizontal icon - add dropdown
 						if (icon === "MoreHorizontal") {
@@ -108,7 +108,7 @@ export default function RoleButtonGroup({
 										<TooltipTrigger asChild>
 											<DropdownMenuTrigger asChild>
 												{/* biome-ignore lint/a11y/useButtonType: <explanation> */}
-												<button className="w-10 h-10 p-2 rounded-full border border-sidebar-border text-muted-foreground bg-transparent flex items-center justify-center">
+												<button className="w-8 h-8 sm:w-10 sm:h-10 p-1.5 sm:p-2 rounded-full border border-sidebar-border text-muted-foreground bg-transparent flex items-center justify-center touch-manipulation">
 													{iconMap[icon]}
 												</button>
 											</DropdownMenuTrigger>
@@ -152,8 +152,8 @@ export default function RoleButtonGroup({
 										disabled={icon === "ArrowUp" ? false : agentButtonsDisabled}
                                         className={
                                             icon === "ArrowUp"
-                                                ? "w-10 h-10 p-2 rounded-full flex items-center justify-center transition-all duration-200 bg-black text-white dark:bg-white dark:text-black"
-                                                : "border p-2 rounded-full border-sidebar-border text-muted-foreground hover:text-sidebar-foreground"
+                                                ? "w-8 h-8 sm:w-10 sm:h-10 p-1.5 sm:p-2 rounded-full flex items-center justify-center transition-all duration-200 bg-black text-white dark:bg-white dark:text-black touch-manipulation"
+                                                : "border p-1.5 sm:p-2 rounded-full border-sidebar-border text-muted-foreground hover:text-sidebar-foreground touch-manipulation"
                                         }
 									>
                                         {icon === "ArrowUp"
@@ -161,17 +161,17 @@ export default function RoleButtonGroup({
                                                 <motion.span
                                                     whileHover={{ scale: 1.25 }}
                                                     transition={{ duration: 0.2 }}
-                                                    className="w-6 h-6 flex items-center justify-center"
+                                                    className="w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center"
                                                 >
                                                     {React.cloneElement(iconMap[icon], {
-                                                        className: "text-white dark:text-black w-5 h-5"
+                                                        className: "text-white dark:text-black w-4 h-4 sm:w-5 sm:h-5"
                                                     })}
                                                 </motion.span>
                                             )
                                             : (
                                                 <>
                                                     {iconMap[icon]}
-                                                    <span className="text-sm">{label}</span>
+                                                    <span className="text-xs sm:text-sm">{label}</span>
                                                 </>
                                             )
                                         }

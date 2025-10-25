@@ -206,17 +206,17 @@ export default function ChatHistory({ onOpenSearch }: NavChatHistoryProps) {
 					<TooltipTrigger asChild>
 						<button
 							onClick={onOpenSearch}
-							className="flex items-center justify-between w-full bg-sidebar text-sidebar-foreground hover:bg-accent/60 rounded-none px-4 py-2 border-b border-sidebar-border transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40"
+							className="flex items-center justify-between w-full bg-sidebar text-sidebar-foreground hover:bg-accent/60 rounded-none px-2 xs:px-3 sm:px-4 py-1.5 xs:py-2 border-b border-sidebar-border transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40 touch-manipulation"
 							title="Search"
 							style={{ borderTopLeftRadius: 0, borderTopRightRadius: 0 }}
 						>
-							<span className="flex items-center gap-2 text-sm font-medium">
-								<Search className="h-5 w-5 mr-1 text-muted-foreground" />
-								<span>Search</span>
+							<span className="flex items-center gap-1 xs:gap-1.5 sm:gap-2 text-xs xs:text-sm font-medium min-w-0">
+								<Search className="h-4 w-4 xs:h-4.5 xs:w-4.5 sm:h-5 sm:w-5 mr-0.5 xs:mr-1 text-muted-foreground flex-shrink-0" />
+								<span className="truncate">Search</span>
 							</span>
-							<span className="flex items-center gap-1">
-								<span className="inline-flex items-center justify-center w-6 h-6 rounded bg-muted text-xs font-semibold text-muted-foreground border border-sidebar-border">⌘</span>
-								<span className="inline-flex items-center justify-center w-6 h-6 rounded bg-muted text-xs font-semibold text-muted-foreground border border-sidebar-border">S</span>
+							<span className="hidden xs:flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
+								<span className="inline-flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded bg-muted text-[10px] sm:text-xs font-semibold text-muted-foreground border border-sidebar-border">⌘</span>
+								<span className="inline-flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded bg-muted text-[10px] sm:text-xs font-semibold text-muted-foreground border border-sidebar-border">S</span>
 							</span>
 						</button>
 					</TooltipTrigger>
