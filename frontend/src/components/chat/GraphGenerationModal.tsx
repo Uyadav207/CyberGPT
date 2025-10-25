@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, Network, GitBranch, Link, Sparkles, CheckCircle } from 'lucide-react';
+import { Loader2, Network, GitBranch, Sparkles, CheckCircle } from 'lucide-react';
 
 interface GraphGenerationModalProps {
   isOpen: boolean;

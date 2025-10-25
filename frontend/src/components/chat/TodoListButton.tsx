@@ -35,7 +35,7 @@ import TodoListGenerationModal from './TodoListGenerationModal';
 import { useTodoListGenerationModal } from '../../hooks/useTodoListGenerationModal';
 import useStore from '../../store/store';
 
-interface TodoItem {
+export interface TodoItem {
   id: string;
   task: string;
   priority: 'high' | 'medium' | 'low';
@@ -50,12 +50,13 @@ interface TodoItem {
   emoji?: string;
 }
 
-interface TodoList {
+export interface TodoList {
   id: string;
   title: string;
   description: string;
   items: TodoItem[];
   createdAt: number; // Timestamp from database
+  lastModified?: number; // Optional timestamp for last modification
   // Note: messageId and chatId are stored separately as _messageId and _chatId
   // to avoid schema validation errors in Convex
 }

@@ -3,6 +3,11 @@ import supabase from "../../config/supabase";
 const bucketName = "avatars";
 export async function uploadImageAndGetUrl(file: File): Promise<string | null> {
 	try {
+		if (!supabase) {
+			console.error("Supabase client not configured");
+			return null;
+		}
+		
 		const fileName = `${Date.now()}-${file.name}`;
 
 		// Upload the image to the specified bucket

@@ -4,12 +4,7 @@ import {
   CheckSquare, 
   Square, 
   GripVertical, 
-  Save, 
-  AlertTriangle, 
-  Shield, 
-  CheckCircle,
   Loader2,
-  Download,
   FileText
 } from 'lucide-react';
 import { Button } from '../ui/button';
@@ -213,7 +208,7 @@ const SortableTodoItem: React.FC<{
 export const InteractiveTodoList: React.FC<InteractiveTodoListProps> = ({
   reportId,
   todoListData,
-  markdownContent,
+  markdownContent: _markdownContent,
   onUpdate,
   chatId,
   messageId

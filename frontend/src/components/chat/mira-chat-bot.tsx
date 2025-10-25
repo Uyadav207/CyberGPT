@@ -26,11 +26,10 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
 //apis
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { chatApis, generateTitleAndTag } from "../../api/chat";
+import { chatApis } from "../../api/chat";
 import { chatWithJargon } from '../../api/chat';
 import { BASE_URL } from '../../api/config.backend';
 import type { Id } from "../../convex/_generated/dataModel";
-import convexClient from "../../lib/convexClient";
 
 //store
 import useStore from "../../store/store";
@@ -272,7 +271,7 @@ const MiraChatBot: React.FC = () => {
 	const [agentButtonsDisabled, setAgentButtonsDisabled] = useState(false);
 
 	// Graph Generation Modal State
-	const { modalState, openModal, closeModal, isModalOpen } = useGraphGenerationModal();
+	const { closeModal, isModalOpen } = useGraphGenerationModal();
 
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
 	const { chatId: chatIdParam } = useParams<{ chatId: string }>();
@@ -353,7 +352,7 @@ const MiraChatBot: React.FC = () => {
 	const [processedRelatedQuestions, setProcessedRelatedQuestions] = useState<Set<string>>(new Set());
 	
 	// Force re-render trigger for related questions
-	const [relatedQuestionsUpdateTrigger, setRelatedQuestionsUpdateTrigger] = useState(0);
+	// Removed unused: const [relatedQuestionsUpdateTrigger, setRelatedQuestionsUpdateTrigger] = useState(0);
 	
 	// Add state to track when a related question is being processed
 	const [relatedQuestionFlag, setRelatedQuestionFlag] = useState<boolean>(false);
@@ -474,9 +473,7 @@ const MiraChatBot: React.FC = () => {
 							console.log('[Related Questions] Updated relatedQuestions state:', newState);
 							return newState;
 						});
-						// Force re-render to ensure questions are displayed immediately
-						setRelatedQuestionsUpdateTrigger(prev => prev + 1);
-						console.log('[Related Questions] 🔄 Triggered re-render for related questions');
+						console.log('[Related Questions] ✅ Related questions state updated');
 					} else {
 						console.log('[Related Questions] ⚠️ No questions generated');
 					}
@@ -1003,9 +1000,8 @@ const MiraChatBot: React.FC = () => {
 					console.log('[Related Questions] ✅ Successfully generated questions immediately:', generatedQuestions);
 					setRelatedQuestions(prev => ({
 						...prev,
-						[botMessage.id]: generatedQuestions
+						[String(botMessage.id)]: generatedQuestions
 					}));
-					setRelatedQuestionsUpdateTrigger(prev => prev + 1);
 				}
 			}).catch(error => {
 				console.error('[Related Questions] ❌ Failed to generate questions immediately:', error);
@@ -1424,9 +1420,8 @@ const MiraChatBot: React.FC = () => {
 						console.log('[Related Questions] ✅ Successfully generated questions immediately (clarification):', generatedQuestions);
 						setRelatedQuestions(prev => ({
 							...prev,
-							[botMessage.id]: generatedQuestions
+							[String(botMessage.id)]: generatedQuestions
 						}));
-						setRelatedQuestionsUpdateTrigger(prev => prev + 1);
 					}
 				}).catch(error => {
 					console.error('[Related Questions] ❌ Failed to generate questions immediately (clarification):', error);
@@ -1751,9 +1746,8 @@ const MiraChatBot: React.FC = () => {
 						console.log('[Related Questions] ✅ Successfully generated questions immediately (main flow):', generatedQuestions);
 						setRelatedQuestions(prev => ({
 							...prev,
-							[botMessage.id]: generatedQuestions
+							[String(botMessage.id)]: generatedQuestions
 						}));
-						setRelatedQuestionsUpdateTrigger(prev => prev + 1);
 					}
 				}).catch(error => {
 					console.error('[Related Questions] ❌ Failed to generate questions immediately (main flow):', error);
@@ -4099,7 +4093,7 @@ const MiraChatBot: React.FC = () => {
                                                                                 }}
                                                                                 className="px-2 py-1 rounded-full bg-blue-100 text-blue-800 text-[10px] font-medium whitespace-nowrap shadow-sm hover:bg-blue-200 transition-colors duration-200"
                                                                             >
-                                                                                #{tag.replace(/_/g, '').replace(/([A-Z])/g, (match, p1, offset) => offset > 0 ? p1 : p1).toLowerCase()}
+                                                                                #{tag.replace(/_/g, '').replace(/([A-Z])/g, (_match, p1, offset) => offset > 0 ? p1 : p1).toLowerCase()}
                                                                             </motion.span>
                                                                         ))}
                                                                     </div>

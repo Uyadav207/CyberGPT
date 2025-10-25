@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Shield, AlertTriangle, CheckCircle, Info, ExternalLink, Clock, Zap } from 'lucide-react';
+import { Shield, AlertTriangle, CheckCircle, Info, Clock, Zap } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
-import type { DASTScanResult, Vulnerability } from '../../types/dastScan';
+import type { DASTScanResult } from '../../types/dastScan';
 
 interface DastScanResultsProps {
   scanResult: DASTScanResult;

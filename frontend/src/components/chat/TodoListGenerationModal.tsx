@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, ListTodo, CheckSquare, Target, Shield, Sparkles, CheckCircle, Brain, Zap } from 'lucide-react';
+import { ListTodo, Sparkles, CheckCircle, Brain } from 'lucide-react';
 
 interface TodoListGenerationModalProps {
   isOpen: boolean;

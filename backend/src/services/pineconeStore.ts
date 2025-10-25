@@ -4,57 +4,71 @@ import { OpenAIEmbeddings } from "@langchain/openai";
 import type { Document } from "langchain/document";
 
 export class PineconeService {
-	private static instance: PineconeService;
+	private static instance: PineconeService | null = null;
 	private store!: PineconeStore;
+	private initialized: boolean = false;
 	listNodeNames: any;
 
 	private constructor() {
-		this.initPinecone();
+		// Don't initialize in constructor
 	}
 
 	private async initPinecone() {
+		const pineconeApiKey = process.env.PINECONE_API_KEY;
+		const pineconeIndex = process.env.PINECONE_INDEX;
+		const openaiApiKey = process.env.OPENAI_API_KEY;
+
+		if (!pineconeApiKey || !pineconeIndex || !openaiApiKey) {
+			console.warn("Pinecone configuration missing. Pinecone features will be disabled.");
+			this.initialized = false;
+			return;
+		}
+
 		const pinecone = new Pinecone({
-			apiKey:
-				process.env.PINECONE_API_KEY ||
-				(() => {
-					throw new Error("PINECONE_API_KEY is not defined");
-				})(),
+			apiKey: pineconeApiKey,
 		});
 
 		const embeddings = new OpenAIEmbeddings({
-			openAIApiKey: process.env.OPENAI_API_KEY,
+			openAIApiKey: openaiApiKey,
 			modelName: "text-embedding-3-small",
 		});
 
-		const pineconeIndex = process.env.PINECONE_INDEX;
-		if (!pineconeIndex) {
-			throw new Error("PINECONE_INDEX is not defined");
-		}
 		const index = pinecone.Index(pineconeIndex);
 
 		this.store = await PineconeStore.fromExistingIndex(embeddings, {
 			pineconeIndex: index,
 			namespace: "ns1",
 		});
+		
+		this.initialized = true;
 	}
 
-	public static async getInstance(): Promise<PineconeService> {
+	public static async getInstance(): Promise<PineconeService | null> {
 		if (!PineconeService.instance) {
 			PineconeService.instance = new PineconeService();
 			await PineconeService.instance.initPinecone();
 		}
-		return PineconeService.instance;
+		return PineconeService.instance.initialized ? PineconeService.instance : null;
 	}
 
 	async addDocuments(documents: Document[]): Promise<void> {
+		if (!this.initialized) {
+			throw new Error("Pinecone not configured");
+		}
 		await this.store.addDocuments(documents);
 	}
 
 	async similaritySearchBasedQuery(query: string, k = 5): Promise<Document[]> {
+		if (!this.initialized) {
+			throw new Error("Pinecone not configured");
+		}
 		return this.store.similaritySearch(query, k);
 	}
 
 	async similaritySearch(query: string, k = 5): Promise<Document[]> {
+		if (!this.initialized) {
+			throw new Error("Pinecone not configured");
+		}
 		const cveMatch = query.match(/CVE-\d{4}-\d+/i);
 
 		if (cveMatch) {
@@ -94,6 +108,9 @@ export class PineconeService {
 	}
 
 	async getLatestCVEs(): Promise<Document[]> {
+		if (!this.initialized) {
+			throw new Error("Pinecone not configured");
+		}
 		const results = await this.store.similaritySearch("", 100, {
 			metadata: {},
 		});
@@ -121,6 +138,9 @@ export class PineconeService {
 
 	// Fetch a document by its canonical concept name (node name)
 	async getDocumentByConceptName(conceptName: string): Promise<Document | null> {
+		if (!this.initialized) {
+			throw new Error("Pinecone not configured");
+		}
 		const results = await this.store.similaritySearch(conceptName, 100);
 		console.log(`[PineconeService] Fallback search for concept: ${conceptName}`);
 		results.forEach((doc, idx) => {

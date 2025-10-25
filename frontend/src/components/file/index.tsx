@@ -117,7 +117,7 @@ export function FileView() {
 								markdownContent={file.markdownContent}
 								chatId={file.chatId}
 								messageId={file.messageId}
-								onUpdate={(updatedTodoList, updatedMarkdown) => {
+								onUpdate={(_updatedTodoList, _updatedMarkdown) => {
 									// The InteractiveTodoList component handles auto-saving
 								}}
 							/>

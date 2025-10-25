@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Folder, Plus, Save } from 'lucide-react';
 import { useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import type { TodoList } from './TodoListButton';
+import type { TodoList, TodoItem } from './TodoListButton';
 import { showSuccessToast, showErrorToast } from '../toaster';
 
 interface Folder {
@@ -127,7 +127,7 @@ export function MoveTodoToSpaceDialog({
   };
 
   const generateMarkdownContent = (todoList: TodoList, title: string): string => {
-    const completedCount = todoList.items.filter(item => item.completed).length;
+    const completedCount = todoList.items.filter((item: TodoItem) => item.completed).length;
     const totalCount = todoList.items.length;
     const progressPercentage = Math.round((completedCount / totalCount) * 100);
 
@@ -142,7 +142,7 @@ export function MoveTodoToSpaceDialog({
 
     markdown += `## Action Items\n\n`;
 
-    todoList.items.forEach((item, index) => {
+    todoList.items.forEach((item: TodoItem, index: number) => {
       const status = item.completed ? '✅' : '⏳';
       const priority = item.priority === 'high' ? '🔴' : item.priority === 'medium' ? '🟡' : '🟢';
       const risk = item.riskLevel === 'critical' ? '🚨' : item.riskLevel === 'high' ? '⚠️' : item.riskLevel === 'medium' ? '⚡' : 'ℹ️';
@@ -259,7 +259,7 @@ export function MoveTodoToSpaceDialog({
               <div className="p-3 bg-muted rounded-md text-sm">
                 <div className="font-medium">{todoListName || 'Untitled TODO List'}</div>
                 <div className="text-muted-foreground">
-                  {todoList.items.length} tasks • {todoList.items.filter(item => item.completed).length} completed
+                  {todoList.items.length} tasks • {todoList.items.filter((item: TodoItem) => item.completed).length} completed
                 </div>
                 <div className="text-muted-foreground">
                   Folder: {showNewFolderInput ? newFolderName || 'New Folder' : folders.find(f => f.id === selectedFolderId)?.name || 'Select folder'}

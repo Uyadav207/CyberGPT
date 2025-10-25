@@ -1,8 +1,6 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import rehypeRaw from 'rehype-raw';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip";
 import "../file/MarkdownViewer.css";
@@ -101,15 +99,14 @@ const MarkdownViewer = ({ content, isUser = false }: MarkdownViewerProps) => {
 
   // Debug logging for code block detection
   useEffect(() => {
-    const codeBlockCount = (content.match(/```/g) || []).length / 2;
-    const jargonSyntaxCount = (content.match(/\[JARGON_HIGHLIGHT:/g) || []).length;}, [content]);
+    // Debug logging removed - keeping useEffect for potential future use
+  }, [content]);
 
   return (
     <div className={`prose text-sm ${isUser ? 'prose-invert' : 'prose-gray'} max-w-none prose-pre:my-0 prose-pre:rounded-md prose-headings:mb-3 prose-headings:mt-4 prose-p:mb-3 prose-p:leading-relaxed prose-li:my-0 prose-li:leading-relaxed prose-h1:mb-4 prose-h2:mb-3 prose-h3:mb-2 overflow-x-hidden break-words hyphens-auto w-full prose-p:break-words prose-li:break-words`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw]}
-        children={processedContent}
         skipHtml={false}
         components={{
           // Custom pre component to handle code blocks properly
@@ -229,7 +226,7 @@ const MarkdownViewer = ({ content, isUser = false }: MarkdownViewerProps) => {
           }
         }}
       >
-        {content}
+        {processedContent}
       </ReactMarkdown>
     </div>
   );

@@ -13,7 +13,7 @@ interface QueryResponse {
 }
 
 export class RAGController {
-	private pinecone!: PineconeService;
+	private pinecone: PineconeService | null = null;
 	private openai = OpenAIService.getInstance();
 
 	constructor() {
@@ -22,10 +22,17 @@ export class RAGController {
 
 	private async init() {
 		this.pinecone = await PineconeService.getInstance();
+		if (!this.pinecone) {
+			console.warn("Pinecone not configured, RAG features will be limited");
+		}
 	}
 
 	async loadDocuments(c: Context) {
 		try {
+			if (!this.pinecone) {
+				return c.json({ error: "Pinecone not configured" }, 503);
+			}
+			
 			const body = await c.req.json();
 			const documents = body.documents.map(
 				(doc: CVEDocument) =>
@@ -47,6 +54,10 @@ export class RAGController {
 
 	async getDocuments(c: Context) {
 		try {
+			if (!this.pinecone) {
+				return c.json({ error: "Pinecone not configured" }, 503);
+			}
+			
 			const response = await this.pinecone.getLatestCVEs();
 			const cveid = response.map((cve) => cve.metadata.id);
 
@@ -75,12 +86,16 @@ export class RAGController {
 				);
 			}
 
-			// Use LLM to extract canonical concept
-			const canonicalConcept = await this.openai.getCanonicalConcept(question);
-			console.log("[RAGController] User question:", question);
-			console.log("[RAGController] Canonical concept from LLM:", canonicalConcept);
+		// Use LLM to extract canonical concept
+		const canonicalConcept = await this.openai.getCanonicalConcept(question);
+		console.log("[RAGController] User question:", question);
+		console.log("[RAGController] Canonical concept from LLM:", canonicalConcept);
 
-			let docs: Document[] = await this.pinecone.similaritySearchBasedQuery(canonicalConcept);
+		if (!this.pinecone) {
+			return c.json({ error: "Pinecone not configured" }, 503);
+		}
+
+		let docs: Document[] = await this.pinecone.similaritySearchBasedQuery(canonicalConcept);
 
 			// Log available node names in the KG (if possible)
 			let nodeNames: string[] = [];

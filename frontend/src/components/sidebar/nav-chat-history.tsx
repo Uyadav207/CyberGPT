@@ -1,16 +1,9 @@
 import { useState, useEffect } from "react";
 
 import {
-	ArrowRight,
-	ChevronRight,
 	MessageCircleDashedIcon,
-	TrendingUpDown,
 	Search,
-} from "lucide-react";
-import {
 	Folder,
-	Box,
-	ChartNetwork,
 	BotMessageSquare,
 	MoreHorizontal,
 	Trash2,
@@ -37,11 +30,6 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Chats } from "../../types/chats";
 import { SidebarMenuSub, useSidebar } from "../ui/sidebar";
-import {
-	Collapsible,
-	CollapsibleContent,
-	CollapsibleTrigger,
-} from "../ui/collapsible";
 import { showSuccessToast } from "../toaster";
 import "./customScrollbar.css";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";

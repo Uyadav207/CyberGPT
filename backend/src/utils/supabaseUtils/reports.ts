@@ -5,6 +5,11 @@ export async function uploadReportAndGetUrl(
 	file: File,
 ): Promise<string | null> {
 	try {
+		if (!supabase) {
+			console.error("Supabase client not configured");
+			return null;
+		}
+		
 		const fileName = `${Date.now()}-${file.name}`;
 
 		// Upload the image to the specified bucket
@@ -34,6 +39,10 @@ export async function uploadReportAndGetUrl(
 
 export async function downloadPdfReportFile(fileName: string): Promise<Blob> {
 	try {
+		if (!supabase) {
+			throw new Error("Supabase client not configured");
+		}
+		
 		const { data, error } = await supabase.storage
 			.from("reports")
 			.download(fileName);
@@ -49,6 +58,10 @@ export async function downloadPdfReportFile(fileName: string): Promise<Blob> {
 
 export const deletePDF = async (fileName: string) => {
 	try {
+		if (!supabase) {
+			throw new Error("Supabase client not configured");
+		}
+		
 		const { data, error } = await supabase.storage
 			.from(bucketName)
 			.remove([fileName]);
