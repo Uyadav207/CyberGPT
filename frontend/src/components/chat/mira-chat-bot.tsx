@@ -3362,13 +3362,9 @@ const MiraChatBot: React.FC = () => {
 			return data.response || "Chat";
 		} catch (error) {
 			console.error("Error generating title:", error);
-			return "Chat";
-		}
-	};
-
-	const handleActionSend = (action: string, useRAG?: boolean) => {
-		handleSend(action, useRAG);
-	};
+		return "Chat";
+	}
+};
 
 	const handleSend = async (message?: string, useRAG?: boolean, isRelatedQuestion = false) => {
 		console.log('handleSend called with:', { message, useRAG, isRelatedQuestion, input: input.trim() });
@@ -4221,14 +4217,13 @@ const MiraChatBot: React.FC = () => {
 								disabled={isLoading || !!pendingAction}
 							/>
 
-							{/* Buttons Section */}
-							<RoleButtonGroup 
-								handleActionClick={handleActionSend}
-								selectedAgentMode={selectedAgentMode}
-								onAgentModeChange={setSelectedAgentMode}
-								agentButtonsDisabled={agentButtonsDisabled}
-								handleSend={handleSend}
-							/>
+						{/* Buttons Section */}
+						<RoleButtonGroup 
+							selectedAgentMode={selectedAgentMode}
+							onAgentModeChange={setSelectedAgentMode}
+							agentButtonsDisabled={agentButtonsDisabled}
+							handleSend={handleSend}
+						/>
 						</motion.div>
 				</div>
 			</div>

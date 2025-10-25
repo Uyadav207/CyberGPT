@@ -26,7 +26,6 @@ const iconMap = {
 };
 
 interface RoleButtonGroupProps {
-	handleActionClick: (action: string, useRAG?: boolean) => void;
 	selectedAgentMode: 'tutor' | 'investigator' | 'analyst' | undefined;
 	onAgentModeChange: (mode: 'tutor' | 'investigator' | 'analyst' | undefined) => void;
 	agentButtonsDisabled: boolean;
@@ -34,7 +33,6 @@ interface RoleButtonGroupProps {
 }
 
 export default function RoleButtonGroup({
-	handleActionClick,
 	selectedAgentMode,
 	onAgentModeChange,
 	agentButtonsDisabled,

@@ -67,7 +67,7 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
   }, [propWidth, propHeight]);
 
   // Get responsive node and link sizes
-  const getNodeSize = useCallback((type: string, baseSize: number) => {
+  const getNodeSize = useCallback((baseSize: number) => {
     return isMobile ? baseSize * 0.7 : baseSize;
   }, [isMobile]);
 
@@ -182,7 +182,7 @@ const GraphVisualization: React.FC<GraphVisualizationProps> = ({
 
     // Add node circles
     nodes.append('circle')
-      .attr('r', (d) => getNodeSize(d.type, nodeConfig[d.type]?.size || 15))
+      .attr('r', (d) => getNodeSize(nodeConfig[d.type]?.size || 15))
       .attr('fill', (d) => {
         if (d.severity) {
           const severityColors = {
