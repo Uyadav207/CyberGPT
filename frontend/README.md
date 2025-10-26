@@ -1,6 +1,6 @@
-# 🎨 DenkMinds Frontend
+# 🎨 CyberGPT Frontend
 
-Modern, responsive React application for the DenkMinds cybersecurity assessment platform.
+Modern, responsive React application for the CyberGPT cybersecurity assessment platform.
 
 ## 🚀 Technology Stack
 
@@ -218,7 +218,7 @@ VITE_CONVEX_URL=https://your-deployment.convex.cloud
 VITE_STRIPE_PUBLIC_KEY=pk_test_...
 
 # Application
-VITE_APP_NAME=DenkMinds
+VITE_APP_NAME=CyberGPT
 VITE_APP_URL=http://localhost:3000
 ```
 
@@ -419,10 +419,10 @@ vercel --prod
 
 ```bash
 # Build image
-docker build -f frontend.Dockerfile -t denkminds-frontend .
+docker build -f frontend.Dockerfile -t cybergpt-frontend .
 
 # Run container
-docker run -p 3000:3000 denkminds-frontend
+docker run -p 3000:3000 cybergpt-frontend
 ```
 
 ### Static Hosting
