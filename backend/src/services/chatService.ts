@@ -18,9 +18,9 @@ interface ChatMessage {
 export class ChatService {
   private static instance: ChatService;
   private openai: OpenAIService;
-  private pinecone: PineconeService;
+  private pinecone: PineconeService | null;
 
-  constructor(openai: OpenAIService, pinecone: PineconeService) {
+  constructor(openai: OpenAIService, pinecone: PineconeService | null) {
     this.openai = openai;
     this.pinecone = pinecone;
   }
@@ -331,6 +331,11 @@ Respond in JSON format: {"title": "Your Title Here", "tag": "your_tag_here"}`;
         { role: "user", content: message },
       ];
 
+      return this.openai.chatStream(messages);
+    }
+
+    if (!this.pinecone) {
+      console.warn("Pinecone not configured, returning without RAG");
       return this.openai.chatStream(messages);
     }
 

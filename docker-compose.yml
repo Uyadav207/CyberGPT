@@ -3,10 +3,13 @@ services:
     build:
       context: .
       dockerfile: backend.Dockerfile
+      args:
+        - DATABASE_URL=${DATABASE_URL}
+        - SHADOW_DATABASE_URL=${SHADOW_DATABASE_URL}
     ports:
       - "8000:8000"
-    environment:
-      - PORT=8000
+    env_file:
+      - ./backend/.env
     restart: unless-stopped
 
   frontend:

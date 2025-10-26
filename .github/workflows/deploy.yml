@@ -1,0 +1,31 @@
+name: Deploy to EC2 Production
+
+on:
+  push:
+    branches:
+      - production  # triggers when code is pushed or merged into production
+
+jobs:
+  deploy:
+    name: Deploy on EC2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+
+      - name: SSH and Deploy to EC2
+        uses: appleboy/ssh-action@v1.1.0
+        with:
+          host: ec2-54-163-87-216.compute-1.amazonaws.com
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd knowledgeGPT
+            git fetch origin production
+            git checkout production
+            git pull origin production
+            docker system prune -af --volumes
+            docker compose down
+            docker compose build --no-cache backend
+            docker compose up -d backend

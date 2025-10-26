@@ -180,7 +180,7 @@ export default function Auth() {
 									<h2 className="text-3xl font-bold">
 										{isLoggedIn
 											? `Hey, ${user?.firstName}`
-											: "Welcome to AEVIX"}
+											: "Welcome to CyberGPT"}
 									</h2>
 									{!isLoggedIn && (
 										<p className="text-muted-foreground">

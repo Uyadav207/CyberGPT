@@ -35,12 +35,12 @@ export function Layout() {
 			<AppSidebar className="bg-gray-100" />
 			<SidebarInset>
 				<div className="flex flex-col h-screen min-h-0 overflow-hidden">
-					<header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 justify-between">
-						<div className="flex items-center gap-2 px-4">
-							<SidebarTrigger className="-ml-1" />
-							<Separator orientation="vertical" className="mr-2 h-4" />
-							<Breadcrumb>
-								<BreadcrumbList>
+					<header className="flex h-12 sm:h-14 md:h-16 shrink-0 items-center gap-1 sm:gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12 justify-between border-b border-border mb-2 sm:mb-3">
+						<div className="flex items-center gap-1 sm:gap-2 px-2 xs:px-3 sm:px-4 min-w-0 flex-1">
+							<SidebarTrigger className="-ml-1 flex-shrink-0" />
+							<Separator orientation="vertical" className="mr-1 sm:mr-2 h-3 sm:h-4 flex-shrink-0" />
+							<Breadcrumb className="min-w-0 flex-1">
+								<BreadcrumbList className="flex-wrap">
 									{pathSegments.map((segment, index) => {
 										const path = `/${pathSegments.slice(0, index + 1).join("/")}`;
 										const isLast = index === pathSegments.length - 1;
@@ -51,15 +51,15 @@ export function Layout() {
 										const displaySegment = chat ? chat.title : isHash ? "Chat" : segment.charAt(0).toUpperCase() + segment.slice(1);
 
 										return (
-											<BreadcrumbItem key={path}>
+											<BreadcrumbItem key={path} className="max-w-[150px] xs:max-w-[200px] sm:max-w-none">
 												{isLast ? (
-													<BreadcrumbPage>{displaySegment}</BreadcrumbPage>
+													<BreadcrumbPage className="text-xs xs:text-sm truncate">{displaySegment}</BreadcrumbPage>
 												) : (
-													<Link to={path} className="breadcrumb-link">
+													<Link to={path} className="breadcrumb-link text-xs xs:text-sm truncate">
 														{displaySegment}
 													</Link>
 												)}
-												{!isLast && <BreadcrumbSeparator />}
+												{!isLast && <BreadcrumbSeparator className="text-xs xs:text-sm" />}
 											</BreadcrumbItem>
 										);
 									})}
@@ -68,22 +68,22 @@ export function Layout() {
 					</div>
 					
 					{/* Dark Mode Toggle */}
-					<div className="flex items-center px-4">
+					<div className="flex items-center px-2 xs:px-3 sm:px-4 flex-shrink-0">
 						<button
 							onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-							className="p-2 rounded-lg hover:bg-accent transition-colors duration-200"
+							className="p-1.5 sm:p-2 rounded-lg hover:bg-accent transition-colors duration-200 touch-manipulation"
 							title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
 						>
 							{theme === "dark" ? (
-								<Sun className="h-5 w-5 text-foreground" />
+								<Sun className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
 							) : (
-								<Moon className="h-5 w-5 text-foreground" />
+								<Moon className="h-4 w-4 sm:h-5 sm:w-5 text-foreground" />
 							)}
 						</button>
 					</div>
 				</header>
 
-					<div className="flex-1 min-h-0 flex flex-col overflow-y-auto">
+					<div className="flex-1 min-h-0 flex flex-col overflow-y-auto pt-2 sm:pt-3">
 						<Outlet />
 					</div>
 

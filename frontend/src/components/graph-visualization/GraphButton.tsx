@@ -485,21 +485,21 @@ const GraphButton: React.FC<GraphButtonProps> = ({ message, chatId, className = 
         <TooltipTrigger asChild>
           <Button
             variant="ghost"
-            size="lg"
+            size="sm"
             onClick={toggleGraph}
             disabled={isGenerating}
-            className={`h-8 w-8 p-0 rounded-full transition-all duration-200 ${
+            className={`h-7 w-7 sm:h-8 sm:w-8 p-0 rounded-full transition-all duration-200 touch-manipulation ${
               showGraph 
                 ? 'bg-sidebar-accent text-sidebar-primary hover:bg-sidebar-accent/80' 
                 : 'hover:bg-sidebar-accent'
             }`}
           >
             {isGenerating ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Loader2 className="w-3.5 h-3.5 sm:w-5 sm:h-5 animate-spin" />
             ) : showGraph ? (
-              <EyeOff className="w-5 h-5" />
+              <EyeOff className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
             ) : (
-              <Network className="w-5 h-5" />
+              <Network className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
             )}
           </Button>
         </TooltipTrigger>
@@ -534,7 +534,7 @@ const GraphButton: React.FC<GraphButtonProps> = ({ message, chatId, className = 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm"
             onClick={(e) => {
               if (e.target === e.currentTarget) {
                 setShowGraph(false);
@@ -545,22 +545,20 @@ const GraphButton: React.FC<GraphButtonProps> = ({ message, chatId, className = 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="relative w-full max-w-6xl h-[80vh] bg-white dark:bg-gray-900 rounded-lg shadow-2xl overflow-hidden"
+              className="relative w-full h-full sm:max-w-7xl sm:h-[85vh] sm:rounded-xl bg-white dark:bg-gray-900 shadow-2xl overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Close Button */}
               <button
                 onClick={() => setShowGraph(false)}
-                className="absolute top-4 right-4 z-50 w-8 h-8 bg-gray-800/90 hover:bg-gray-700/90 text-white rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 shadow-lg"
+                className="absolute top-3 right-3 sm:top-4 sm:right-4 z-50 w-9 h-9 sm:w-10 sm:h-10 bg-gray-800/90 hover:bg-gray-700/90 text-white rounded-full flex items-center justify-center transition-all duration-200 hover:scale-110 shadow-lg touch-manipulation"
                 aria-label="Close graph visualization"
               >
-                <EyeOff className="w-4 h-4" />
+                <EyeOff className="w-5 h-5 sm:w-5 sm:h-5" />
               </button>
               
               <GraphVisualization
                 data={graphData}
-                width={800}
-                height={600}
                 className="w-full h-full"
                 onNodeClick={() => {}}
                 onLinkClick={() => {}}

@@ -8,7 +8,7 @@ import type {
 } from "../types/latestCves";
 
 export class CVESyncService {
-	private pinecone!: PineconeService;
+	private pinecone: PineconeService | null = null;
 	private readonly NIST_API_URL =
 		"https://services.nvd.nist.gov/rest/json/cves/2.0";
 	private readonly BATCH_SIZE = 100;
@@ -19,6 +19,9 @@ export class CVESyncService {
 
 	private async init() {
 		this.pinecone = await PineconeService.getInstance();
+		if (!this.pinecone) {
+			console.warn("Pinecone not configured, CVE sync will be disabled");
+		}
 	}
 
 	private isValidCVE(cve: CVEDocument): boolean {
@@ -159,12 +162,18 @@ export class CVESyncService {
 					continue;
 				}
 
-				const documents = cves
-					.map((cve) => this.formatCVEForStorage(cve))
-					.filter((doc): doc is Document => doc !== null);
+			const documents = cves
+				.map((cve) => this.formatCVEForStorage(cve))
+				.filter((doc): doc is Document => doc !== null);
 
-				console.log("Adding Documents to Pinecone:", documents);
-				await this.pinecone.addDocuments(documents);
+			console.log("Adding Documents to Pinecone:", documents);
+			
+			if (!this.pinecone) {
+				console.warn("Pinecone not configured, skipping document storage");
+				continue;
+			}
+			
+			await this.pinecone.addDocuments(documents);
 
 				totalProcessed += cves.length;
 				startIndex += this.BATCH_SIZE;
