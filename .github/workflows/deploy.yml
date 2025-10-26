@@ -25,5 +25,6 @@ jobs:
             git fetch origin production
             git checkout production
             git pull origin production
+            docker system prune -af --volumes
             docker compose down
             docker compose build --no-cache backend
