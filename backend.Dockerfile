@@ -4,7 +4,7 @@ FROM oven/bun:1.1
 # Install system dependencies required by Puppeteer/Chromium
 RUN apt-get update && \
     apt-get install -y \
-    chromium-browser \
+    chromium \
     libx11-xcb1 \
     libxcomposite1 \
     libxcursor1 \
