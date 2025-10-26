@@ -2,8 +2,7 @@
 FROM oven/bun:1.1
 
 # Install system dependencies required by Puppeteer/Chromium
-RUN apt-get update && \
-    apt-get install -y \
+RUN apt-get update && apt-get install -y \
     chromium \
     libx11-xcb1 \
     libxcomposite1 \
@@ -28,8 +27,8 @@ RUN apt-get update && \
     libxfixes3 \
     libxrender1 \
     xdg-utils \
-    wget && \
-    rm -rf /var/lib/apt/lists/*
+    wget \
+    && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app/backend
