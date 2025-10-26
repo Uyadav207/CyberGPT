@@ -1,6 +1,6 @@
-# 🔧 DenkMinds Backend
+# 🔧 CyberGPT Backend
 
-Express.js backend API for the DenkMinds cybersecurity assessment platform.
+Express.js backend API for the CyberGPT cybersecurity assessment platform.
 
 ## 🚀 Technology Stack
 
@@ -168,8 +168,8 @@ NODE_ENV=development
 FRONTEND_URL=http://localhost:3000
 
 # Database
-DATABASE_URL="postgresql://user:password@localhost:5432/denkminds_db"
-SHADOW_DATABASE_URL="postgresql://user:password@localhost:5432/denkminds_shadow"
+DATABASE_URL="postgresql://user:password@localhost:5432/cybergpt_db"
+SHADOW_DATABASE_URL="postgresql://user:password@localhost:5432/cybergpt_shadow"
 
 # Neo4j
 NEO4J_URI="bolt://localhost:7687"
@@ -186,7 +186,7 @@ OPENAI_MAX_TOKENS=2000
 # Pinecone
 PINECONE_API_KEY="..."
 PINECONE_ENVIRONMENT="us-west1-gcp"
-PINECONE_INDEX_NAME="denkminds-embeddings"
+PINECONE_INDEX_NAME="cybergpt-embeddings"
 
 # JWT
 JWT_SECRET="your-super-secret-key"
@@ -208,7 +208,7 @@ EMAIL_HOST="smtp.gmail.com"
 EMAIL_PORT=587
 EMAIL_USER="your-email@gmail.com"
 EMAIL_PASSWORD="your-app-password"
-EMAIL_FROM="DenkMinds <noreply@denkminds.com>"
+EMAIL_FROM="CyberGPT <noreply@cybergpt.com>"
 
 # Security Tools
 ZAP_API_KEY="..."
@@ -554,10 +554,10 @@ bun test --coverage
 
 ```bash
 # Build image
-docker build -f backend.Dockerfile -t denkminds-backend .
+docker build -f backend.Dockerfile -t cybergpt-backend .
 
 # Run container
-docker run -p 8000:8000 --env-file .env denkminds-backend
+docker run -p 8000:8000 --env-file .env cybergpt-backend
 ```
 
 ### Production Checklist

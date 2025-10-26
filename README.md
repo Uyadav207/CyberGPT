@@ -1,4 +1,4 @@
-# 🛡️ DenkMinds - AI-Powered Cybersecurity Assessment Platform
+# 🛡️ CyberGPT - AI-Powered Cybersecurity Assessment Platform
 
 <div align="center">
 
@@ -34,7 +34,7 @@
 
 ## 🌟 Overview
 
-DenkMinds is an enterprise-grade cybersecurity assessment platform that leverages artificial intelligence to provide comprehensive security analysis, vulnerability detection, and actionable insights. Built with modern web technologies and integrated with industry-leading security tools, DenkMinds helps security professionals, developers, and organizations identify and mitigate security risks efficiently.
+CyberGPT is an enterprise-grade cybersecurity assessment platform that leverages artificial intelligence to provide comprehensive security analysis, vulnerability detection, and actionable insights. Built with modern web technologies and integrated with industry-leading security tools, CyberGPT helps security professionals, developers, and organizations identify and mitigate security risks efficiently.
 
 ### 🎯 **Mission**
 To democratize cybersecurity by making advanced security assessment tools accessible, intelligent, and actionable through AI-powered automation.
@@ -435,8 +435,8 @@ Ensure you have the following installed:
 #### **1. Clone the Repository**
 
 ```bash
-git clone https://github.com/your-org/denkminds.git
-cd denkminds
+git clone https://github.com/your-org/cybergpt.git
+cd cybergpt
 ```
 
 #### **2. Install Dependencies**
@@ -458,8 +458,8 @@ bun install
 **Backend `.env`:**
 ```env
 # Database
-DATABASE_URL="postgresql://user:password@localhost:5432/denkminds_db"
-SHADOW_DATABASE_URL="postgresql://user:password@localhost:5432/denkminds_shadow"
+DATABASE_URL="postgresql://user:password@localhost:5432/cybergpt_db"
+SHADOW_DATABASE_URL="postgresql://user:password@localhost:5432/cybergpt_shadow"
 
 # Neo4j
 NEO4J_URI="bolt://localhost:7687"
@@ -473,7 +473,7 @@ OPENAI_MODEL="gpt-4"
 # Pinecone
 PINECONE_API_KEY="your-pinecone-api-key"
 PINECONE_ENVIRONMENT="us-west1-gcp"
-PINECONE_INDEX_NAME="denkminds-embeddings"
+PINECONE_INDEX_NAME="cybergpt-embeddings"
 
 # JWT
 JWT_SECRET="your-super-secret-jwt-key"
@@ -518,7 +518,7 @@ VITE_CONVEX_URL="https://your-convex-deployment.convex.cloud"
 VITE_STRIPE_PUBLIC_KEY="pk_test_your-stripe-public-key"
 
 # Application
-VITE_APP_NAME="DenkMinds"
+VITE_APP_NAME="CyberGPT"
 VITE_APP_URL="http://localhost:3000"
 ```
 
@@ -527,8 +527,8 @@ VITE_APP_URL="http://localhost:3000"
 **PostgreSQL:**
 ```bash
 # Create database
-createdb denkminds_db
-createdb denkminds_shadow
+createdb cybergpt_db
+createdb cybergpt_shadow
 
 # Run Prisma migrations
 cd backend
@@ -593,7 +593,7 @@ http://localhost:3000
 ```
 
 Default test credentials (if seeded):
-- Email: `admin@denkminds.com`
+- Email: `admin@example.com`
 - Password: `Admin@123`
 
 ---
@@ -810,7 +810,7 @@ Authorization: Bearer <jwt_token>
 ### **Project Structure**
 
 ```
-denkminds/
+CyberGPT/
 ├── frontend/                  # React frontend application
 │   ├── src/
 │   │   ├── api/              # API client configurations
@@ -1010,7 +1010,7 @@ bun run build
 export NODE_ENV=production
 
 # Start with PM2
-pm2 start dist/index.js --name denkminds-backend
+pm2 start dist/index.js --name CyberGPT-backend
 ```
 
 ### **Database Deployment**
@@ -1098,7 +1098,7 @@ We welcome contributions! Please follow these guidelines:
 
 1. **Fork the repository**
 ```bash
-gh repo fork your-org/denkminds --clone
+gh repo fork your-org/CyberGPT --clone
 ```
 
 2. **Create a feature branch**
@@ -1164,7 +1164,7 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 ```
 MIT License
 
-Copyright (c) 2024 DenkMinds Team
+Copyright (c) 2024 CyberGPT
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -1208,17 +1208,9 @@ SOFTWARE.
 
 ### **Support Channels**
 
-- 📧 **Email**: support@denkminds.com
-- 💬 **Discord**: [Join our community](https://discord.gg/denkminds)
-- 🐛 **Issues**: [GitHub Issues](https://github.com/your-org/denkminds/issues)
-- 📚 **Documentation**: [docs.denkminds.com](https://docs.denkminds.com)
-
-### **Team**
-
-- **Lead Developer**: Utkarsh Yadav
-- **AI/ML Engineer**: [Your Name]
-- **Security Analyst**: [Your Name]
-- **DevOps Engineer**: [Your Name]
+- 📧 **Email**: support@cybergpt.com
+- 🐛 **Issues**: [GitHub Issues](https://github.com/your-org/cybergpt/issues)
+- 📚 **Documentation**: [docs.cybergpt.com](https://docs.cybergpt.com)
 
 ---
 
@@ -1289,10 +1281,10 @@ See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 
 <div align="center">
 
-**Built with ❤️ by the DenkMinds Team**
+**CyberGPT - AI-Powered Cybersecurity Assessment Platform**
 
-[Website](https://denkminds.com) • [Documentation](https://docs.denkminds.com) • [GitHub](https://github.com/your-org/denkminds)
+[Documentation](https://docs.cybergpt.com) • [GitHub](https://github.com/your-org/cybergpt)
 
-© 2024 DenkMinds. All rights reserved.
+© 2024 CyberGPT. All rights reserved.
 
 </div>
