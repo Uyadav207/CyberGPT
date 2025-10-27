@@ -40,7 +40,7 @@ const MarkdownViewer = ({ content, isUser = false }: MarkdownViewerProps) => {
     }
     
     // Replace jargon syntax with simple highlighted text (no tooltips for now)
-    const processedText = text.replace(/\[JARGON_HIGHLIGHT:([^|]+)\|([^\]]+)\]/g, (match, term, description) => {
+    const processedText = text.replace(/\[JARGON_HIGHLIGHT:([^|]+)\|([^\]]+)\]/g, (_match, term, description) => {
       console.log('🎯 Found jargon match in content:', term, '|', description.substring(0, 50) + '...');
       
       // Just return the term with highlighting - no complex HTML

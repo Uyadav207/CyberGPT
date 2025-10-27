@@ -4032,11 +4032,11 @@ For more specific guidance, please ask about particular aspects of these securit
 															
 															// Clean the jargon syntax but preserve the highlighting functionality using MarkdownViewer's built-in processing
 															const cleanedContent = message.message
-																.replace(/\[JARGON_HIGHLIGHT:([^|]+)\|([^\]]+)\]/g, (match, term, description) => {
+																.replace(/\[JARGON_HIGHLIGHT:([^|]+)\|([^\]]+)\]/g, (_match, term, description) => {
 																	// Use MarkdownViewer's expected syntax for clean highlighting
 																	return `[JARGON_HIGHLIGHT:${term}|${description.replace(/"/g, '&quot;')}]`;
 																})
-																.replace(/\[JARGON:([^|]+)\|([^\]]+)\]/g, (match, term, description) => {
+																.replace(/\[JARGON:([^|]+)\|([^\]]+)\]/g, (_match, term, description) => {
 																	return `[JARGON_HIGHLIGHT:${term}|${description.replace(/"/g, '&quot;')}]`;
 																})
 																.replace(/JARGON_HIGHLIGHT/g, '')
