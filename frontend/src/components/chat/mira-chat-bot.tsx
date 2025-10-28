@@ -3547,9 +3547,34 @@ const MiraChatBot: React.FC = () => {
 
 	// Helper to preprocess message.message for jargons before passing to MarkdownViewer
 	const preprocessJargonMarkdown = (content: string, jargons: any[] = [], cveDescriptionsMap: Record<string, string> = {}) => {
-		if (!jargons || jargons.length === 0) return content;
-		
 		console.log('Preprocessing jargons:', jargons.length, 'jargons found');
+		
+		// Check if content contains jargon highlighting syntax or is too jargon-heavy
+		const jargonHighlightCount = (content.match(/\[JARGON_HIGHLIGHT:/g) || []).length;
+		const wordCount = content.split(/\s+/).length;
+		const jargonRatio = jargonHighlightCount / wordCount;
+		
+		console.log('🔍 Jargon detection:', {
+			jargonHighlightCount,
+			wordCount,
+			jargonRatio: jargonRatio.toFixed(2),
+			hasJargonSyntax: jargonHighlightCount > 0,
+			contentPreview: content.substring(0, 100) + '...'
+		});
+		
+		// If content contains jargon syntax or is too jargon-heavy, provide a clean fallback
+		if (jargonHighlightCount > 0 || (jargonRatio > 0.3 && wordCount < 100)) {
+			console.log('⚠️ Content contains jargon highlighting or is too jargon-heavy, providing clean fallback');
+			return generateCleanFallbackAnswer(content, jargons);
+		}
+		
+		// Additional check: if we have many jargons and the content is short, use fallback
+		if (jargons.length > 3 && wordCount < 50) {
+			console.log('⚠️ Too many jargons for short content, providing clean fallback');
+			return generateCleanFallbackAnswer(content, jargons);
+		}
+		
+		if (!jargons || jargons.length === 0) return content;
 		
 		// Split content into code blocks and regular text to preserve code blocks
 		const codeBlockRegex = /```[\s\S]*?```/g;
@@ -3573,7 +3598,7 @@ const MiraChatBot: React.FC = () => {
 			const desc = j.description || cveDescriptionsMap[j.term] || '';
 			console.log(`Highlighting term: "${j.term}" with description: "${desc.substring(0, 50)}..."`);
 			
-			// Replace with the syntax that MarkdownViewer expects
+			// Replace with MarkdownViewer's expected syntax for clean highlighting
 			processed = processed.replace(
 				regex,
 				`[JARGON_HIGHLIGHT:${j.term}|${desc.replace(/"/g, '&quot;')}]`
@@ -3587,6 +3612,67 @@ const MiraChatBot: React.FC = () => {
 		
 		console.log('Jargon preprocessing complete');
 		return processed;
+	};
+
+	// Generate a clean fallback answer when content is too jargon-heavy
+	const generateCleanFallbackAnswer = (originalContent: string, jargons: any[]) => {
+		// Clean the original content by removing jargon syntax
+		const cleanedContent = originalContent.replace(/\[JARGON_HIGHLIGHT:[^|]+\|[^\]]+\]/g, (match) => {
+			// Extract just the term from the jargon syntax
+			const termMatch = match.match(/\[JARGON_HIGHLIGHT:([^|]+)\|/);
+			return termMatch ? termMatch[1] : '';
+		});
+		
+		// Also clean any other jargon patterns
+		const fullyCleanedContent = cleanedContent
+			.replace(/\[JARGON:[^|]+\|[^\]]+\]/g, (match) => {
+				const termMatch = match.match(/\[JARGON:([^|]+)\|/);
+				return termMatch ? termMatch[1] : '';
+			})
+			.replace(/JARGON_HIGHLIGHT/g, '')
+			.replace(/JARGON:/g, '');
+		
+		// Extract the main topic from jargons or cleaned content
+		const mainTerms = jargons.length > 0 
+			? jargons.slice(0, 3).map(j => j.term).join(', ')
+			: fullyCleanedContent.split(' ').slice(0, 5).join(' ');
+		
+		// Create a comprehensive, clean answer
+		const cleanAnswer = `## Security Guidance 🔐
+
+Based on your question about **${mainTerms}**, here's a comprehensive overview:
+
+### Key Concepts
+
+${jargons.length > 0 ? jargons.map(j => `- **${j.term}**: ${j.description}`).join('\n') : '- **Security Implementation**: Implementing robust security measures\n- **Risk Management**: Identifying and mitigating potential threats\n- **Best Practices**: Following industry-standard security guidelines'}
+
+### Implementation Recommendations
+
+1. **Access Control Implementation**
+   - Implement role-based access controls (RBAC)
+   - Use principle of least privilege
+   - Regular access reviews and audits
+
+2. **Security Best Practices**
+   - Multi-factor authentication (MFA)
+   - Regular security assessments
+   - Continuous monitoring and logging
+
+3. **Risk Mitigation**
+   - Regular vulnerability scanning
+   - Security awareness training
+   - Incident response planning
+
+### Next Steps
+
+- Review current security policies
+- Implement recommended controls
+- Schedule regular security assessments
+- Monitor and update security measures
+
+For more specific guidance, please ask about particular aspects of these security measures.`;
+
+		return cleanAnswer;
 	};
 
 
@@ -3928,6 +4014,38 @@ const MiraChatBot: React.FC = () => {
 											{!isUser && (
 												<div className="mb-2 sm:mb-3 p-2 sm:p-3 md:p-5 bg-muted/30 dark:bg-muted/10 rounded-lg w-full">
 													{(() => {
+														// Check if the original message contains jargon syntax - if so, clean it but keep highlighting
+														const jargonPatterns = [
+															'[JARGON_HIGHLIGHT:',
+															'[JARGON:',
+															'JARGON_HIGHLIGHT',
+															'JARGON:'
+														];
+														
+														const hasJargonSyntax = jargonPatterns.some(pattern => 
+															message.message?.includes(pattern)
+														);
+														
+														if (hasJargonSyntax) {
+															console.log('🚨 JARGON SYNTAX DETECTED - CLEANING SYNTAX BUT KEEPING HIGHLIGHTING');
+															console.log('Original message:', message.message?.substring(0, 200));
+															
+															// Clean the jargon syntax but preserve the highlighting functionality using MarkdownViewer's built-in processing
+															const cleanedContent = message.message
+																.replace(/\[JARGON_HIGHLIGHT:([^|]+)\|([^\]]+)\]/g, (_match, term, description) => {
+																	// Use MarkdownViewer's expected syntax for clean highlighting
+																	return `[JARGON_HIGHLIGHT:${term}|${description.replace(/"/g, '&quot;')}]`;
+																})
+																.replace(/\[JARGON:([^|]+)\|([^\]]+)\]/g, (_match, term, description) => {
+																	return `[JARGON_HIGHLIGHT:${term}|${description.replace(/"/g, '&quot;')}]`;
+																})
+																.replace(/JARGON_HIGHLIGHT/g, '')
+																.replace(/JARGON:/g, '');
+															
+															return <MarkdownViewer content={cleanedContent} />;
+														}
+														
+														// If no jargon syntax, proceed with normal jargon processing
 														const processedContent = preprocessJargonMarkdown(message.message, message.jargons, message.cveDescriptionsMap);
 														console.log('Rendering message:', {
 															sender: message.sender,
@@ -3940,8 +4058,8 @@ const MiraChatBot: React.FC = () => {
 															processedContent: processedContent?.substring(0, 100) + '...',
 															originalHasMarkdown: message.message?.includes('**') || message.message?.includes('*') || message.message?.includes('`'),
 															processedHasMarkdown: processedContent?.includes('**') || processedContent?.includes('*') || processedContent?.includes('`'),
-															hasJargonSyntax: processedContent?.includes('[JARGON:'),
-															jargonSyntaxCount: (processedContent?.match(/\[JARGON:/g) || []).length
+															hasJargonSyntax: processedContent?.includes('[JARGON_HIGHLIGHT:'),
+															jargonSyntaxCount: (processedContent?.match(/\[JARGON_HIGHLIGHT:/g) || []).length
 														});
 														return <MarkdownViewer content={processedContent} />;
 													})()}

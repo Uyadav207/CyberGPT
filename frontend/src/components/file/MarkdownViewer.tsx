@@ -2,76 +2,8 @@ import { useEffect } from 'react';
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from 'rehype-raw';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip";
 import "../file/MarkdownViewer.css";
 
-// Function to process jargon syntax in text content
-const processJargonInText = (content: any): any => {
-  if (typeof content === 'string') {
-    const jargonRegex = /\[JARGON_HIGHLIGHT:([^|]+)\|([^\]]+)\]/g;
-    const parts = [];
-    let lastIndex = 0;
-    let match;while ((match = jargonRegex.exec(content)) !== null) {// Add text before the match
-      if (match.index > lastIndex) {
-        parts.push(content.slice(lastIndex, match.index));
-      }
-
-      // Add the jargon tooltip component
-      const term = match[1].trim();
-      const description = match[2].trim().replace(/&quot;/g, '"');
-      
-      // Only create tooltip if we have both term and description
-      if (term && description) {
-        parts.push(
-          <TooltipProvider key={match.index}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span 
-                  className="jargon-highlight"
-                  style={{
-                    cursor: 'pointer',
-                    fontWeight: '500',
-                    padding: '0 4px',
-                    borderRadius: '2px',
-                    borderBottom: '1px dotted #3b82f6',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    color: '#1e40af'
-                  }}
-                >
-                  {term}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-lg max-w-md">
-                <div className="p-3">
-                  <div className="font-semibold text-blue-600 dark:text-blue-400 mb-2">{term}</div>
-                  <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed break-words">{description}</div>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        );
-      } else {
-        // If malformed, just show the term as plain text
-        parts.push(term);
-      }
-
-      lastIndex = match.index + match[0].length;
-    }
-
-    // Add remaining text
-    if (lastIndex < content.length) {
-      parts.push(content.slice(lastIndex));
-    }return parts.length > 0 ? parts : content;
-  }
-  
-  if (Array.isArray(content)) {
-    return content.map((child, index) => (
-      <span key={index}>{processJargonInText(child)}</span>
-    ));
-  }
-  
-  return content;
-};
 
 interface MarkdownViewerProps {
   content: string;
@@ -79,6 +11,8 @@ interface MarkdownViewerProps {
 }
 
 const MarkdownViewer = ({ content, isUser = false }: MarkdownViewerProps) => {
+  console.log('🚀 MarkdownViewer component rendered with content:', content.substring(0, 100) + '...');
+  
   // Decode HTML entities in the content
   const decodeHTMLEntities = (text: string) => {
     const textarea = document.createElement('textarea');
@@ -88,14 +22,45 @@ const MarkdownViewer = ({ content, isUser = false }: MarkdownViewerProps) => {
   
   // Clean up malformed jargon syntax
   const cleanJargonSyntax = (text: string) => {
-    // Remove malformed jargon syntax that's missing descriptions
-    return text
-      .replace(/\[JARGON_HIGHLIGHT:([^|]+)\]/g, '$1') // Remove incomplete syntax without description
-      .replace(/\[JARGON_HIGHLIGHT:([^|]+)\|\s*\]/g, '$1'); // Remove syntax with empty description
+    // Don't remove jargon syntax - let processJargonInText handle it
+    return text;
   };
   
+  // Process jargon syntax in the entire content before passing to ReactMarkdown
+  const processJargonInContent = (text: string): string => {
+    console.log('🔍 processJargonInContent processing:', text.substring(0, 100) + '...');
+    
+    // Check if text contains jargon syntax
+    const hasJargonSyntax = text.includes('[JARGON_HIGHLIGHT:');
+    console.log('🎯 Has jargon syntax:', hasJargonSyntax);
+    
+    if (!hasJargonSyntax) {
+      console.log('❌ No jargon syntax found, returning original text');
+      return text;
+    }
+    
+    // Replace jargon syntax with simple highlighted text (no tooltips for now)
+    const processedText = text.replace(/\[JARGON_HIGHLIGHT:([^|]+)\|([^\]]+)\]/g, (_match, term, description) => {
+      console.log('🎯 Found jargon match in content:', term, '|', description.substring(0, 50) + '...');
+      
+      // Just return the term with highlighting - no complex HTML
+      return `<span class="jargon-highlight-simple" style="background-color: rgba(59, 130, 246, 0.1); border-bottom: 1px dotted #3b82f6; padding: 0 2px; border-radius: 2px; cursor: pointer;" title="${description.replace(/"/g, '&quot;')}">${term}</span>`;
+    });
+    
+    console.log('📝 processJargonInContent result length:', processedText.length);
+    console.log('📝 processJargonInContent result preview:', processedText.substring(0, 200) + '...');
+    return processedText;
+  };
+
   // Content is already preprocessed by the chat component
   const processedContent = cleanJargonSyntax(decodeHTMLEntities(content));
+  
+  // Process jargon syntax in the entire content
+  const jargonProcessedContent = processJargonInContent(processedContent);
+  
+  console.log('📄 MarkdownViewer received content:', content.substring(0, 200) + '...');
+  console.log('🔧 MarkdownViewer processed content:', processedContent.substring(0, 200) + '...');
+  console.log('🎨 MarkdownViewer jargon processed content:', jargonProcessedContent.substring(0, 200) + '...');
 
   // Debug logging for code block detection
   useEffect(() => {
@@ -153,16 +118,16 @@ const MarkdownViewer = ({ content, isUser = false }: MarkdownViewerProps) => {
             );
           },
           h1({ children }) {
-            return <h1 className="text-xl font-bold mb-4 mt-6 first:mt-0 text-gray-900 dark:text-gray-100">{processJargonInText(children)}</h1>;
+            return <h1 className="text-xl font-bold mb-4 mt-6 first:mt-0 text-gray-900 dark:text-gray-100">{children}</h1>;
           },
           h2({ children }) {
-            return <h2 className="text-lg font-semibold mb-3 mt-5 first:mt-0 text-gray-800 dark:text-gray-200">{processJargonInText(children)}</h2>;
+            return <h2 className="text-lg font-semibold mb-3 mt-5 first:mt-0 text-gray-800 dark:text-gray-200">{children}</h2>;
           },
           h3({ children }) {
-            return <h3 className="text-base font-medium mb-2 mt-4 first:mt-0 text-gray-800 dark:text-gray-200">{processJargonInText(children)}</h3>;
+            return <h3 className="text-base font-medium mb-2 mt-4 first:mt-0 text-gray-800 dark:text-gray-200">{children}</h3>;
           },
           p({ children, ...props }: any) {
-            return <p className="mb-3 leading-7 text-gray-700 dark:text-gray-300" {...props}>{processJargonInText(children)}</p>;
+            return <p className="mb-3 leading-7 text-gray-700 dark:text-gray-300" {...props}>{children}</p>;
           },
           ul({ children }) {
             return <ul className="my-3 list-disc pl-6 space-y-2">{children}</ul>;
@@ -171,7 +136,7 @@ const MarkdownViewer = ({ content, isUser = false }: MarkdownViewerProps) => {
             return <ol className="my-3 list-decimal pl-6 space-y-2">{children}</ol>;
           },
           li({ children }) {
-            return <li className="leading-relaxed text-gray-700 dark:text-gray-300">{processJargonInText(children)}</li>;
+            return <li className="leading-relaxed text-gray-700 dark:text-gray-300">{children}</li>;
           },
           blockquote({ children }) {
             return (
@@ -226,7 +191,7 @@ const MarkdownViewer = ({ content, isUser = false }: MarkdownViewerProps) => {
           }
         }}
       >
-        {processedContent}
+        {jargonProcessedContent}
       </ReactMarkdown>
     </div>
   );
