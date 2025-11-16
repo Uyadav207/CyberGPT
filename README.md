@@ -43,7 +43,7 @@ To democratize cybersecurity by making advanced security assessment tools access
 
 ## ✨ Key Features
 
-### 🤖 **MIRA - AI Security Assistant**
+### 🤖 **AI Security Assistant**
 
 <details open>
 <summary><b>Intelligent Conversational Interface</b></summary>
@@ -76,23 +76,7 @@ To democratize cybersecurity by making advanced security assessment tools access
 
 #### **DAST (Dynamic Application Security Testing)**
 - Automated web application vulnerability scanning
-- OWASP ZAP integration for industry-standard testing
-- Active and passive scan modes
 - Real-time vulnerability detection
-- Comprehensive scan reports with severity ratings
-
-#### **SAST (Static Application Security Testing)**
-- Source code security analysis
-- SonarQube integration for code quality checks
-- Support for multiple programming languages
-- Security hotspot identification
-- Code smell and bug detection
-
-#### **Baseline Security Scanning**
-- Automated security baseline assessments
-- Configuration vulnerability detection
-- Compliance checking against security standards
-- Best practice recommendations
 
 #### **CVE Database Integration**
 - Real-time vulnerability database access
@@ -130,33 +114,6 @@ To democratize cybersecurity by making advanced security assessment tools access
 
 </details>
 
-### 📑 **Report Generation & Management**
-
-<details>
-<summary><b>Professional Security Reports</b></summary>
-
-- **Comprehensive Report Types**
-  - Vulnerability assessment reports
-  - Scan result summaries
-  - Executive summaries with risk ratings
-  - Technical deep-dive reports
-  - Compliance audit reports
-
-- **Export Formats**
-  - PDF generation with professional templates
-  - HTML reports with interactive elements
-  - JSON/CSV data exports
-  - Customizable report templates
-
-- **Report Features**
-  - Automated report generation from scan results
-  - Interactive todo lists with completion tracking
-  - Source link embedding
-  - Code snippet highlighting
-  - Chart and graph visualizations
-  - Supabase integration for cloud storage
-
-</details>
 
 ### 🎯 **Interactive Task Management**
 
@@ -180,13 +137,10 @@ To democratize cybersecurity by making advanced security assessment tools access
 
 - **Authentication**
   - JWT-based authentication
-  - OTP email verification
   - Password hashing with bcrypt
   - Session management
-  - Password reset functionality
 
 - **Authorization**
-  - Role-based access control (RBAC)
   - Protected API routes
   - Resource-level permissions
   - Secure token refresh
@@ -200,34 +154,6 @@ To democratize cybersecurity by making advanced security assessment tools access
 
 </details>
 
-### 💳 **Subscription & Payment**
-
-<details>
-<summary><b>Flexible Pricing Plans</b></summary>
-
-- **Free Trial**
-  - 3 URL scans
-  - Passive scanning
-  - Limited code analysis
-  - Full chat functionality
-
-- **Standard Plan (€9.99/month)**
-  - Unlimited URL scans
-  - Active and passive scanning
-  - Unlimited code analysis
-  - Agentic AI for CVE analysis
-  - AI-powered latest CVE updates
-  - Priority support
-
-- **Payment Integration**
-  - Stripe payment processing
-  - Secure checkout flow
-  - Subscription management
-  - Invoice generation
-  - Payment history tracking
-
-</details>
-
 ---
 
 ## 🏗️ Architecture Overview
@@ -236,58 +162,58 @@ To democratize cybersecurity by making advanced security assessment tools access
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                           CLIENT LAYER                                   │
-│  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │                    React + TypeScript Frontend                    │   │
-│  │  • Vite Build System    • Tailwind CSS    • Framer Motion       │   │
-│  │  • React Router         • Zustand State   • Radix UI Components │   │
-│  └─────────────────────────────────────────────────────────────────┘   │
+│                           CLIENT LAYER                                  │
+│  ┌─────────────────────────────────────────────────────────────────┐    │
+│  │                    React + TypeScript Frontend                  │    │
+│  │  • Vite Build System    • Tailwind CSS    • Framer Motion       │    │
+│  │  • React Router         • Zustand State   • Radix UI Components │    │
+│  └─────────────────────────────────────────────────────────────────┘    │
 └─────────────────────────────────────────────────────────────────────────┘
                                     ↕
-┌─────────────────────────────────────────────────────────────────────────┐
-│                       API GATEWAY / BACKEND                              │
+┌────────────────────────────────────────────────────────────────────────┐
+│                       API GATEWAY / BACKEND                            │
 │  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │              Express.js REST API (Node.js/Bun)                   │   │
-│  │  • JWT Authentication   • Rate Limiting    • Error Handling      │   │
-│  │  • File Upload          • CORS             • Request Validation  │   │
+│  │              Express.js REST API (Node.js/Bun)                  │   │
+│  │  • JWT Authentication   • Rate Limiting    • Error Handling     │   │
+│  │  • File Upload          • CORS             • Request Validation │   │
 │  └─────────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────────┘
+└────────────────────────────────────────────────────────────────────────┘
                                     ↕
-┌─────────────────────────────────────────────────────────────────────────┐
-│                        SERVICE LAYER                                     │
+┌───────────────────────────────────────────────────────────────────────┐
+│                        SERVICE LAYER                                  │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────┐   │
 │  │   Chat       │  │  Scanning    │  │  Knowledge   │  │  Report  │   │
 │  │  Service     │  │  Services    │  │    Graph     │  │ Service  │   │
 │  │              │  │              │  │   Service    │  │          │   │
-│  │ • OpenAI     │  │ • ZAP DAST   │  │ • Neo4j      │  │ • PDF    │   │
-│  │ • RAG        │  │ • SonarQube  │  │ • Cypher     │  │ • Export │   │
-│  │ • Streaming  │  │ • Baseline   │  │ • Analytics  │  │ • Store  │   │
+│  │ • OpenAI     │  │              │  │ • Neo4j      │  │ • HTML   │   │
+│  │ • RAG        │  │              │  │ • Cypher     │  │ • MDX    │   |
+│  │ • Streaming  │  │              │  │ • Analytics  │  │          │   │
 │  └──────────────┘  └──────────────┘  └──────────────┘  └──────────┘   │
-└─────────────────────────────────────────────────────────────────────────┘
+└───────────────────────────────────────────────────────────────────────┘
                                     ↕
-┌─────────────────────────────────────────────────────────────────────────┐
-│                        DATA LAYER                                        │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────┐   │
-│  │  PostgreSQL  │  │    Neo4j     │  │   Pinecone   │  │ Supabase │   │
-│  │  (Prisma)    │  │  Graph DB    │  │  Vector DB   │  │ Storage  │   │
-│  │              │  │              │  │              │  │          │   │
-│  │ • Users      │  │ • Entities   │  │ • Embeddings │  │ • Files  │   │
-│  │ • Scans      │  │ • Relations  │  │ • Semantic   │  │ • Reports│   │
-│  │ • Reports    │  │ • CVEs       │  │ • Search     │  │ • Assets │   │
-│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────┘   │
-└─────────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────┐
+│                        DATA LAYER                     │
+│  ┌──────────────┐  ┌──────────────┐    ┌──────────┐   │
+│  │  PostgreSQL  │  │    Neo4j     │    │ Supabase │   │
+│  │  (Prisma)    │  │  Graph DB    │    │ Storage  │   │
+│  │              │  │              │    │          │   │
+│  │ • Users      │  │ • Entities   │    │ • Files  │   │
+│  │ • Scans      │  │ • Relations  │    │ • Reports│   │
+│  │ • Reports    │  │ • CVEs       │    │ • Assets │   │
+│  └──────────────┘  └──────────────┘    └──────────┘   │
+└───────────────────────────────────────────────────────┘
                                     ↕
-┌─────────────────────────────────────────────────────────────────────────┐
-│                    EXTERNAL SERVICES                                     │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────┐   │
-│  │   OpenAI     │  │  OWASP ZAP   │  │  SonarQube   │  │  Stripe  │   │
-│  │   GPT-4      │  │   Scanner    │  │   Analysis   │  │ Payments │   │
-│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────┘   │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────┐   │
-│  │     NVD      │  │    CIRCL     │  │     OSV      │  │  Convex  │   │
-│  │  CVE Data    │  │  CVE Search  │  │  Vulns DB    │  │ Real-time│   │
-│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────┘   │
-└─────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                    EXTERNAL SERVICES                                 │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                |
+│  │   OpenAI     │  │              │  │              │                │
+│  │   GPT-4      │  │   Scanner    │  │   Analysis   │                │
+│  └──────────────┘  └──────────────┘  └──────────────┘                |
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────┐  │
+│  │     NVD      │  │    CIRCL     │  │     OSV      │  │  Convex  │  │
+│  │  CVE Data    │  │  CVE Search  │  │  Vulns DB    │  │ Real-time│  │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────┘  │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
 ### **Data Flow Architecture**
@@ -298,9 +224,9 @@ User Input → Frontend → API Gateway → Chat Service
                                            ↓
                                     OpenAI GPT-4
                                            ↓
-                                    RAG Service
+                                    graphRAG Service
                                            ↓
-                        Pinecone Vector Search ← Neo4j Knowledge Graph
+                                Neo4j Knowledge Graph
                                            ↓
                                     Response Stream
                                            ↓
@@ -309,32 +235,10 @@ User Input → Frontend → API Gateway → Chat Service
                                     Convex Storage
 ```
 
-#### **2. Vulnerability Scanning Flow**
-```
-Scan Request → Backend API → Scan Service
-                                  ↓
-                    ┌─────────────┴──────────────┐
-                    ↓                            ↓
-              OWASP ZAP                    SonarQube
-              (DAST Scan)                  (SAST Scan)
-                    ↓                            ↓
-              Vulnerability                  Code Issues
-              Detection                      Detection
-                    ↓                            ↓
-                    └─────────────┬──────────────┘
-                                  ↓
-                          Results Aggregation
-                                  ↓
-                    CVE Database Enrichment
-                                  ↓
-                          PostgreSQL Storage
-                                  ↓
-                          Report Generation
-                                  ↓
-                          Frontend Display
+
 ```
 
-#### **3. Knowledge Graph Generation Flow**
+#### **2. Knowledge Graph Generation Flow**
 ```
 AI Response → Entity Extraction → Relationship Mapping
                                          ↓
@@ -383,7 +287,6 @@ AI Response → Entity Extraction → Relationship Mapping
 | Service | Purpose |
 |---------|---------|
 | **OpenAI GPT-4** | Conversational AI & reasoning |
-| **Pinecone** | Vector database for semantic search |
 | **Neo4j** | Knowledge graph database |
 | **Langchain** | LLM orchestration |
 
@@ -391,8 +294,6 @@ AI Response → Entity Extraction → Relationship Mapping
 
 | Tool | Purpose |
 |------|---------|
-| **OWASP ZAP** | Dynamic application security testing |
-| **SonarQube** | Static code analysis |
 | **NVD API** | CVE vulnerability data |
 | **CIRCL CVE** | CVE search API |
 | **OSV** | Open source vulnerabilities |
@@ -405,7 +306,6 @@ AI Response → Entity Extraction → Relationship Mapping
 | **Docker Compose** | Multi-container orchestration |
 | **Vercel** | Frontend hosting |
 | **Supabase** | File storage & additional DB |
-| **Stripe** | Payment processing |
 | **Nodemailer** | Email service |
 
 ---
@@ -425,8 +325,6 @@ Ensure you have the following installed:
 ### **Required API Keys**
 
 - OpenAI API Key (GPT-4 access)
-- Pinecone API Key
-- Stripe API Key (for payments)
 - Supabase credentials
 - Convex deployment URL
 
@@ -470,11 +368,6 @@ NEO4J_PASSWORD="your-neo4j-password"
 OPENAI_API_KEY="sk-your-openai-api-key"
 OPENAI_MODEL="gpt-4"
 
-# Pinecone
-PINECONE_API_KEY="your-pinecone-api-key"
-PINECONE_ENVIRONMENT="us-west1-gcp"
-PINECONE_INDEX_NAME="cybergpt-embeddings"
-
 # JWT
 JWT_SECRET="your-super-secret-jwt-key"
 JWT_EXPIRES_IN="7d"
@@ -494,11 +387,6 @@ EMAIL_PORT=587
 EMAIL_USER="your-email@gmail.com"
 EMAIL_PASSWORD="your-app-password"
 
-# Security Tools
-ZAP_API_KEY="your-zap-api-key"
-ZAP_BASE_URL="http://localhost:8080"
-SONAR_HOST_URL="http://localhost:9000"
-SONAR_TOKEN="your-sonar-token"
 
 # Application
 PORT=8000
@@ -718,36 +606,6 @@ Content-Type: application/json
 }
 ```
 
-### **Scanning Endpoints**
-
-#### **DAST Scan**
-```http
-POST /api/scan/dast
-Authorization: Bearer <jwt_token>
-Content-Type: application/json
-
-{
-  "url": "https://example.com",
-  "scanType": "active"
-}
-```
-
-#### **SAST Scan**
-```http
-POST /api/scan/sast
-Authorization: Bearer <jwt_token>
-Content-Type: multipart/form-data
-
-file: <code_file>
-language: "javascript"
-```
-
-#### **Get Scan Results**
-```http
-GET /api/scan/results/:scanId
-Authorization: Bearer <jwt_token>
-```
-
 ### **Knowledge Graph Endpoints**
 
 #### **Generate Graph**
@@ -766,40 +624,6 @@ Content-Type: application/json
 #### **Get Graph Visualization**
 ```http
 GET /api/graph/visualization/:messageId
-Authorization: Bearer <jwt_token>
-```
-
-### **Report Endpoints**
-
-#### **Generate Report**
-```http
-POST /api/reports/generate
-Authorization: Bearer <jwt_token>
-Content-Type: application/json
-
-{
-  "scanId": "scan-uuid",
-  "format": "pdf"
-}
-```
-
-#### **List Reports**
-```http
-GET /api/reports
-Authorization: Bearer <jwt_token>
-```
-
-### **CVE Endpoints**
-
-#### **Search CVEs**
-```http
-GET /api/cve/search?query=apache&severity=critical
-Authorization: Bearer <jwt_token>
-```
-
-#### **Get CVE Details**
-```http
-GET /api/cve/:cveId
 Authorization: Bearer <jwt_token>
 ```
 
@@ -1018,9 +842,6 @@ pm2 start dist/index.js --name CyberGPT-backend
 #### **PostgreSQL**
 
 Use managed PostgreSQL services:
-- AWS RDS
-- Google Cloud SQL
-- Supabase
 - Railway
 
 #### **Neo4j**
@@ -1194,8 +1015,6 @@ SOFTWARE.
 - [Neo4j](https://neo4j.com/) - Graph database technology
 - [React](https://react.dev/) - Frontend framework
 - [Tailwind CSS](https://tailwindcss.com/) - Styling framework
-- [OWASP ZAP](https://www.zaproxy.org/) - Security testing tool
-- [SonarQube](https://www.sonarsource.com/) - Code quality platform
 
 ### **Inspirations**
 - OWASP Foundation for security standards
@@ -1214,42 +1033,6 @@ SOFTWARE.
 
 ---
 
-## 🗺️ Roadmap
-
-### **Q1 2025**
-- [ ] Mobile app (React Native)
-- [ ] Advanced threat intelligence
-- [ ] Multi-language support
-- [ ] API rate limiting dashboard
-
-### **Q2 2025**
-- [ ] Browser extension
-- [ ] CI/CD integration plugins
-- [ ] Advanced analytics dashboard
-- [ ] Collaborative features
-
-### **Q3 2025**
-- [ ] Enterprise SSO support
-- [ ] Custom security rules engine
-- [ ] Compliance frameworks expansion
-- [ ] White-label solution
-
-### **Q4 2025**
-- [ ] AI model fine-tuning
-- [ ] Advanced reporting templates
-- [ ] Integration marketplace
-- [ ] On-premise deployment option
-
----
-
-## 📈 Project Status
-
-![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
-![Test Coverage](https://img.shields.io/badge/coverage-85%25-green)
-![Security](https://img.shields.io/badge/security-A+-brightgreen)
-![Uptime](https://img.shields.io/badge/uptime-99.9%25-brightgreen)
-
----
 
 ## 📝 Changelog
 
@@ -1285,6 +1068,6 @@ See [CHANGELOG.md](CHANGELOG.md) for detailed version history.
 
 [Documentation](https://docs.cybergpt.com) • [GitHub](https://github.com/your-org/cybergpt)
 
-© 2024 CyberGPT. All rights reserved.
+©️ 2024 CyberGPT. All rights reserved.
 
 </div>
