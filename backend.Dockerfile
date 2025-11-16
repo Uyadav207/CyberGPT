@@ -51,7 +51,7 @@ COPY backend/src/prisma ./src/prisma
 # Install dependencies with optimizations:
 # - Ignore all postinstall scripts to avoid slow dtrace-provider build
 # - Frozen lockfile for consistency
-RUN bun install --frozen-lockfile --ignore-scripts
+RUN bun install --ignore-scripts --no-save
 
 # Manually run only the necessary Prisma generation
 # Use the DATABASE_URL passed as build argument
