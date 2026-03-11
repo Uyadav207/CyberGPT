@@ -16,10 +16,10 @@ export class SASTScanService {
 			issues: Issue[];
 			hotspots: Hotspot[];
 		},
-		id: number,
+		userId: string,
 	) {
 		try {
-			const user = await this.prisma.user.findUnique({ where: { id } });
+			const user = await this.prisma.user.findUnique({ where: { id: userId } });
 			if (!user) {
 				throw new Error("User not found");
 			}
@@ -31,7 +31,7 @@ export class SASTScanService {
 			const staticScanResponse = await convexClient.mutation(
 				api.sastScans.saveSonarScan,
 				{
-					userId: id.toString(),
+					userId,
 					repoType,
 					projectKey,
 					metrics,

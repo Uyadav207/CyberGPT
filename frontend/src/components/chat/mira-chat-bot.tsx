@@ -2512,7 +2512,7 @@ const MiraChatBot: React.FC = () => {
 						url: targetUrl as string,
 						complianceStandard: action as string,
 						scanType: scanType as string,
-						userId: Number(user?.id),
+						userId: user?.id ?? "",
 					};
 					setPendingAction(null);
 					setIsScanLoading(true);

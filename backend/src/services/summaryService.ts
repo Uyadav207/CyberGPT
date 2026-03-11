@@ -26,7 +26,7 @@ export const saveSummaryService = async (
 export const getSummariesByUserService = async (userId: any) => {
 	try {
 		const summaries = await convexClient.query(
-			api.summaries.getSummariesByUser,
+			api.summaries.getSummariesByUserId,
 			{
 				userId,
 			},

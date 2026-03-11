@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { cors } from "hono/cors";
+import { serveStatic } from "hono/bun";
 import { errorHandler } from "./middlewares/errorHandler";
 import { driver } from "./config/neo4j";
 import { authRoutes } from "./routes/authRoutes";
@@ -9,7 +10,6 @@ import { reportRoutes } from "./routes/reportRoutes";
 import { zapRoutes } from "./routes/zapRoutes";
 import { chatRoutes } from "./routes/chatRoute";
 import { ragRoutes } from "./routes/rag";
-import { paymentRoutes } from "./routes/paymentRoutes";
 import graphRoutes from "./routes/graphRoutes";
 import { dastRoutes } from "./routes/dastRoutes";
 
@@ -33,6 +33,9 @@ app.use("*", logger());
 // Error handler
 app.use("*", errorHandler);
 
+// Static uploads (avatars, reports)
+app.use("/uploads/*", serveStatic({ root: "./" }));
+
 // Routes
 app.route("/auth", authRoutes);
 app.route("/users", userRoutes);
@@ -41,7 +44,6 @@ app.route("/api", ragRoutes);
 app.route("/api/chat", chatRoutes);
 app.route("/reports", reportRoutes);
 app.route("/zap", zapRoutes);
-app.route("/subscription", paymentRoutes);
 app.route("/graph", graphRoutes);
 app.route("/dast", dastRoutes);
 

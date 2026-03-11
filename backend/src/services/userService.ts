@@ -3,7 +3,7 @@ import { transporter } from "../config/nodemailer";
 import type User from "../models/User";
 import { generateOtp } from "../utils/otpUtils";
 import { hashPassword } from "../utils/passwordUtils";
-import { uploadImageAndGetUrl } from "../utils/supabaseUtils/avatars";
+import { uploadImageAndGetUrl } from "../utils/localStorage/avatars";
 
 // Simple in-memory OTP storage (for development)
 const otpStorage = new Map<string, { otp: string; expiresAt: number }>();
@@ -15,8 +15,7 @@ export class UserService {
 		this.prisma = prisma;
 	}
 
-	// TODO: Get user by id
-	async getUserById(id: number) {
+	async getUserById(id: string) {
 		try {
 			const user = await this.prisma.user.findUnique({ where: { id } });
 			if (!user) {
@@ -30,8 +29,7 @@ export class UserService {
 		}
 	}
 
-	// TODO: Update user by id
-	async updateUserById(id: number, data: Partial<User>) {
+	async updateUserById(id: string, data: Partial<User>) {
 		try {
 			const user = await this.prisma.user.findUnique({ where: { id } });
 			if (!user) {
@@ -45,8 +43,8 @@ export class UserService {
 		}
 	}
 
-	async updateAvatar(id: number, file: File) {
-		if (!id || Number.isNaN(id)) {
+	async updateAvatar(id: string, file: File) {
+		if (!id || typeof id !== "string") {
 			throw new Error("Invalid user ID");
 		}
 
@@ -79,8 +77,7 @@ export class UserService {
 		}
 	}
 
-	// TODO: Delete user by id
-	async deleteUserById(id: number) {
+	async deleteUserById(id: string) {
 		try {
 			const user = await this.prisma.user.findUnique({ where: { id } });
 			if (!user) {
@@ -94,8 +91,7 @@ export class UserService {
 		}
 	}
 
-	// TODO: update/change password
-	async updatePassword(id: number, password: string) {
+	async updatePassword(id: string, password: string) {
 		try {
 			const user = await this.prisma.user.findUnique({ where: { id } });
 			if (!user) {

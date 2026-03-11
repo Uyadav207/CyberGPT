@@ -15,7 +15,7 @@ export const spiderAndScanUrl = async (ctx: Context) => {
 			(await ctx.req.json()) as {
 				targetUrl: string;
 				complianceStandard: string;
-				userId: number;
+				userId: string;
 			};
 
 		if (!targetUrl) {

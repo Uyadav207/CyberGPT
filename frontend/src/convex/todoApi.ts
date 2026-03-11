@@ -462,11 +462,8 @@ export const getTodoListFromChat = query({
   handler: async (ctx, args) => {
     const { chatId, messageId } = args;
 
-    if (!messageId?.trim()) {
-      return { success: false, message: "Message ID is required" };
-    }
-
     try {
+      // Find the chat history entry for this message
       const chatHistoryEntry = await ctx.db
         .query("chatHistory")
         .withIndex("by_chatId", (q) => q.eq("chatId", chatId))
@@ -485,7 +482,7 @@ export const getTodoListFromChat = query({
         };
       }
 
-      return { success: true, todoList };
+      return { success: true, todoList: todoList };
     } catch (error) {
       console.error("Error getting TODO list:", error);
       return { success: false, message: "Failed to get TODO list" };

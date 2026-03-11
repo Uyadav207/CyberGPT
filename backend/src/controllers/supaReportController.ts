@@ -2,7 +2,7 @@ import {
 	uploadReportAndGetUrl,
 	downloadPdfReportFile,
 	deletePDF,
-} from "../utils/supabaseUtils/reports";
+} from "../utils/localStorage/reports";
 import type { Context } from "hono";
 
 // Upload Endpoint

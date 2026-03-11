@@ -6,24 +6,27 @@ import { comparePasswords, hashPassword } from "../utils/passwordUtils";
 const prisma = new PrismaClient();
 const userService = new UserService(prisma);
 
-// TODO: Get user by id
+function toSafeUser(user: { id: string; password?: string | null; [k: string]: unknown }) {
+	const { password: _p, ...rest } = user;
+	return { ...rest, id: user.id };
+}
+
 export const getUserById = async (c: Context) => {
 	const id = c.req.param("id");
 	try {
-		const user = await userService.getUserById(Number(id));
-		return c.json(user);
+		const user = await userService.getUserById(id);
+		return c.json(toSafeUser(user));
 	} catch (error) {
 		return c.json({ error: (error as Error).message }, 404);
 	}
 };
 
-// TODO: Update user by id
 export const updateUserById = async (c: Context) => {
 	const id = c.req.param("id");
 	const data = await c.req.json();
 	try {
-		const user = await userService.updateUserById(Number(id), data);
-		return c.json(user);
+		const user = await userService.updateUserById(id, data);
+		return c.json(toSafeUser(user));
 	} catch (error) {
 		return c.json({ error: (error as Error).message }, 404);
 	}
@@ -42,10 +45,10 @@ export const updateAvatarById = async (c: Context) => {
 	}
 
 	try {
-		const updatedUser = await userService.updateAvatar(Number(id), file);
+		const updatedUser = await userService.updateAvatar(id, file);
 		return c.json({
 			message: "Avatar updated successfully",
-			user: updatedUser,
+			user: toSafeUser(updatedUser),
 		});
 	} catch (error) {
 		return c.json({ error: (error as Error).message }, 500);
@@ -56,7 +59,7 @@ export const updateAvatarById = async (c: Context) => {
 export const deleteUserById = async (c: Context) => {
 	const id = c.req.param("id");
 	try {
-		await userService.deleteUserById(Number(id));
+		await userService.deleteUserById(id);
 		return c.json({ message: "User deleted successfully" });
 	} catch (error) {
 		return c.json({ error: (error as Error).message }, 404);
@@ -69,7 +72,7 @@ export const changePassword = async (c: Context) => {
 	const { oldPassword, newPassword } = await c.req.json();
 
 	try {
-		const user = await userService.getUserById(Number(id));
+		const user = await userService.getUserById(id);
 		if (!user) {
 			return c.json({ error: "User not found" }, 404);
 		}
@@ -84,12 +87,9 @@ export const changePassword = async (c: Context) => {
 			return c.json({ error: "Incorrect old password" }, 400);
 		}
 
-		const updatedUser = await userService.updatePassword(
-			Number(id),
-			newPassword,
-		);
+		const updatedUser = await userService.updatePassword(id, newPassword);
 
-		return c.json({ updatedUser }, 200);
+		return c.json({ user: toSafeUser(updatedUser) }, 200);
 	} catch (error) {
 		return c.json({ error: (error as Error).message }, 500);
 	}

@@ -29,6 +29,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { useMutation, useAction, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 import type { Message } from '../../types/chats';
 import { MoveTodoToSpaceDialog } from './MoveTodoToSpaceDialog';
 import TodoListGenerationModal from './TodoListGenerationModal';
@@ -250,14 +251,15 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
   // TODO List Generation Modal
   const { openModal, closeModal, isModalOpen } = useTodoListGenerationModal();
   
-  // Convex mutations and queries
+  // Convex mutations and queries - skip when chatId or messageId is missing to avoid server error
+  const messageIdForTodo = message.humanInTheLoopId || message.id || '';
   const generateTodoTasksAction = useAction(api.todoApi.generateTodoTasksOnDemand);
   const updateTodoListMutation = useMutation(api.todoApi.saveTodoList);
-  const getTodoListFromChatQuery = useQuery(api.todoApi.getTodoListFromChat, { 
-    chatId, 
-    messageId: message.humanInTheLoopId || message.id || '' 
-  });
-  const chatHistory = useQuery(api.chats.getChatHistory, { chatId });
+  const getTodoListFromChatQuery = useQuery(
+    api.todoApi.getTodoListFromChat,
+    chatId && messageIdForTodo ? { chatId: chatId as Id<"chats">, messageId: messageIdForTodo } : "skip"
+  );
+  const chatHistory = useQuery(api.chats.getChatHistory, chatId ? { chatId: chatId as Id<"chats"> } : "skip");
 
   // Debug the query result
   React.useEffect(() => {

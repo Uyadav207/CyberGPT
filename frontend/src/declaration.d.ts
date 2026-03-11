@@ -42,8 +42,6 @@ declare module "@components/ui/toaster";
 
 // Custom components
 declare module "@components/inputs/dynamic-form";
-declare module "@components/inputs/auth-providers";
-
 //pages
 declare module "@pages/Home";
 declare module "@pages/Login";
@@ -71,4 +69,3 @@ declare module "@/lib/utils";
 // hooks
 declare module "@hooks/use-mobile";
 declare module "@hooks/use-toast";
-declare module "@lib/supabase";

@@ -1,8 +1,6 @@
 export type LoginApiPayloadType = {
 	email: string;
-	password?: string | null;
-	authProvider: string | null;
-	supabaseId?: string;
+	password: string;
 };
 
 export interface AuthResponse {
@@ -14,8 +12,6 @@ export interface AuthResponse {
 		avatar: string | null;
 		email: string;
 		authProvider: string;
-		supabaseId: string | null;
-		password: string | null;
 		createdAt: string;
 		updatedAt: string;
 	};
@@ -28,16 +24,7 @@ export interface RegisterApiPayloadType {
 	username: string;
 	email: string;
 	password?: string | null;
-	authProvider: "google" | "email";
-	supabaseId?: string;
 	avatar?: string;
-}
-
-export interface GoogleLoginApiPayloadType {
-	email: string;
-	password?: string | null;
-	authProvider: string | null;
-	supabaseId: string;
 }
 
 export interface SendOTPApiPayloadType {

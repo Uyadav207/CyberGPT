@@ -7,7 +7,7 @@ interface scanPayload {
 	url: string;
 	complianceStandard: string;
 	scanType: string;
-	userId: number;
+	userId: string;
 }
 
 interface githubScanPayload {

@@ -1,5 +1,5 @@
 import { driver } from '../config/neo4j';
-import neo4j, { Session } from 'neo4j-driver';
+import { Session } from 'neo4j-driver';
 
 const sampleData = [
   {

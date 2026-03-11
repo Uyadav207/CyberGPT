@@ -1,6 +1,5 @@
 import { PrismaClient } from "@prisma/client";
 import type { Context } from "hono";
-import type User from "../models/User";
 import { AuthService } from "../services/authService";
 import { JwtService } from "../services/jwtService";
 
@@ -8,18 +7,9 @@ const prisma = new PrismaClient();
 const authService = new AuthService(prisma);
 const jwtService = new JwtService();
 
-// Registers a new user (handles both email/password and Google OAuth users)
 export const register = async (c: Context) => {
-	const {
-		firstName,
-		lastName,
-		username,
-		email,
-		password,
-		authProvider,
-		supabaseId,
-		avatar,
-	} = await c.req.json();
+	const { firstName, lastName, username, email, password, avatar } =
+		await c.req.json();
 
 	try {
 		const user = await authService.register(
@@ -28,32 +18,27 @@ export const register = async (c: Context) => {
 			username,
 			email,
 			password,
-			authProvider || "email",
-			supabaseId,
 			avatar,
 		);
 		const token = jwtService.generateToken(user);
-
-		return c.json({ user, token }, 201);
+		const { password: _p, ...safeUser } = user;
+		return c.json(
+			{ user: { ...safeUser, id: user.id }, token },
+			201,
+		);
 	} catch (error) {
 		return c.json({ error: (error as Error).message }, 400);
 	}
 };
 
-// Logs in a user (handles both email/password and Google OAuth login)
 export const login = async (c: Context) => {
-	const { authProvider, email, password, supabaseId } = await c.req.json();
+	const { email, password } = await c.req.json();
 
 	try {
-		const user = await authService.login(
-			email,
-			password,
-			supabaseId,
-			authProvider || "email",
-		);
-
+		const user = await authService.login(email, password);
 		const token = jwtService.generateToken(user);
-		return c.json({ user, token });
+		const { password: _p, ...safeUser } = user;
+		return c.json({ user: { ...safeUser, id: user.id }, token });
 	} catch (error) {
 		return c.json({ error: (error as Error).message }, 401);
 	}

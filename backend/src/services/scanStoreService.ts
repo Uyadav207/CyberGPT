@@ -19,9 +19,9 @@ export class ScanStoreService {
 		this.prisma = prisma;
 	}
 
-	async saveZapScanToConvex(filteredResults: ZapAlertRequestBody, id: number) {
+	async saveZapScanToConvex(filteredResults: ZapAlertRequestBody, userId: string) {
 		try {
-			const user = await this.prisma.user.findUnique({ where: { id } });
+			const user = await this.prisma.user.findUnique({ where: { id: userId } });
 			if (!user) {
 				throw new Error("User not found");
 			}
@@ -38,7 +38,7 @@ export class ScanStoreService {
 				totals;
 
 			const scanResponse = await convexClient.mutation(api.scans.saveScan, {
-				userId: id.toString(),
+				userId,
 				targetUrl,
 				scanType,
 				complianceStandard: complianceStandardUrl,

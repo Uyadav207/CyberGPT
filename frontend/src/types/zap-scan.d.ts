@@ -90,5 +90,5 @@ export interface ScanResult {
 	targetUrl: string;
 	scanType: ScanType;
 	filteredAlerts: FilteredAlert[]; // Can be refined based on alert structure
-	userId: number;
+	userId: string;
 }

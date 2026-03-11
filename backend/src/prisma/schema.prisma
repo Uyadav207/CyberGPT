@@ -18,8 +18,9 @@ datasource db {
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
+// User.id is UUID; same value must be used as userId in Convex (all tables use userId: string).
 model User {
-    id            Int      @id @default(autoincrement())
+    id            String   @id @default(uuid())
     username      String   @unique
     firstName     String
     lastName      String
@@ -27,8 +28,7 @@ model User {
     email         String   @unique
     password      String?
     authProvider  String   @default("email")
-    supabaseId    String?  @unique
-    subscription  Subscription @default(FREE) 
+    subscription  Subscription @default(FREE)
     createdAt     DateTime @default(now())
     updatedAt     DateTime @updatedAt
 }
