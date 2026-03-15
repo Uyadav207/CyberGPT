@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { chatWithJargon } from '../../api/chat';
-import { ReasoningTrace } from './ReasoningTrace';
+import { ReasoningTrace, type ReasoningMeta } from './ReasoningTrace';
 
 export const GraphRAGTest: React.FC = () => {
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
-  const [reasoningTrace, setReasoningTrace] = useState<Array<{ step: string; message: string }>>([]);
+  const [reasoningTrace, setReasoningTrace] = useState<Array<Record<string, unknown>>>([]);
+  const [reasoningMeta, setReasoningMeta] = useState<ReasoningMeta | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -16,11 +17,13 @@ export const GraphRAGTest: React.FC = () => {
     setError(null);
     setAnswer('');
     setReasoningTrace([]);
+    setReasoningMeta(null);
 
     try {
       const response = await chatWithJargon({ message: question, agentPersonality: 'tutor' });
       setAnswer(response.answer);
-      setReasoningTrace(response.reasoningTrace);
+      setReasoningTrace((response as any).reasoningTrace || (response as any).trace || []);
+      setReasoningMeta((response as any).reasoningMeta ?? null);
     } catch (err: any) {
       setError(err.message || 'An error occurred');
     } finally {
@@ -100,7 +103,9 @@ export const GraphRAGTest: React.FC = () => {
           </div>
 
           {reasoningTrace.length > 0 && (
-            <ReasoningTrace trace={reasoningTrace} />
+            <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-sm">
+              <ReasoningTrace trace={reasoningTrace} reasoningMeta={reasoningMeta} />
+            </div>
           )}
         </div>
       )}

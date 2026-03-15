@@ -343,6 +343,13 @@ const GraphButton: React.FC<GraphButtonProps> = ({ message, chatId, className = 
   const handleGenerateGraph = async () => {
     if (message.sender !== 'ai') return;
 
+    // Guard: need a valid chat ID to fetch/save graph for this chat
+    const validChatId = chatId && String(chatId).trim() && chatId !== 'undefined' && chatId !== 'null';
+    if (!validChatId) {
+      setError('Open or save this chat first to view the knowledge graph.');
+      return;
+    }
+
     setIsGenerating(true);
     setError(null);
     setProgress(0);
@@ -356,11 +363,6 @@ const GraphButton: React.FC<GraphButtonProps> = ({ message, chatId, className = 
     openModal(message.id || 'unknown', chatId);
 
     try {
-      // Debug chatId value
-      // Validate chatId before proceeding
-      if (!chatId || chatId === 'undefined' || chatId === 'null' || chatId.trim() === '') {
-        throw new Error(`Invalid chat ID provided: "${chatId}"`);
-      }
 
       // Check if cancelled before proceeding
       if (controller.signal.aborted) {

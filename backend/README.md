@@ -11,7 +11,7 @@ Express.js backend API for the CyberGPT cybersecurity assessment platform.
 - **Prisma** - ORM for PostgreSQL
 - **PostgreSQL 14+** - Primary Database
 - **Neo4j 5.x** - Graph Database
-- **OpenAI GPT-4** - AI Integration
+- **OpenAI GPT-5** - AI Integration
 - **Pinecone** - Vector Database
 - **JWT** - Authentication
 
@@ -179,7 +179,7 @@ NEO4J_DATABASE="neo4j"
 
 # OpenAI
 OPENAI_API_KEY="sk-..."
-OPENAI_MODEL="gpt-4"
+OPENAI_MODEL="gpt-5"
 OPENAI_TEMPERATURE=0.7
 OPENAI_MAX_TOKENS=2000
 
@@ -476,7 +476,7 @@ const openai = new OpenAI({
 
 export const getChatCompletion = async (messages) => {
   const response = await openai.chat.completions.create({
-    model: 'gpt-4',
+    model: 'gpt-5',
     messages,
     temperature: 0.7,
     stream: true,

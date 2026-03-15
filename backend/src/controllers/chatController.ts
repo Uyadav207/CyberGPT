@@ -42,6 +42,43 @@ export class ChatController {
       });
   }
 
+  /**
+   * Guard: only run DAST when the user explicitly asks to scan a URL/URI.
+   * Avoids scanning when the user just mentions a URL in passing (e.g. "what is this site?").
+   */
+  private userExplicitlyRequestsScan(message: string): boolean {
+    if (!message || !message.trim()) return false;
+    const lower = message.trim().toLowerCase();
+    const scanIntentPatterns = [
+      "scan ",
+      " scan",
+      "scan this",
+      "scan the",
+      "scan that",
+      "run a scan",
+      "run scan",
+      "perform a scan",
+      "perform scan",
+      "do a scan",
+      "security scan",
+      "scan for vulnerabilities",
+      "scan for security",
+      "check this url",
+      "check this link",
+      "check this site",
+      "scan url",
+      "scan link",
+      "scan site",
+      "scan the url",
+      "scan the link",
+      "scan the site",
+      "scan the following",
+      "scan:",
+      "scanning ",
+    ];
+    return scanIntentPatterns.some((p) => lower.includes(p));
+  }
+
   async chatTitle(c: Context) {
     try {
       const { botMessage } = await c.req.json();
@@ -194,6 +231,7 @@ export class ChatController {
         question,
         messageId,
         chatId,
+        conversationHistory,
       } = body;
       // Accept both 'message' and 'concept' or 'question' as input
       const mainMessage = message || concept || question;
@@ -211,9 +249,17 @@ export class ChatController {
       let dastScanResults = null;
       let scannedUrl = null;
 
-      if (detectedUrls.length > 0) {
+      // Guard: only run DAST when user explicitly asks to scan (e.g. "scan https://...")
+      const explicitScanRequest = this.userExplicitlyRequestsScan(mainMessage);
+      if (detectedUrls.length > 0 && !explicitScanRequest) {
         console.log(
-          `🔍 [ChatController] Detected URLs in message: ${detectedUrls.join(", ")}`
+          `🔒 [ChatController] URLs detected but no explicit scan request—skipping DAST. Say e.g. "scan <url>" to run a security scan.`
+        );
+      }
+
+      if (detectedUrls.length > 0 && explicitScanRequest) {
+        console.log(
+          `🔍 [ChatController] Explicit scan requested. Detected URLs: ${detectedUrls.join(", ")}`
         );
 
         // Perform DAST scan on the first URL found
@@ -250,6 +296,7 @@ export class ChatController {
           const {
             answer,
             reasoningTrace,
+            reasoningMeta,
             jargons,
             cveDescriptionsMap,
             dynamicTags,
@@ -258,7 +305,8 @@ export class ChatController {
           } = await graphRAGAnswer(
             enhancedMessage,
             agentPersonality,
-            dastScanResults
+            dastScanResults,
+            conversationHistory
           );
 
           // Ensure trace is always an array with a narrative field if reasoningTrace is a string
@@ -271,6 +319,7 @@ export class ChatController {
           return c.json({
             answer,
             trace,
+            reasoningMeta,
             jargons,
             cveDescriptionsMap,
             dynamicTags,
@@ -292,12 +341,13 @@ export class ChatController {
       const {
         answer,
         reasoningTrace,
+        reasoningMeta,
         jargons,
         cveDescriptionsMap,
         dynamicTags,
         contextData,
         sourceLinks,
-      } = await graphRAGAnswer(mainMessage, agentPersonality);
+      } = await graphRAGAnswer(mainMessage, agentPersonality, undefined, conversationHistory);
       // Ensure trace is always an array with a narrative field if reasoningTrace is a string
       let trace = Array.isArray(reasoningTrace)
         ? reasoningTrace
@@ -342,6 +392,7 @@ export class ChatController {
       return c.json({
         answer,
         trace,
+        reasoningMeta,
         jargons,
         cveDescriptionsMap,
         dynamicTags,

@@ -31,7 +31,7 @@ export class GraphRAGController {
 
       // Step 1: Initialize LLM
       const llm = new ChatOpenAI({
-        modelName: "gpt-4",
+        modelName: process.env.OPENAI_MODEL || "gpt-4o",
         openAIApiKey: process.env.OPENAI_API_KEY!,
         temperature: 0.3,
       });
@@ -67,7 +67,7 @@ Only return the Cypher query.
       if (!cypher?.toLowerCase().startsWith("match")) {
         return c.json({
           status: "error",
-          message: "❌ GPT-4 did not return a valid Cypher query.",
+          message: "❌ GPT-5 did not return a valid Cypher query.",
           cypher,
         });
       }

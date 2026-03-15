@@ -42,7 +42,7 @@ export class OpenAIService {
 
   async chat(messages: ChatCompletionMessageParam[]): Promise<string> {
     const response = await this.client.chat.completions.create({
-      model: "gpt-4o",
+      model: process.env.OPENAI_MODEL || "gpt-4o",
       messages: messages,
     });
     return response.choices[0].message.content || "";
@@ -75,7 +75,7 @@ export class OpenAIService {
     const formattedContext = this.preprocessContext(documents);
 
     const response = await this.client.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: process.env.OPENAI_MODEL || "gpt-4o",
       messages: [
         {
           role: "system",
@@ -117,7 +117,7 @@ export class OpenAIService {
     const formattedContext = this.preprocessContext(documents);
 
     const stream = await this.client.chat.completions.create({
-      model: "gpt-4o",
+      model: process.env.OPENAI_MODEL || "gpt-4o",
       messages: [
         {
           role: "system",
@@ -172,7 +172,7 @@ export class OpenAIService {
 
   async generateSummary(prompt: string): Promise<string> {
     const response = await this.client.completions.create({
-      model: "gpt-4o",
+      model: process.env.OPENAI_MODEL || "gpt-4o",
       prompt: prompt,
     });
     return response.choices[0].text || "";
@@ -182,7 +182,7 @@ export class OpenAIService {
     messages: ChatCompletionMessageParam[]
   ): Promise<Stream<OpenAI.Chat.Completions.ChatCompletionChunk>> {
     const stream = await this.client.chat.completions.create({
-      model: "gpt-4o",
+      model: process.env.OPENAI_MODEL || "gpt-4o",
       messages: messages,
       stream: true,
       temperature: 0.4,
@@ -318,7 +318,7 @@ export class OpenAIService {
     const prompt = `User asked: "${question}"
 What is the canonical vulnerability or security concept the user is referring to? Respond with the canonical name only.`;
     const response = await this.client.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: process.env.OPENAI_MODEL || "gpt-4o",
       messages: [
         {
           role: "system",
@@ -327,7 +327,7 @@ What is the canonical vulnerability or security concept the user is referring to
         },
         { role: "user", content: prompt },
       ],
-      max_tokens: 32,
+      max_completion_tokens: 32,
       temperature: 0,
     });
     return response.choices[0].message.content?.trim() || "";

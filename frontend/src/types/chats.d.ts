@@ -70,6 +70,13 @@ export interface Message {
   /** DAST scan results if URL was scanned */
   dastScanResults?: any;
   scannedUrl?: string;
+  /** Pipeline meta: sources used, CVEs in context, enrichment flag */
+  reasoningMeta?: {
+    sourcesUsed?: string[];
+    cveIdsInContext?: string[];
+    enrichmentPerformed?: boolean;
+    agentPersonality?: string;
+  };
 }
 
 export interface RequestHumanInLoop {

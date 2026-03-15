@@ -82,7 +82,7 @@ export class DASTScanController {
       // Perform DAST scan
       const scanResult: DASTScanResult = await dastScanService.scanUrl(url);
 
-      // Generate a story-like analysis of the scan results
+      // Generate a structured security analysis of the scan results
       const analysis = await this.generateScanAnalysis(scanResult);
 
       console.log(`✅ [DASTController] Chat scan completed for ${url}`);

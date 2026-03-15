@@ -289,6 +289,13 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
         return;
       }
 
+      // Guard: Convex requires a valid chat ID; avoid server error when empty
+      const validChatId = chatId && String(chatId).trim() && chatId !== 'undefined' && chatId !== 'null';
+      if (!validChatId) {
+        setError('Open or save this chat first to generate the todo list.');
+        return;
+      }
+
       // Check if TODO list already exists and we're not forcing regeneration
       if (!forceRegenerate && getTodoListFromChatQuery?.success && getTodoListFromChatQuery.todoList) {
         setTodoList(getTodoListFromChatQuery.todoList);
@@ -330,7 +337,7 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
             })() : 'Security analysis request';
 
             const apiParams = {
-              chatId: chatId,
+              chatId: chatId as Id<"chats">,
               messageId: messageIdToUse,
               userQuestion: userQuestion,
               aiResponse: message.message || '',

@@ -131,7 +131,7 @@ Return only valid JSON array, no additional text.`;
               Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
             },
             body: JSON.stringify({
-              model: "gpt-4",
+              model: process.env.OPENAI_MODEL || "gpt-4o",
               messages: [
                 {
                   role: "system",
@@ -144,7 +144,7 @@ Return only valid JSON array, no additional text.`;
                 },
               ],
               temperature: 0.7,
-              max_tokens: 2000,
+              max_completion_tokens: 2000,
             }),
           }
         );

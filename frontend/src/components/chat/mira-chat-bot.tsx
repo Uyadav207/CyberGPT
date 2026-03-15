@@ -12,6 +12,7 @@ import { Progress } from "@components/ui/progress";
 import { HumanInTheLoopOptions } from "./human-in-the-loop-options";
 import { HumanInTheLoopApproval } from "./human-in-the-loop-approval";
 import GraphGenerationModal from "./GraphGenerationModal";
+import { ReasoningTrace } from "./ReasoningTrace";
 import { useGraphGenerationModal } from "../../hooks/useGraphGenerationModal";
 import {
 	Dialog,
@@ -923,7 +924,7 @@ const MiraChatBot: React.FC = () => {
 		}
 	};
 
-	const processPrompt = async (userMessage: Message, _useRAG?: boolean) => {
+	const processPrompt = async (userMessage: Message, _useRAG?: boolean, existingChatId?: string) => {
 		console.log("🚨 [Frontend] PROCESS PROMPT CALLED - This should appear for every message!");
 		console.log("🚨 [Frontend] User message:", userMessage);
 		setIsLoading(true);
@@ -954,14 +955,24 @@ const MiraChatBot: React.FC = () => {
 
 		if (hasNegation) {
 			// Use chatWithJargon for all questions, including negations
-			const graphChatId = createdChatId || chatId;
+			const graphChatId = existingChatId || createdChatId || chatId;
 			const botMessageId = uuidv4(); // Generate bot message ID for graph generation
-			
+
+			const maxHistoryTurns = 20;
+			const conversationHistoryNeg = messages
+				.slice(-maxHistoryTurns)
+				.map((m) => ({
+					role: m.sender === "user" ? ("user" as const) : ("assistant" as const),
+					content: m.message || "",
+				}))
+				.filter((m) => m.content.trim().length > 0);
+
 			const graphRAGResponse = await chatWithJargon({
 				message: userMessage.message,
 				agentPersonality: selectedAgentMode,
 				messageId: botMessageId, // Pass message ID for graph generation
-				chatId: graphChatId // Pass chat ID for graph generation
+				chatId: graphChatId, // Pass chat ID for graph generation
+				conversationHistory: conversationHistoryNeg.length > 0 ? conversationHistoryNeg : undefined,
 			});
 
 			// Graph generation is now manual only - triggered by graph icon click
@@ -974,7 +985,8 @@ const MiraChatBot: React.FC = () => {
 				id: botMessageId, // Use the same ID that was passed to the API for graph generation
 				message: graphRAGResponse.answer,
 				sender: "ai",
-				reasoningTrace: graphRAGResponse.reasoningTrace,
+				reasoningTrace: graphRAGResponse.reasoningTrace || graphRAGResponse.trace,
+				reasoningMeta: (graphRAGResponse as any).reasoningMeta,
 				jargons: graphRAGResponse.jargons,
 				cveDescriptionsMap: graphRAGResponse.cveDescriptionsMap,
 				sourceLinks: graphRAGResponse.sourceLinks || [],
@@ -1008,17 +1020,18 @@ const MiraChatBot: React.FC = () => {
 			});
 
 			// Save messages to database with graph visualization
-			if (!chatId && !createdChatId) {
+			if (!graphChatId) {
 				await processManualMessages(userMessage, botMessage);
 			} else {
-				await saveChatMessage({
-					chatId: chatId
-						? (chatId as Id<"chats">)
-						: (createdChatId as Id<"chats">),
-					humanInTheLoopId: userMessage.id,
-					sender: userMessage.sender,
-					message: userMessage.message,
-				});
+				// User message already saved in handleSend when existingChatId was set
+				if (!existingChatId) {
+					await saveChatMessage({
+						chatId: (graphChatId as Id<"chats">),
+						humanInTheLoopId: userMessage.id,
+						sender: userMessage.sender,
+						message: userMessage.message,
+					});
+				}
 
 				// Save AI response with enhanced data including graph visualization
 				try {
@@ -1086,9 +1099,7 @@ const MiraChatBot: React.FC = () => {
 					console.error('Failed to save negation AI response with graph data:', saveError);
 					// Fallback to basic save
 					await saveChatMessage({
-						chatId: chatId
-							? (chatId as Id<"chats">)
-							: (createdChatId as Id<"chats">),
+						chatId: graphChatId as Id<"chats">,
 						humanInTheLoopId: botMessage.id,
 						sender: botMessage.sender,
 						message: botMessage.message,
@@ -1100,24 +1111,34 @@ const MiraChatBot: React.FC = () => {
 		} else if (isClarification) {
 			// Route clarification to main flow for enhanced processing
 			console.log('🔄 CLARIFICATION ROUTED TO MAIN FLOW');
-			// Use the same logic as main flow
-			try {
-				console.log('🚀 ENTERING CLARIFICATION WITH ENHANCED FLOW');
-				console.log('UserMessage:', userMessage);
-				setIsLoading(true);
+				// Use the same logic as main flow
+				try {
+					console.log('🚀 ENTERING CLARIFICATION WITH ENHANCED FLOW');
+					console.log('UserMessage:', userMessage);
+					setIsLoading(true);
 				
 				// User message is already added earlier, no need to add again
 				
 				// Use chatWithJargon for clarifications with agent personality
 				console.log('Sending clarification request with agent personality:', selectedAgentMode);
-				const graphChatId = createdChatId || chatId;
+				const graphChatId = existingChatId || createdChatId || chatId;
 				const botMessageId = uuidv4(); // Generate bot message ID for graph generation
-				
+
+				const maxHistoryTurnsClar = 20;
+				const conversationHistoryClar = messages
+					.slice(-maxHistoryTurnsClar)
+					.map((m) => ({
+						role: m.sender === "user" ? ("user" as const) : ("assistant" as const),
+						content: m.message || "",
+					}))
+					.filter((m) => m.content.trim().length > 0);
+
 				const response = await chatWithJargon({ 
 					message: userMessage.message,
 					agentPersonality: selectedAgentMode,
 					messageId: botMessageId, // Pass message ID for graph generation
-					chatId: graphChatId // Pass chat ID for graph generation
+					chatId: graphChatId, // Pass chat ID for graph generation
+					conversationHistory: conversationHistoryClar.length > 0 ? conversationHistoryClar : undefined,
 				});
 
 				// Graph generation is now manual only - triggered by graph icon click
@@ -1138,7 +1159,8 @@ const MiraChatBot: React.FC = () => {
 					id: botMessageId, // Use the same ID that was passed to the API for graph generation
 					message: response.answer,
 					sender: 'ai',
-					reasoningTrace: response.reasoningTrace,
+					reasoningTrace: response.reasoningTrace || (response as any).trace,
+					reasoningMeta: (response as any).reasoningMeta,
 					jargons: response.jargons,
 					cveDescriptionsMap: response.cveDescriptionsMap,
 					sourceLinks: response.sourceLinks || [],
@@ -1148,8 +1170,8 @@ const MiraChatBot: React.FC = () => {
 				thinkingStartRef.current = null;
 				
 				// Save AI response to database (same logic as main flow)
-				const currentChatId = createdChatId || chatId;
-				console.log('Debug - Chat IDs:', { createdChatId, chatId, currentChatId });
+				const currentChatId = existingChatId || createdChatId || chatId;
+				console.log('Debug - Chat IDs:', { existingChatId, createdChatId, chatId, currentChatId });
 				console.log('Will save to database:', !!currentChatId, 'or create new chat:', !currentChatId);
 				
 				if (currentChatId) {
@@ -1380,12 +1402,8 @@ const MiraChatBot: React.FC = () => {
 						});
 						console.log('AI response saved to new chat with enhanced data');
 						
-						// Update URL
-						window.history.pushState(
-							{ path: `/chatbot/${newChatResult}` },
-							"",
-							`/chatbot/${newChatResult}`,
-						);
+						// Update URL so chatId is in params (graph/todo buttons need it)
+						navigate(`/chatbot/${newChatResult}`, { replace: true });
 					} catch (chatCreateError) {
 						console.error('Failed to create new chat:', chatCreateError);
 					}
@@ -1479,17 +1497,17 @@ const MiraChatBot: React.FC = () => {
 				// Use chatWithJargon for the main chat flow with agent personality and automatic graph generation
 				console.log('Sending request with agent personality:', selectedAgentMode);
 				
-				// Create a new chat if none exists, so we have a chatId for graph generation
-				let graphChatId = createdChatId || chatId;
+				// Use existingChatId (from instant create in handleSend), or createdChatId/chatId
+				let graphChatId = existingChatId || createdChatId || chatId;
 				console.log('🔄 [Frontend] Initial chatId check:', {
+					existingChatId,
 					createdChatId,
 					chatId,
 					graphChatId,
-					hasCreatedChatId: !!createdChatId,
-					hasChatId: !!chatId,
 					hasGraphChatId: !!graphChatId
 				});
 				
+				// Only create chat here if we still don't have one (e.g. legacy path; first message normally creates in handleSend)
 				if (!graphChatId) {
 					console.log('🔄 [Frontend] No chatId available, creating new chat first...');
 					try {
@@ -1547,11 +1565,22 @@ const MiraChatBot: React.FC = () => {
 					throw new Error('chatId is required for graph generation');
 				}
 
+				// Build conversation history from previous messages (last 20 = 10 turns) for context
+				const maxHistoryTurns = 20;
+				const conversationHistory = messages
+					.slice(-maxHistoryTurns)
+					.map((m) => ({
+						role: m.sender === "user" ? ("user" as const) : ("assistant" as const),
+						content: m.message || "",
+					}))
+					.filter((m) => m.content.trim().length > 0);
+
 				const response = await chatWithJargon({ 
 					message: userMessage.message,
 					agentPersonality: selectedAgentMode,
 					messageId: botMessageId, // Pass message ID for graph generation
-					chatId: graphChatId // Pass chat ID for graph generation
+					chatId: graphChatId, // Pass chat ID for graph generation
+					conversationHistory: conversationHistory.length > 0 ? conversationHistory : undefined,
 				});
 
 				// Graph generation is now manual only - triggered by graph icon click
@@ -1698,6 +1727,7 @@ const MiraChatBot: React.FC = () => {
 					message: response.answer,
 					sender: 'ai',
 					reasoningTrace: reasoningTrace,
+					reasoningMeta: (response as any).reasoningMeta,
 					jargons: response.jargons,
 					cveDescriptionsMap: response.cveDescriptionsMap,
 					sourceLinks: response.sourceLinks || [],
@@ -2127,12 +2157,8 @@ const MiraChatBot: React.FC = () => {
 						// TODO lists are now generated on-demand when user clicks the TODO button
 						console.log("✅ [Frontend] Chat message saved. TODO list will be generated when user clicks the TODO button.");
 						
-						// Update URL
-						window.history.pushState(
-							{ path: `/chatbot/${newChatResult2}` },
-							"",
-							`/chatbot/${newChatResult2}`,
-						);
+						// Update URL so chatId is in params (graph/todo buttons need it)
+						navigate(`/chatbot/${newChatResult2}`, { replace: true });
 					} catch (chatCreateError) {
 						console.error('Failed to create new chat:', chatCreateError);
 					}
@@ -2185,11 +2211,7 @@ const MiraChatBot: React.FC = () => {
 				message: msg.message,
 			});
 		}
-		window.history.pushState(
-			{ path: `/chatbot/${result}` },
-			"",
-			`/chatbot/${result}`,
-		);
+		navigate(`/chatbot/${result}`, { replace: true });
 	};
 
 	const requestHumanApproval = async (
@@ -3421,8 +3443,28 @@ const MiraChatBot: React.FC = () => {
 					return error;
 				}
 			} else {
-				// Always use GraphRAG for cybersecurity questions
-				processPrompt(userMessage, true);
+				// First message: create chat instantly so we have a chatId and URL before the AI responds
+				let newChatId: string | null = null;
+				try {
+					const title = finalMessage.trim().slice(0, 50) || "New chat";
+					newChatId = await saveChat({
+						userId: String(user?.id || "anonymous"),
+						title: title.length < finalMessage.trim().length ? `${title}…` : title,
+						tags: ["cybersecurity_general"],
+					});
+					setCreatedChatId(newChatId);
+					await saveChatMessage({
+						humanInTheLoopId: userMessage.id,
+						chatId: newChatId as Id<"chats">,
+						sender: userMessage.sender,
+						message: userMessage.message,
+					});
+					navigate(`/chatbot/${newChatId}`, { replace: true });
+				} catch (err) {
+					console.error("Failed to create chat on first message:", err);
+				}
+				// Pass newChatId so processPrompt uses it (state may not have updated yet)
+				processPrompt(userMessage, true, newChatId ?? undefined);
 			}
 		}
 	};
@@ -3467,11 +3509,7 @@ const MiraChatBot: React.FC = () => {
 				});
 			}
 
-			window.history.pushState(
-				{ path: `/chatbot/${result}` },
-				"",
-				`/chatbot/${result}`,
-			);
+			navigate(`/chatbot/${result}`, { replace: true });
 		} else {
 			// Handle existing chat
 			const targetChatId = createdChatId || chatId;
@@ -3584,25 +3622,35 @@ const MiraChatBot: React.FC = () => {
 			return `__CODE_BLOCK_${codeBlocks.length - 1}__`;
 		});
 		
-		// Sort by term length descending to avoid partial matches (longer terms first)
+		// Sort by term length descending so longer phrases get highlighted first (avoids "HSTS" inside "Missing HSTS")
 		const sortedJargons = [...jargons].sort((a, b) => b.term.length - a.term.length);
-		
+
+		const isInsideJargonTag = (str: string, index: number): boolean => {
+			const before = str.slice(0, index);
+			const lastOpen = before.lastIndexOf('[JARGON_HIGHLIGHT:');
+			if (lastOpen === -1) return false;
+			const afterOpen = str.slice(lastOpen, index + 1);
+			const closeCount = (afterOpen.match(/\]/g) || []).length;
+			const openCount = (afterOpen.match(/\[JARGON_HIGHLIGHT:/g) || []).length;
+			return openCount > closeCount;
+		};
+
 		sortedJargons.forEach(j => {
 			const term = j.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-			// Use word boundaries for single words, but allow partial matches for multi-word terms and technical terms
 			const isMultiWord = j.term.includes(' ') || j.term.includes('-') || /^[A-Z]{2,}/.test(j.term);
-			const regex = isMultiWord 
+			const regex = isMultiWord
 				? new RegExp(`(${term})`, 'gi')
 				: new RegExp(`\\b(${term})\\b`, 'gi');
-			
+
 			const desc = j.description || cveDescriptionsMap[j.term] || '';
+			const replacement = `[JARGON_HIGHLIGHT:${j.term}|${desc.replace(/"/g, '&quot;')}]`;
 			console.log(`Highlighting term: "${j.term}" with description: "${desc.substring(0, 50)}..."`);
-			
-			// Replace with MarkdownViewer's expected syntax for clean highlighting
-			processed = processed.replace(
-				regex,
-				`[JARGON_HIGHLIGHT:${j.term}|${desc.replace(/"/g, '&quot;')}]`
-			);
+
+			processed = processed.replace(regex, (match, ...args) => {
+				const offset = args[args.length - 2] as number;
+				if (isInsideJargonTag(processed, offset)) return match;
+				return replacement;
+			});
 		});
 		
 		// Restore code blocks
@@ -3989,24 +4037,14 @@ For more specific guidance, please ask about particular aspects of these securit
 															opacity: { duration: 0.2 },
 															height: { duration: 0.3 }
 														}}
-														className="mb-2 p-2 sm:p-3 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/50 dark:to-purple-800/50 rounded-lg border-l-2 sm:border-l-4 border-purple-400 dark:border-purple-400 shadow-sm relative overflow-hidden"
-														style={{ fontSize: '0.75rem', lineHeight: 1.5 }}
+														className="mb-2 p-2 sm:p-3 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/50 dark:to-purple-800/50 rounded-lg border-l-2 sm:border-l-4 border-purple-400 dark:border-purple-400 shadow-sm relative overflow-hidden text-purple-900 dark:text-purple-100 text-xs"
+														style={{ fontSize: "0.75rem", lineHeight: 1.5 }}
 													>
-																												<div className="flex items-center mb-2 mt-1">
-															<span className="text-lg mr-1">🤔</span>
-														</div>
-														<div className="text-purple-700 dark:text-purple-200 text-xs">
-															{(() => {
-																const reasoningContent = getReasoningString(message.reasoningTrace);
-																console.log('[Reasoning Display] Rendering reasoning for message:', {
-																	messageId: message.id,
-																	reasoningContentLength: reasoningContent.length,
-																	reasoningContentPreview: reasoningContent.substring(0, 100) + '...',
-																	isExpanded: expandedReasoning[String(message.id)]
-																});
-																return <MarkdownViewer content={reasoningContent} />;
-															})()}
-												</div>
+														<ReasoningTrace
+															trace={(message.reasoningTrace ?? []) as Array<Record<string, unknown>>}
+															reasoningMeta={message.reasoningMeta}
+															durationSec={message.durationSec}
+														/>
 													</motion.div>
 											)}
 											</AnimatePresence>
@@ -4097,15 +4135,9 @@ For more specific guidance, please ask about particular aspects of these securit
 															);
 														})()}
 														
-														{/* Graph */}
+														{/* Graph - use message.chatId when loaded from DB, else URL or store */}
 														{(() => {
-															const graphChatId = chatId || createdChatId || '';
-															console.log('[MiraChatBot] Passing chatId to GraphButton:', {
-																chatId,
-																createdChatId,
-																graphChatId,
-																messageId: message.id
-															});
+															const graphChatId = (message as any).chatId || chatId || createdChatId || '';
 															return (
 																<GraphButton 
 																	message={message} 
@@ -4115,9 +4147,9 @@ For more specific guidance, please ask about particular aspects of these securit
 															);
 														})()}
 														
-														{/* TODO List */}
+														{/* TODO List - same effective chatId for this message's chat */}
 														{(() => {
-															const todoChatId = chatId || createdChatId || '';
+															const todoChatId = (message as any).chatId || chatId || createdChatId || '';
 															return (
 																<TodoListButton 
 																	message={message} 

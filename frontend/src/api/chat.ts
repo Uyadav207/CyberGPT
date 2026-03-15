@@ -96,12 +96,17 @@ const chatSummaryOpenAI = async (payload: { messages: string[] }) => {
   return response; // Return the readable stream for processing
 };
 
+// Conversation turn for context (role + content only; no IDs)
+export type ConversationTurn = { role: "user" | "assistant"; content: string };
+
 // Add a new function to call the backend chatWithJargon endpoint with automatic graph generation
 export const chatWithJargon = async (payload: {
   message: string;
   agentPersonality?: string;
   messageId?: string;
   chatId?: string;
+  /** Previous conversation turns (last N messages) for context. Capped on backend. */
+  conversationHistory?: ConversationTurn[];
 }) => {const response = await fetch(`${BASE_URL}/chat/with-jargon`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

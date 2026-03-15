@@ -207,7 +207,7 @@ To democratize cybersecurity by making advanced security assessment tools access
 │                    EXTERNAL SERVICES                                 │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                |
 │  │   OpenAI     │  │              │  │              │                │
-│  │   GPT-4      │  │   Scanner    │  │   Analysis   │                │
+│  │   GPT-5      │  │   Scanner    │  │   Analysis   │                │
 │  └──────────────┘  └──────────────┘  └──────────────┘                |
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────┐  │
 │  │     NVD      │  │    CIRCL     │  │     OSV      │  │  Convex  │  │
@@ -222,7 +222,7 @@ To democratize cybersecurity by making advanced security assessment tools access
 ```
 User Input → Frontend → API Gateway → Chat Service
                                            ↓
-                                    OpenAI GPT-4
+                                    OpenAI GPT-5
                                            ↓
                                     graphRAG Service
                                            ↓
@@ -286,7 +286,7 @@ AI Response → Entity Extraction → Relationship Mapping
 
 | Service | Purpose |
 |---------|---------|
-| **OpenAI GPT-4** | Conversational AI & reasoning |
+| **OpenAI GPT-5** | Conversational AI & reasoning |
 | **Neo4j** | Knowledge graph database |
 | **Langchain** | LLM orchestration |
 
@@ -324,7 +324,7 @@ Ensure you have the following installed:
 
 ### **Required API Keys**
 
-- OpenAI API Key (GPT-4 access)
+- OpenAI API Key (GPT-5 access)
 - Supabase credentials
 - Convex deployment URL
 
@@ -366,7 +366,7 @@ NEO4J_PASSWORD="your-neo4j-password"
 
 # OpenAI
 OPENAI_API_KEY="sk-your-openai-api-key"
-OPENAI_MODEL="gpt-4"
+OPENAI_MODEL="gpt-5"
 
 # JWT
 JWT_SECRET="your-super-secret-jwt-key"
@@ -1011,7 +1011,7 @@ SOFTWARE.
 ## 🙏 Acknowledgments
 
 ### **Technologies**
-- [OpenAI](https://openai.com/) - GPT-4 AI capabilities
+- [OpenAI](https://openai.com/) - GPT-5 AI capabilities
 - [Neo4j](https://neo4j.com/) - Graph database technology
 - [React](https://react.dev/) - Frontend framework
 - [Tailwind CSS](https://tailwindcss.com/) - Styling framework
