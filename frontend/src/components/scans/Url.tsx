@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Badge } from "../ui/badge";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 
 // type VulnerabilityInfo = {
 // 	_creationTime: number;
@@ -29,9 +30,7 @@ const Url: React.FC = () => {
 	const navigate = useNavigate();
 	const vulnerabilityInfos = useQuery(
 		api.vulnerabilityInfo.fetchVulnerabilityInfoByVId,
-		{
-			vulnerabilityId,
-		},
+		vulnerabilityId ? { vulnerabilityId: vulnerabilityId as Id<"vulnerabilities"> } : "skip",
 	);
 
 	if (!vulnerabilityInfos) {
@@ -127,12 +126,7 @@ const Url: React.FC = () => {
 			</div>
 			<div className="space-y-2">
 				{vulnerabilityInfos[0].affectedUrls.map(
-					(affectedUri: {
-						attack: string;
-						evidence: string;
-						method: "GET" | "POST" | "PUT" | "DELETE";
-						uri: string;
-					}) => (
+					(affectedUri: { attack: string; evidence: string; method: string; uri: string }) => (
 						<div
 							key={affectedUri.uri}
 							className="flex flex-wrap items-center space-x-3 p-4 border bg-sidebar rounded-sm"

@@ -3,9 +3,10 @@ import { EmptyState } from "../components/folder/EmptyState";
 import { CreateFolderDialog } from "../components/folder/CreateFolderDialog";
 import { FolderGrid } from "../components/folder/FolderGrid";
 import { FolderView } from "../components/folder/FolderView";
-import type { Folder, ConvexFolderType } from "../types/reports";
+import type { Folder } from "../types/reports";
 
 import { api } from "../convex/_generated/api";
+import type { Id } from "../convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import useStore from "../store/store";
 import { v4 as uuidv4 } from "uuid";
@@ -36,7 +37,7 @@ export function Reports() {
 	});
 	const filesByFolder = useQuery(
 		api.reports.getReportsByFolder,
-		reportId && { folderId: String(reportId) },
+		reportId ? { folderId: reportId as Id<"reportFolders"> } : "skip",
 	);
 
 	const saveReport = useMutation(api.reports.createReportFolder);
@@ -73,7 +74,7 @@ export function Reports() {
 		if (folderData) {
 			setFolders(
 				folderData.map(
-					(item: ConvexFolderType): Folder => ({
+					(item: { _id: string; folderName: string }): Folder => ({
 						id: item._id,
 						name: item.folderName,
 						files: [],
@@ -112,7 +113,7 @@ export function Reports() {
 						<FolderView
 							folder={currentFolder as Folder}
 							reportId={reportId}
-							files={filesByFolder}
+							files={filesByFolder ?? []}
 							onBack={() => setCurrentFolderId(null)}
 						/>
 					) : (

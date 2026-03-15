@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "convex/react";
 import { useEffect, useState } from "react";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "../ui/badge";
 import { Card } from "../ui/card";
@@ -36,7 +37,7 @@ const UserScans: React.FC = () => {
 
 	const deleteScan = async (scanId: string, e: React.MouseEvent) => {
 		e.stopPropagation();
-		const responseAfterDelete = await deleteScanMutation({ scanId });
+		const responseAfterDelete = await deleteScanMutation({ scanId: scanId as Id<"scans"> });
 		if (!responseAfterDelete) {
 			return;
 		}
@@ -56,7 +57,7 @@ const UserScans: React.FC = () => {
 
 	useEffect(() => {
 		if (recentScans) {
-			setScans(recentScans);
+			setScans(recentScans as unknown as UserScan[]);
 			setLoading(false);
 		}
 	}, [recentScans]);

@@ -6,12 +6,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { Info } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 import { useQuery } from "convex/react";
 interface Issue {
 	_id: string;
 	severity: string;
 	message: string;
-	tags: string[];
+	tags?: string[];
 	component: string;
 	line: number;
 	staticScanId: string;
@@ -20,9 +21,10 @@ const ViewIssues: React.FC = () => {
 	const navigate = useNavigate();
 	const { staticScanId } = useParams<{ staticScanId: string }>();
 
-	const issues = useQuery(api.sastScans.fetchIssueListByScanId, {
-		staticScanId,
-	});
+	const issues = useQuery(
+		api.sastScans.fetchIssueListByScanId,
+		staticScanId ? { staticScanId: staticScanId as Id<"staticScans"> } : "skip",
+	);
 
 	const [currentPage, setCurrentPage] = useState(1);
 	const itemsPerPage = 6;
@@ -102,7 +104,7 @@ const ViewIssues: React.FC = () => {
 
 						<div className="flex items-center space-x-4 mt-2">
 							<div className="flex flex-wrap gap-2">
-								{issues.tags.map((tag) => (
+								{(issues.tags ?? []).map((tag) => (
 									<Badge
 										key={`tag-${issues._id}-${tag}`}
 										className="bg-purple-100 text-purple-600"

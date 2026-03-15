@@ -3,6 +3,7 @@ import { PieChart, Pie, Cell, Tooltip, type PieProps } from "recharts";
 import { useParams } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 
 type ChartData = {
 	name: string;
@@ -12,9 +13,10 @@ type ChartData = {
 
 const DonutChart: React.FC = () => {
 	const { scanId } = useParams<{ scanId: string }>();
-	const scanData = useQuery(api.scans.fetchTotalRisksByScanId, {
-		scanId: scanId,
-	});
+	const scanData = useQuery(
+		api.scans.fetchTotalRisksByScanId,
+		scanId ? { scanId: scanId as Id<"scans"> } : "skip",
+	);
 
 	const [chartData, setChartData] = useState<ChartData[]>([]);
 	const [hoveredSegment, setHoveredSegment] = useState<string | null>(null);

@@ -28,7 +28,7 @@ export function ChatTemplate() {
 
 	const fetchedSummary = useQuery(api.summaries.getSummariesByUserId, {
 		userId: String(user.id),
-	}) as Summary[];
+	}) as unknown as Summary[];
 
 	const navigate = useNavigate();
 

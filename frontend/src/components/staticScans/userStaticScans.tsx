@@ -4,6 +4,7 @@ import { Card } from "../ui/card";
 import { useNavigate } from "react-router-dom";
 import useStore from "../../store/store";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { EllipsisVertical, Trash2 } from "lucide-react";
 import { showSuccessToast } from "../toaster";
@@ -25,8 +26,8 @@ const UserStaticScans: React.FC = () => {
 		userId: user?.id ? String(user.id) : "",
 	});
 
-	const scanData = recentSASTScans?.[0] || null;
-	const metrics = scanData ? scanData.metrics : {};
+	const scanData = recentSASTScans?.[0] ?? null;
+	const metrics = (scanData?.metrics ?? {}) as Record<string, string>;
 
 	const metricLabels = [
 		{ key: "coverage", label: "Coverage" },
@@ -53,7 +54,7 @@ const UserStaticScans: React.FC = () => {
 
 	const deleteSASTScan = async (scanId: string, e: React.MouseEvent) => {
 		e.stopPropagation();
-		const response = await deleteScanMutation({ scanId });
+		const response = await deleteScanMutation({ scanId: scanId as Id<"staticScans"> });
 		if (response) {
 			showSuccessToast(response.message);
 		}

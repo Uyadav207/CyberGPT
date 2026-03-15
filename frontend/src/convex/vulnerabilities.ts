@@ -25,7 +25,6 @@ export const saveVulnerability = mutation({
 		riskDesc: v.string(),
 	},
 	handler: async (ctx, { scanId, alert, AffectedUrisCount, riskDesc }) => {
-		const now = Date.now();
 
 		const vulnerabilityId = await ctx.db.insert("vulnerabilities", {
 			scanId,

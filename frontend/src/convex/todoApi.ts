@@ -53,10 +53,13 @@ export const generateTodoTasksOnDemand = action({
       aiResponse = "",
       kgContext,
       cveInfo,
-      reasoningTrace,
-      sourceLinks,
-      jargons,
+      reasoningTrace: _reasoningTraceUnused,
+      sourceLinks: _sourceLinksUnused,
+      jargons: _jargonsUnused,
     } = args;
+    void _reasoningTraceUnused;
+    void _sourceLinksUnused;
+    void _jargonsUnused;
 
     console.log("🔄 [TODO API] Starting on-demand TODO generation:", {
       chatId,
@@ -297,6 +300,8 @@ Return only valid JSON array, no additional text.`;
         ) {
           specificTechnology = "cloud infrastructure";
         }
+        void attackVector;
+        void specificTechnology;
 
         // Extract CVE IDs
         const cveMatches = aiResponse.match(/CVE-\d{4}-\d+/g);

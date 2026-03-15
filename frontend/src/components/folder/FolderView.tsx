@@ -19,6 +19,7 @@ import {
 import { showSuccessToast } from "../toaster";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 import { Spinner } from "../loader/spinner";
 
 type FolderViewProps = {
@@ -35,7 +36,7 @@ export function FolderView({ files }: FolderViewProps) {
 	const deleteReport = async (folderId: string, e: React.MouseEvent) => {
 		e.stopPropagation();
 		const responseAfterDelete = await deleteReportById({
-			reportId: folderId,
+			reportId: folderId as Id<"reports">,
 		});
 		if (!responseAfterDelete) {
 			return;

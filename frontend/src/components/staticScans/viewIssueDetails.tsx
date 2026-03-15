@@ -5,6 +5,7 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { useParams } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 import { useQuery } from "convex/react";
 
 interface RemediationStep {
@@ -19,9 +20,10 @@ const ViewIssuesDetails: React.FC = () => {
 	const issue = location.state?.issue;
 	const { issueId } = useParams<{ issueId: string }>();
 
-	const issuesDetailsArray = useQuery(api.sastScans.fetchIssueInfoByIssueId, {
-		issueId,
-	});
+	const issuesDetailsArray = useQuery(
+		api.sastScans.fetchIssueInfoByIssueId,
+		issueId ? { issueId: issueId as Id<"issueList"> } : "skip",
+	);
 
 	const issuesDetails = issuesDetailsArray?.[0];
 
@@ -82,31 +84,31 @@ const ViewIssuesDetails: React.FC = () => {
 
 	return (
 		<div className="p-6">
-			<h1 className="text-xl font-bold mb-4">{issuesDetails.message}</h1>
+			<h1 className="text-xl font-bold mb-4">{(issuesDetails as { message?: string }).message ?? "Issue"}</h1>
 
 			<div className="bg-sidebar shadow-md p-6 rounded-md">
 				<h2 className="text-lg font-semibold mb-2">Information</h2>
 
 				<div className="flex items-center space-x-4 mb-4">
 					<Badge
-						className={`${getSeverityBadgeColor(issuesDetails.severity)} font-semibold`}
+						className={`${getSeverityBadgeColor((issuesDetails as { severity?: string }).severity)} font-semibold`}
 					>
-						{issuesDetails.severity}
+						{(issuesDetails as { severity?: string }).severity ?? "N/A"}
 					</Badge>
 				</div>
 
 				<div className="text-sm space-y-2">
 					<p>
 						<span className="font-bold">Key:</span>{" "}
-						{issuesDetails.rule?.key || "N/A"}
+						{(issuesDetails as { rule?: { key?: string } }).rule?.key || "N/A"}
 					</p>
 					<p>
 						<span className="font-bold">Component:</span>{" "}
-						{issuesDetails.component}
+						{(issuesDetails as { component?: string }).component ?? "N/A"}
 					</p>
 					<p>
 						<span className="font-bold">Line:</span>{" "}
-						{issuesDetails.line}
+						{(issuesDetails as { line?: number }).line ?? "N/A"}
 					</p>
 					<p>
 						<span className="font-bold">Description:</span>{" "}
@@ -119,7 +121,7 @@ const ViewIssuesDetails: React.FC = () => {
 				<h2 className="text-lg font-semibold mb-4">
 					Remediation Steps
 				</h2>
-				{issuesDetails.rule?.remediationSteps?.map(
+				{(issuesDetails as { rule?: { remediationSteps?: RemediationStep[] } }).rule?.remediationSteps?.map(
 					(step: RemediationStep) =>
 						step.problemCodeSnippet ? (
 							<div

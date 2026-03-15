@@ -4,14 +4,16 @@ import copy from "../../assets/copy.svg";
 import { useParams } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 import useStore from "../../store/store";
 
 const ScanInfo: React.FC = () => {
 	const name = useStore.getState().user?.firstName || "Unknown User";
 	const { scanId } = useParams<{ scanId: string }>();
-	const scanData = useQuery(api.scans.fetchScanDetailsByScanId, {
-		scanId: scanId,
-	});
+	const scanData = useQuery(
+		api.scans.fetchScanDetailsByScanId,
+		scanId ? { scanId: scanId as Id<"scans"> } : "skip",
+	);
 	if (!scanData) {
 		return <div>Loading...</div>;
 	}

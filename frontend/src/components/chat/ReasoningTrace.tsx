@@ -40,7 +40,7 @@ function normalize(
  */
 export function formatReasoningPlainText(
   trace: Array<Record<string, unknown>> | undefined | null,
-  reasoningMeta?: ReasoningMeta | null,
+  _reasoningMeta?: ReasoningMeta | null,
   durationSec?: number
 ): string {
   const { summary, lines } = normalize(trace ?? null);

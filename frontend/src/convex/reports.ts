@@ -156,7 +156,7 @@ export const deleteReport = mutation({
   },
   handler: async (ctx, { reportId }) => {
     // Delete the report by its ID
-    const deleted = await ctx.db.delete(reportId);
+    await ctx.db.delete(reportId);
     return {
       success: true,
       message: "Report deleted successfully.",

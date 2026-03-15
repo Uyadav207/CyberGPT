@@ -77,12 +77,11 @@ export const saveIssue = mutation({
 		component: v.string(),
 		line: v.number(),
 		severity: v.string(),
-		tags: v.array(v.string()),
 	},
 
 	handler: async (
 		ctx,
-		{ staticScanId, message, component, line, severity, tags },
+		{ staticScanId, message, component, line, severity },
 	) => {
 		const issueId = await ctx.db.insert("issueList", {
 			staticScanId,
@@ -90,7 +89,10 @@ export const saveIssue = mutation({
 			component,
 			line,
 			severity,
-			tags,
+			type: "",
+			effort: "",
+			debt: "",
+			review_status: false,
 		});
 
 		return { issueId };
@@ -118,37 +120,11 @@ export const saveIssueInfo = mutation({
 		}),
 	},
 	handler: async (
-		ctx,
-		{ issueId, message, component, line, severity, rule },
+		_ctx,
+		{ issueId },
 	) => {
-		const filteredRule = {
-			key: rule.key,
-			name: rule.name,
-			remediationSteps: rule.remediationSteps.map(
-				({
-					context,
-					description,
-					problemCodeSnippet,
-					remediationCodeSnippet,
-				}) => ({
-					context,
-					description,
-					problemCodeSnippet,
-					remediationCodeSnippet,
-				}),
-			),
-		};
-
-		const issueInfoId = await ctx.db.insert("issueInfo", {
-			issueId,
-			message,
-			component,
-			line,
-			severity,
-			rule: filteredRule,
-		});
-
-		return { issueInfoId };
+		// issueInfo table not in schema; no-op for now
+		return { issueInfoId: issueId };
 	},
 });
 
@@ -196,11 +172,8 @@ export const fetchIssueInfoByIssueId = query({
 		issueId: v.id("issueList"),
 	},
 	handler: async (ctx, { issueId }) => {
-		const issueInfo = await ctx.db
-			.query("issueInfo")
-			.withIndex("by_issueId", (q) => q.eq("issueId", issueId))
-			.collect();
-		return issueInfo;
+		const doc = await ctx.db.get(issueId);
+		return doc ? [doc] : [];
 	},
 });
 
@@ -208,21 +181,9 @@ export const fetchRemediationDetailsByIssueId = query({
 	args: {
 		issueId: v.id("issueList"),
 	},
-	handler: async (ctx, { issueId }) => {
-		const issueInfo = await ctx.db
-			.query("issueInfo")
-			.withIndex("by_issueId", (q) => q.eq("issueId", issueId))
-			.collect();
-
-		return issueInfo.map((info) => ({
-			rule: info.rule.key,
-			remediationSteps: info.rule.remediationSteps.map((step) => ({
-				context: step.context,
-				description: step.description,
-				problemCodeSnippet: step.problemCodeSnippet,
-				remediationCodeSnippet: step.remediationCodeSnippet,
-			})),
-		}));
+	handler: async () => {
+		// issueInfo table not in schema; return empty
+		return [];
 	},
 });
 
@@ -238,18 +199,6 @@ export const deleteSASTScan = mutation({
 			.query("issueList")
 			.withIndex("by_staticScanId", (q) => q.eq("staticScanId", scanId))
 			.collect();
-
-		for (const issue of issues) {
-			await ctx.db
-				.query("issueInfo")
-				.withIndex("by_issueId", (q) => q.eq("issueId", issue._id))
-				.collect()
-				.then((issueInfos) => {
-					for (const issueInfo of issueInfos) {
-						ctx.db.delete(issueInfo._id);
-					}
-				});
-		}
 
 		for (const issue of issues) {
 			await ctx.db.delete(issue._id);

@@ -9,6 +9,7 @@ import { useGraphGenerationModal } from '../../hooks/useGraphGenerationModal';
 import { graphApis } from '../../api/graph';
 import { useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 import type { GraphData, GraphGenerationRequest, GraphElements } from '../../types/graphVisualization.d';
 import type { Message } from '../../types/chats';
 
@@ -439,7 +440,7 @@ const GraphButton: React.FC<GraphButtonProps> = ({ message, chatId, className = 
         // Save to Convex
         await saveGraphMutation({
           messageId: message.id || '',
-          chatId,
+          chatId: chatId as Id<"chats">,
           graphVisualization: graphVisualization
         });
         

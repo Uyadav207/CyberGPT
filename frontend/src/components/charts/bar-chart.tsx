@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Chart from "react-apexcharts";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 import { useParams } from "react-router-dom";
 import { categorizeData } from "../../utils/url-categories";
 import type { ApexOptions } from "apexcharts";
@@ -22,9 +23,10 @@ const ChartComponent: React.FC = () => {
 		useState<CategorizedData | null>(null);
 	const [loading, setLoading] = useState(true);
 
-	const listurls = useQuery(api.vulnerabilityInfo.fetchUrlsAndRiskByScanId, {
-		scanId,
-	});
+	const listurls = useQuery(
+		api.vulnerabilityInfo.fetchUrlsAndRiskByScanId,
+		scanId ? { scanId: scanId as Id<"scans"> } : "skip",
+	);
 
 	useEffect(() => {
 		if (listurls) {

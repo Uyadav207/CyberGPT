@@ -41,10 +41,9 @@ import useChatActionStore from "../../store/chatActions";
 
 // types
 import type { TriggerAgentData } from "../../types/agent";
-import type { Folder, FolderItem, FolderType } from "../../types/reports";
+import type { Folder, FolderItem } from "../../types/reports";
 import type {
 	Message,
-	ChatHistory,
 	Info,
 	RequestHumanInLoop,
 } from "../../types/chats";
@@ -334,13 +333,13 @@ const MiraChatBot: React.FC = () => {
 	});
 	const folderData = useQuery(
 		api.reports.getReportFoldersByUser,
-		user?.id && {
-			userId: String(user?.id),
-		},
+		user?.id ? { userId: String(user.id) } : "skip",
 	);
 	const chatData = useQuery(
 		api.chats.getChatHistory,
-		fetchChatsRegurlarly && isValidChatId ? { chatId: chatId } : "skip",
+		fetchChatsRegurlarly && isValidChatId && chatId
+			? { chatId: chatId as Id<"chats"> }
+			: "skip",
 	);
 
 	// Add state to track expanded reasoning per message
@@ -693,7 +692,19 @@ const MiraChatBot: React.FC = () => {
 		if (chatData) {
 			console.log('Loading chat history from database:', chatData);
 			const chatHistory: Message[] = chatData.map(
-				(chat: ChatHistory): Message => {
+				(chat: {
+					_id: string;
+					message?: string;
+					sender?: string;
+					humanInTheLoopId?: string;
+					chatId?: string;
+					Answer?: string;
+					Reasoning?: unknown;
+					SourceLinks?: Array<{ title: string; url: string; type: string }>;
+					Info?: { cve_id?: string; cve_desc?: string };
+					Jargons?: Record<string, string>;
+					tags?: string[];
+				}): Message => {
 					// Debug: Check if enhanced data exists
 					if (chat.sender === "ai") {
 						console.log('AI message enhanced data:', {
@@ -741,7 +752,7 @@ const MiraChatBot: React.FC = () => {
 						];
 						console.log('[Message Loading] Created reasoningTrace from Reasoning field:', {
 							messageId: chat._id,
-							reasoningLength: chat.Reasoning?.length || 0,
+							reasoningLength: (typeof chat.Reasoning === "string" ? chat.Reasoning.length : 0) || 0,
 							hasReasoningTrace: !!reasoningTrace
 						});
 					} else if ((chat as any).trace && typeof (chat as any).trace[0]?.narrative === 'string') {
@@ -771,29 +782,17 @@ const MiraChatBot: React.FC = () => {
 						: undefined;
 					
 					// Map SourceLinks from database format with type casting
-					const sourceLinks = chat.SourceLinks?.map(source => ({
+					const sourceLinks = chat.SourceLinks?.map((source: { title: string; url: string; type: string }) => ({
 						...source,
 						type: source.type as 'official' | 'reference' | 'framework'
 					})) || undefined;
-					
+					const content = chat.message ?? "";
 					return {
 						id: chat._id,
-						humanInTheLoopId: chat.humanInTheLoopId,
-						chatId: chat.chatId,
-						// Always use message field for consistency (Answer field might have processing issues)
-						message: (() => {
-							const content = chat.message;
-							console.log('Message content selection:', {
-								messageId: chat._id,
-								sender: chat.sender,
-								usingAnswer: false, // Always use message field now
-								contentLength: content?.length || 0,
-								contentPreview: content?.substring(0, 100) + '...',
-								hasMarkdown: content?.includes('**') || content?.includes('*') || content?.includes('`')
-							});
-							return content;
-						})(),
-						sender: chat.sender as "user" | "ai",
+						humanInTheLoopId: chat.humanInTheLoopId ?? "",
+						chatId: chat.chatId ?? "",
+						message: content,
+						sender: (chat.sender ?? "user") as "user" | "ai",
 						// Include enhanced fields for AI messages
 						...(chat.sender === "ai" && {
 							jargons,
@@ -821,7 +820,7 @@ const MiraChatBot: React.FC = () => {
 		}
 		if (folderData) {
 			const newFolders: FolderItem[] = folderData.map(
-				(item: FolderType): FolderItem => ({
+				(item: { _id: string; folderName: string }): FolderItem => ({
 					id: item._id,
 					name: item.folderName,
 					type: "folder",
@@ -899,16 +898,16 @@ const MiraChatBot: React.FC = () => {
 				message: manualMessage,
 				sender: "ai",
 			};
-			setFolderId(response);
+			setFolderId(response ?? "");
 			await saveChatMessage({
 				chatId: createdChatId
 					? (createdChatId as Id<"chats">)
 					: (chatId as Id<"chats">),
-				humanInTheLoopId: botMessage.id,
+				humanInTheLoopId: botMessage.id ?? "",
 				sender: botMessage.sender,
 				message: botMessage.message,
 			});
-			setPendingAction(botMessage.id as string);
+			setPendingAction(botMessage.id ?? "");
 			setRequestHumanInLoop({
 				action: action.action,
 				prompt: manualMessage,
@@ -1027,7 +1026,7 @@ const MiraChatBot: React.FC = () => {
 				if (!existingChatId) {
 					await saveChatMessage({
 						chatId: (graphChatId as Id<"chats">),
-						humanInTheLoopId: userMessage.id,
+						humanInTheLoopId: userMessage.id ?? "",
 						sender: userMessage.sender,
 						message: userMessage.message,
 					});
@@ -1077,7 +1076,7 @@ const MiraChatBot: React.FC = () => {
 					});
 
 					const enhancedDataWithGraph = {
-						humanInTheLoopId: botMessage.id,
+						humanInTheLoopId: botMessage.id ?? "",
 						chatId: graphChatId as Id<"chats">,
 						sender: botMessage.sender,
 						message: botMessage.message,
@@ -1100,7 +1099,7 @@ const MiraChatBot: React.FC = () => {
 					// Fallback to basic save
 					await saveChatMessage({
 						chatId: graphChatId as Id<"chats">,
-						humanInTheLoopId: botMessage.id,
+						humanInTheLoopId: botMessage.id ?? "",
 						sender: botMessage.sender,
 						message: botMessage.message,
 					});
@@ -1330,7 +1329,7 @@ const MiraChatBot: React.FC = () => {
 							userId: String(user?.id || "anonymous"),
 							title: chatTitle,
 						});
-						setCreatedChatId(newChatResult);
+						setCreatedChatId(newChatResult ?? "");
 						console.log('New chat created with ID:', newChatResult);
 						
 						// Now save the user message (if not already saved)
@@ -1471,12 +1470,12 @@ const MiraChatBot: React.FC = () => {
 					chatId: chatId
 						? (chatId as Id<"chats">)
 						: (createdChatId as Id<"chats">),
-					humanInTheLoopId: botMessage.id,
+					humanInTheLoopId: botMessage.id ?? "",
 					sender: botMessage.sender,
 					message: botMessage.message,
 				});
 			}
-			setPendingAction(botMessage.id as string);
+			setPendingAction(botMessage.id ?? "");
 			setRequestHumanInLoop({
 				action: "github-scan",
 				prompt: manualMessage,
@@ -1518,7 +1517,7 @@ const MiraChatBot: React.FC = () => {
 							title: chatTitle,
 							tags: ["cybersecurity_general"], // Default tag
 						});
-						setCreatedChatId(newChatResult);
+						setCreatedChatId(newChatResult ?? "");
 						graphChatId = newChatResult;
 						console.log('✅ [Frontend] New chat created with ID:', newChatResult);
 						
@@ -2072,7 +2071,7 @@ const MiraChatBot: React.FC = () => {
 							userId: String(user?.id || "anonymous"),
 							title: chatTitle2,
 						});
-						setCreatedChatId(newChatResult2);
+						setCreatedChatId(newChatResult2 ?? "");
 						console.log('✅ [Frontend] Emergency chat created with ID:', newChatResult2);
 						
 						// Now save the user message (if not already saved)
@@ -2201,17 +2200,17 @@ const MiraChatBot: React.FC = () => {
 			title: (response as { title: string })?.title,
 		});
 
-		setCreatedChatId(result);
+		setCreatedChatId(result ?? "");
 
 		for (const msg of latestMessage) {
 			await saveChatMessage({
-				chatId: result,
-				humanInTheLoopId: msg.id,
+				chatId: (result ?? "") as Id<"chats">,
+				humanInTheLoopId: msg.id ?? "",
 				sender: msg.sender,
 				message: msg.message,
 			});
 		}
-		navigate(`/chatbot/${result}`, { replace: true });
+		navigate(`/chatbot/${result ?? ""}`, { replace: true });
 	};
 
 	const requestHumanApproval = async (
@@ -2337,7 +2336,7 @@ const MiraChatBot: React.FC = () => {
 			try {
 				setMessages((prev) => [...prev, userMessage]);
 				await saveChatMessage({
-					humanInTheLoopId: userMessage.id,
+					humanInTheLoopId: userMessage.id ?? "",
 					chatId: chatId
 						? (chatId as Id<"chats">)
 						: (createdChatId as Id<"chats">),
@@ -2352,9 +2351,9 @@ const MiraChatBot: React.FC = () => {
 					message: manualMessage,
 					sender: "ai",
 				};
-				setPendingAction(botMessage.id as string);
+				setPendingAction(botMessage.id ?? "");
 				await saveChatMessage({
-					humanInTheLoopId: botMessage.id,
+					humanInTheLoopId: botMessage.id ?? "",
 					chatId: createdChatId
 						? (createdChatId as Id<"chats">)
 						: (chatId as Id<"chats">),
@@ -2378,7 +2377,7 @@ const MiraChatBot: React.FC = () => {
 				try {
 					setMessages((prev) => [...prev, userMessage]);
 					await saveChatMessage({
-						humanInTheLoopId: userMessage.id,
+						humanInTheLoopId: userMessage.id ?? "",
 						chatId: chatId
 							? (chatId as Id<"chats">)
 							: (createdChatId as Id<"chats">),
@@ -2392,9 +2391,9 @@ const MiraChatBot: React.FC = () => {
 						message: manualMessage,
 						sender: "ai",
 					};
-					setPendingAction(botMessage.id as string);
+					setPendingAction(botMessage.id ?? "");
 					await saveChatMessage({
-						humanInTheLoopId: botMessage.id,
+						humanInTheLoopId: botMessage.id ?? "",
 						chatId: createdChatId
 							? (createdChatId as Id<"chats">)
 							: (chatId as Id<"chats">),
@@ -2420,7 +2419,7 @@ const MiraChatBot: React.FC = () => {
 				try {
 					setMessages((prev) => [...prev, userMessage]);
 					await saveChatMessage({
-						humanInTheLoopId: userMessage.id,
+						humanInTheLoopId: userMessage.id ?? "",
 						chatId: chatId
 							? (chatId as Id<"chats">)
 							: (createdChatId as Id<"chats">),
@@ -2495,12 +2494,12 @@ const MiraChatBot: React.FC = () => {
 						chatId: createdChatId
 							? (createdChatId as Id<"chats">)
 							: (chatId as Id<"chats">),
-						humanInTheLoopId: botMessage.id,
+						humanInTheLoopId: botMessage.id ?? "",
 						sender: botMessage.sender,
 						message: botMessage.message,
 					});
 
-					setPendingAction(botMessage.id as string);
+					setPendingAction(botMessage.id ?? "");
 					setRequestHumanInLoop({
 						action: "approval",
 						prompt: manualMessage,
@@ -2521,7 +2520,7 @@ const MiraChatBot: React.FC = () => {
 			try {
 				setMessages((prev) => [...prev, userMessage]);
 				await saveChatMessage({
-					humanInTheLoopId: userMessage.id,
+					humanInTheLoopId: userMessage.id ?? "",
 					chatId: chatId
 						? (chatId as Id<"chats">)
 						: (createdChatId as Id<"chats">),
@@ -2584,12 +2583,12 @@ const MiraChatBot: React.FC = () => {
 					chatId: createdChatId
 						? (createdChatId as Id<"chats">)
 						: (chatId as Id<"chats">),
-					humanInTheLoopId: botMessage.id,
+					humanInTheLoopId: botMessage.id ?? "",
 					sender: botMessage.sender,
 					message: botMessage.message,
 				});
 
-				setPendingAction(botMessage.id as string);
+				setPendingAction(botMessage.id ?? "");
 				setRequestHumanInLoop({
 					action: "approval",
 					prompt: manualMessage,
@@ -2610,14 +2609,14 @@ const MiraChatBot: React.FC = () => {
 				if (createdChatId) {
 					setMessages((prev) => [...prev, userMessage]);
 					await saveChatMessage({
-						humanInTheLoopId: userMessage.id,
+						humanInTheLoopId: userMessage.id ?? "",
 						chatId: createdChatId as Id<"chats">,
 						sender: userMessage.sender,
 						message: userMessage.message,
 					});
 				} else {
 					await saveChatMessage({
-						humanInTheLoopId: userMessage.id,
+						humanInTheLoopId: userMessage.id ?? "",
 						chatId: chatId as Id<"chats">,
 						sender: userMessage.sender,
 						message: userMessage.message,
@@ -2648,12 +2647,12 @@ const MiraChatBot: React.FC = () => {
 					chatId: createdChatId
 						? (createdChatId as Id<"chats">)
 						: (chatId as Id<"chats">),
-					humanInTheLoopId: botMessage.id,
+					humanInTheLoopId: botMessage.id ?? "",
 					sender: botMessage.sender,
 					message: botMessage.message,
 				});
 
-				setPendingAction(botMessage.id as string);
+				setPendingAction(botMessage.id ?? "");
 				setRequestHumanInLoop({
 					action: "approval",
 					prompt: manualMessage,
@@ -2672,7 +2671,7 @@ const MiraChatBot: React.FC = () => {
 					setMessages((prev) => [...prev, userMessage]);
 				} else {
 					await saveChatMessage({
-						humanInTheLoopId: userMessage.id,
+						humanInTheLoopId: userMessage.id ?? "",
 						chatId: chatId as Id<"chats">,
 						sender: userMessage.sender,
 						message: userMessage.message,
@@ -2686,13 +2685,13 @@ const MiraChatBot: React.FC = () => {
 					sender: "ai",
 				};
 
-				setPendingAction(botMessage.id as string);
+				setPendingAction(botMessage.id ?? "");
 
 				await saveChatMessage({
 					chatId: createdChatId
 						? (createdChatId as Id<"chats">)
 						: (chatId as Id<"chats">),
-					humanInTheLoopId: botMessage.id,
+					humanInTheLoopId: botMessage.id ?? "",
 					sender: botMessage.sender,
 					message: botMessage.message,
 				});
@@ -2732,12 +2731,12 @@ const MiraChatBot: React.FC = () => {
 					chatId: createdChatId
 						? (createdChatId as Id<"chats">)
 						: (chatId as Id<"chats">),
-					humanInTheLoopId: botMessage.id,
+					humanInTheLoopId: botMessage.id ?? "",
 					sender: botMessage.sender,
 					message: botMessage.message,
 				});
 
-				setPendingAction(botMessage.id as string);
+				setPendingAction(botMessage.id ?? "");
 				setRequestHumanInLoop({
 					action: "input",
 					prompt: manualMessage,
@@ -2770,11 +2769,11 @@ const MiraChatBot: React.FC = () => {
 					chatId: createdChatId
 						? (createdChatId as Id<"chats">)
 						: (chatId as Id<"chats">),
-					humanInTheLoopId: botMessage.id,
+					humanInTheLoopId: botMessage.id ?? "",
 					sender: botMessage.sender,
 					message: botMessage.message,
 				});
-				setPendingAction(botMessage.id as string);
+				setPendingAction(botMessage.id ?? "");
 				setRequestHumanInLoop({
 					action: "input",
 					prompt: manualMessage,
@@ -2809,12 +2808,12 @@ const MiraChatBot: React.FC = () => {
 					chatId: createdChatId
 						? (createdChatId as Id<"chats">)
 						: (chatId as Id<"chats">),
-					humanInTheLoopId: botMessage.id,
+					humanInTheLoopId: botMessage.id ?? "",
 					sender: botMessage.sender,
 					message: botMessage.message,
 				});
 
-				setPendingAction(botMessage.id as string);
+				setPendingAction(botMessage.id ?? "");
 				setRequestHumanInLoop({
 					action: "input",
 					prompt: manualMessage,
@@ -3010,7 +3009,7 @@ const MiraChatBot: React.FC = () => {
 						}
 					} else if (humanAction === "sendEmail") {
 						const manualMessage = "Please select either yes or no";
-						setPendingAction(botMessage.id as string);
+						setPendingAction(botMessage.id ?? "");
 						requestHumanApproval(
 							"approval",
 							manualMessage,
@@ -3026,7 +3025,7 @@ const MiraChatBot: React.FC = () => {
 						const manualMessage =
 							"Thank you for providing the scan type. Please select the standard you want to scan against.";
 
-						setPendingAction(botMessage.id as string);
+						setPendingAction(botMessage.id ?? "");
 
 						requestHumanApproval(
 							"scan",
@@ -3043,7 +3042,7 @@ const MiraChatBot: React.FC = () => {
 							description: options.description,
 						}));
 
-						setPendingAction(botMessage.id as string);
+						setPendingAction(botMessage.id ?? "");
 
 						requestHumanApproval(
 							"random",
@@ -3114,7 +3113,7 @@ const MiraChatBot: React.FC = () => {
 		setMessages((prev) => [...prev, userMessage]);
 		if (confirmType === "report") {
 			await saveChatMessage({
-				humanInTheLoopId: userMessage.id,
+				humanInTheLoopId: userMessage.id ?? "",
 				chatId: chatId
 					? (chatId as Id<"chats">)
 					: (createdChatId as Id<"chats">),
@@ -3142,12 +3141,12 @@ const MiraChatBot: React.FC = () => {
 					chatId: createdChatId
 						? (createdChatId as Id<"chats">)
 						: (chatId as Id<"chats">),
-					humanInTheLoopId: botMessage.id,
+					humanInTheLoopId: botMessage.id ?? "",
 					sender: botMessage.sender,
 					message: botMessage.message,
 				});
 
-				setPendingAction(botMessage.id as string);
+				setPendingAction(botMessage.id ?? "");
 				setRequestHumanInLoop({
 					action: "approval",
 					prompt: manualMessage,
@@ -3161,7 +3160,7 @@ const MiraChatBot: React.FC = () => {
 		}
 		if (confirmType === "sast-report") {
 			await saveChatMessage({
-				humanInTheLoopId: userMessage.id,
+				humanInTheLoopId: userMessage.id ?? "",
 				chatId: chatId
 					? (chatId as Id<"chats">)
 					: (createdChatId as Id<"chats">),
@@ -3189,12 +3188,12 @@ const MiraChatBot: React.FC = () => {
 					chatId: createdChatId
 						? (createdChatId as Id<"chats">)
 						: (chatId as Id<"chats">),
-					humanInTheLoopId: botMessage.id,
+					humanInTheLoopId: botMessage.id ?? "",
 					sender: botMessage.sender,
 					message: botMessage.message,
 				});
 
-				setPendingAction(botMessage.id as string);
+				setPendingAction(botMessage.id ?? "");
 				setRequestHumanInLoop({
 					action: "approval",
 					prompt: manualMessage,
@@ -3212,7 +3211,7 @@ const MiraChatBot: React.FC = () => {
 			}
 		} else if (confirmType === "save") {
 			await saveChatMessage({
-				humanInTheLoopId: userMessage.id,
+				humanInTheLoopId: userMessage.id ?? "",
 				chatId: chatId
 					? (chatId as Id<"chats">)
 					: (createdChatId as Id<"chats">),
@@ -3229,12 +3228,12 @@ const MiraChatBot: React.FC = () => {
 				chatId: createdChatId
 					? (createdChatId as Id<"chats">)
 					: (chatId as Id<"chats">),
-				humanInTheLoopId: botMessage.id,
+				humanInTheLoopId: botMessage.id ?? "",
 				sender: botMessage.sender,
 				message: botMessage.message,
 			});
 
-			setPendingAction(botMessage.id as string);
+			setPendingAction(botMessage.id ?? "");
 			setRequestHumanInLoop({
 				action: "folder",
 				prompt: manualMessage,
@@ -3244,7 +3243,7 @@ const MiraChatBot: React.FC = () => {
 			requestHumanApproval("folder", manualMessage, "none", botMessage.id);
 		} else if (confirmType === "save-chat-summary") {
 			await saveChatMessage({
-				humanInTheLoopId: userMessage.id,
+				humanInTheLoopId: userMessage.id ?? "",
 				chatId: chatId
 					? (chatId as Id<"chats">)
 					: (createdChatId as Id<"chats">),
@@ -3262,12 +3261,12 @@ const MiraChatBot: React.FC = () => {
 				chatId: createdChatId
 					? (createdChatId as Id<"chats">)
 					: (chatId as Id<"chats">),
-				humanInTheLoopId: botMessage.id,
+				humanInTheLoopId: botMessage.id ?? "",
 				sender: botMessage.sender,
 				message: botMessage.message,
 			});
 
-			setPendingAction(botMessage.id as string);
+			setPendingAction(botMessage.id ?? "");
 			setRequestHumanInLoop({
 				action: "save-chat-summary",
 				prompt: manualMessage,
@@ -3283,7 +3282,7 @@ const MiraChatBot: React.FC = () => {
 			);
 		} else if (confirmType === "save-sast-summary") {
 			await saveChatMessage({
-				humanInTheLoopId: userMessage.id,
+				humanInTheLoopId: userMessage.id ?? "",
 				chatId: chatId
 					? (chatId as Id<"chats">)
 					: (createdChatId as Id<"chats">),
@@ -3301,12 +3300,12 @@ const MiraChatBot: React.FC = () => {
 				chatId: createdChatId
 					? (createdChatId as Id<"chats">)
 					: (chatId as Id<"chats">),
-				humanInTheLoopId: botMessage.id,
+				humanInTheLoopId: botMessage.id ?? "",
 				sender: botMessage.sender,
 				message: botMessage.message,
 			});
 
-			setPendingAction(botMessage.id as string);
+			setPendingAction(botMessage.id ?? "");
 			setRequestHumanInLoop({
 				action: "folder-sast",
 				prompt: manualMessage,
@@ -3351,7 +3350,7 @@ const MiraChatBot: React.FC = () => {
 		};
 		setMessages((prev) => [...prev, userMessage]);
 		await saveChatMessage({
-			humanInTheLoopId: userMessage.id,
+			humanInTheLoopId: userMessage.id ?? "",
 			chatId: chatId ? (chatId as Id<"chats">) : (createdChatId as Id<"chats">),
 			sender: userMessage.sender,
 			message: userMessage.message,
@@ -3366,7 +3365,7 @@ const MiraChatBot: React.FC = () => {
 		setMessages((prev) => [...prev, botMessage]);
 
 		await saveChatMessage({
-			humanInTheLoopId: botMessage.id,
+			humanInTheLoopId: botMessage.id ?? "",
 			chatId: createdChatId
 				? (createdChatId as Id<"chats">)
 				: (chatId as Id<"chats">),
@@ -3430,7 +3429,7 @@ const MiraChatBot: React.FC = () => {
 				setFetchChatsRegurlarly(false);
 				try {
 					await saveChatMessage({
-						humanInTheLoopId: userMessage.id,
+						humanInTheLoopId: userMessage.id ?? "",
 						chatId: createdChatId
 							? (createdChatId as Id<"chats">)
 							: (chatId as Id<"chats">),
@@ -3452,9 +3451,9 @@ const MiraChatBot: React.FC = () => {
 						title: title.length < finalMessage.trim().length ? `${title}…` : title,
 						tags: ["cybersecurity_general"],
 					});
-					setCreatedChatId(newChatId);
+					setCreatedChatId(newChatId ?? "");
 					await saveChatMessage({
-						humanInTheLoopId: userMessage.id,
+						humanInTheLoopId: userMessage.id ?? "",
 						chatId: newChatId as Id<"chats">,
 						sender: userMessage.sender,
 						message: userMessage.message,
@@ -3497,26 +3496,26 @@ const MiraChatBot: React.FC = () => {
 				userId: String((response as { userId: string }).userId),
 				title: (response as { title: string })?.title,
 			});
-			setCreatedChatId(result);
+			setCreatedChatId(result ?? "");
 
 			// Save all messages
 			for (const msg of updatedMessages) {
 				await saveChatMessage({
-					chatId: result,
-					humanInTheLoopId: msg.id,
+					chatId: (result ?? "") as Id<"chats">,
+					humanInTheLoopId: msg.id ?? "",
 					sender: msg.sender,
 					message: msg.message,
 				});
 			}
 
-			navigate(`/chatbot/${result}`, { replace: true });
+			navigate(`/chatbot/${result ?? ""}`, { replace: true });
 		} else {
 			// Handle existing chat
 			const targetChatId = createdChatId || chatId;
 
 			if (targetChatId) {
 				await saveChatMessage({
-					humanInTheLoopId: lastMessage.id,
+					humanInTheLoopId: lastMessage.id ?? "",
 					chatId: targetChatId as Id<"chats">,
 					sender: "ai",
 					message: lastMessage.message,
@@ -3574,14 +3573,6 @@ const MiraChatBot: React.FC = () => {
 			seenIds.add(msg.id);
 		}
 	}
-
-	// Helper to normalize reasoningTrace to string
-	const getReasoningString = (trace: any) => {
-		if (typeof trace === 'string') return trace;
-		if (Array.isArray(trace) && trace[0]?.narrative) return trace[0].narrative;
-		if (trace && typeof trace.narrative === 'string') return trace.narrative;
-		return '';
-	};
 
 	// Helper to preprocess message.message for jargons before passing to MarkdownViewer
 	const preprocessJargonMarkdown = (content: string, jargons: any[] = [], cveDescriptionsMap: Record<string, string> = {}) => {
@@ -3903,7 +3894,7 @@ For more specific guidance, please ask about particular aspects of these securit
 							const isUser = message.sender === "user";
 							const messageClasses = `inline-block rounded-2xl max-w-[98%] sm:max-w-[95%] md:max-w-[90%] lg:max-w-[85%] ${
 								isUser
-									? "bg-primary/10 dark:bg-primary/20 border border-primary/20 dark:border-primary/30 px-4 py-3 sm:px-5 sm:py-3.5 text-sm sm:text-base break-words text-foreground font-normal text-left"
+									? "bg-primary/10 dark:bg-primary/20 px-4 py-3 sm:px-5 sm:py-3.5 text-sm sm:text-base break-words text-foreground font-normal text-left"
 									: "text-foreground pr-2 sm:pr-4 overflow-y-auto text-pretty break-words text-xs sm:text-sm leading-relaxed"
 							}`;
 							const containerClasses = `mb-3 sm:mb-4 ${isUser ? "text-right" : "text-left"} w-full`;
@@ -3968,7 +3959,7 @@ For more specific guidance, please ask about particular aspects of these securit
 										<div className={`${messageClasses}`}>
 											{/* Reasoning summary indicator (before every message if present) */}
 											{message.reasoningTrace && (
-																									<div className="flex items-center mb-2 text-[10px] sm:text-xs text-sidebar-foreground cursor-pointer select-none hover:text-sidebar-accent-foreground transition-colors"
+																									<div className="flex items-center mb-2 ml-3 text-[10px] sm:text-xs text-sidebar-foreground cursor-pointer select-none hover:text-sidebar-accent-foreground transition-colors"
 														onClick={() => {
 															const messageId = String(message.id);
 															// Ensure the state is always defined
@@ -4041,7 +4032,7 @@ For more specific guidance, please ask about particular aspects of these securit
 														style={{ fontSize: "0.75rem", lineHeight: 1.5 }}
 													>
 														<ReasoningTrace
-															trace={(message.reasoningTrace ?? []) as Array<Record<string, unknown>>}
+															trace={(message.reasoningTrace ?? []) as unknown as Array<Record<string, unknown>>}
 															reasoningMeta={message.reasoningMeta}
 															durationSec={message.durationSec}
 														/>
@@ -4050,7 +4041,7 @@ For more specific guidance, please ask about particular aspects of these securit
 											</AnimatePresence>
 											
 											{!isUser && (
-												<div className="mb-2 sm:mb-3 p-2 sm:p-3 md:p-5 bg-muted/30 dark:bg-muted/10 rounded-lg w-full">
+												<div className="mb-2 sm:mb-3 p-2 sm:p-3 md:p-5 rounded-lg w-full">
 													{(() => {
 														// Check if the original message contains jargon syntax - if so, clean it but keep highlighting
 														const jargonPatterns = [

@@ -31,7 +31,7 @@ export function ChatSummaries() {
 
 	const fetchedSummaries = useQuery(api.summaries.getSummariesByUserId, {
 		userId: String(id),
-	}) as Summary[];
+	}) as unknown as Summary[];
 
 	useEffect(() => {
 		if (fetchedSummaries && fetchedSummaries.length > 0) {

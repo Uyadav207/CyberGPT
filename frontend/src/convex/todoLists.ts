@@ -52,7 +52,7 @@ export const saveTodoList = mutation({
         const updatedId = await ctx.db.patch(existingTodoList._id, {
           todoList: todoList,
           lastModified: lastModified,
-          updatedAt: new Date(),
+          updatedAt: Date.now(),
         });
         return { success: true, id: updatedId, action: "updated" };
       } else {
@@ -62,8 +62,8 @@ export const saveTodoList = mutation({
           messageId: messageId,
           todoList: todoList,
           lastModified: lastModified,
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
         });
         return { success: true, id: newId, action: "created" };
       }

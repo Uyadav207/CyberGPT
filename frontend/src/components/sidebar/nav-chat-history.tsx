@@ -28,6 +28,7 @@ import { useNavigate } from "react-router-dom";
 import useStore from "../../store/store";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 import type { Chats } from "../../types/chats";
 import { SidebarMenuSub, useSidebar } from "../ui/sidebar";
 import { showSuccessToast } from "../toaster";
@@ -135,7 +136,7 @@ export default function ChatHistory({ onOpenSearch }: NavChatHistoryProps) {
 
 	const handleDelete = async (chatId: string) => {
 		try {
-			const result = await deleteChatById({ chatId });
+			const result = await deleteChatById({ chatId: chatId as Id<"chats"> });
 
 			showSuccessToast(result.message);
 		} catch (error) {
@@ -156,13 +157,18 @@ export default function ChatHistory({ onOpenSearch }: NavChatHistoryProps) {
 		}
 	}, [recentChats]);
 
-	// Ensure recentChats is of type Chats[]
-	const sortedChat: Chats[] = recentChats
-		?.slice()
-		.sort((a: Chats, b: Chats) => {
-			const dateA = a?.createdAt ? new Date(a.createdAt).getTime() : 0;
-			const dateB = b?.createdAt ? new Date(b.createdAt).getTime() : 0;
-			return dateB - dateA; // Sort by descending
+	// Map Convex docs (createdAt: number) to Chats[] (createdAt: string)
+	const sortedChat: Chats[] = (recentChats ?? [])
+		.map((c) => ({
+			_id: String(c._id),
+			title: c.title,
+			tags: c.tags,
+			createdAt: new Date(c.createdAt).toISOString(),
+		}))
+		.sort((a, b) => {
+			const dateA = new Date(a.createdAt).getTime();
+			const dateB = new Date(b.createdAt).getTime();
+			return dateB - dateA;
 		});
 
 	// Categorize chats
@@ -227,7 +233,7 @@ export default function ChatHistory({ onOpenSearch }: NavChatHistoryProps) {
 			</TooltipProvider>
 			<div className="flex-1 flex flex-col overflow-y-auto scrollbar-grey">
 				<SidebarGroup>
-					{recentChats?.length > 0 && (
+					{(recentChats?.length ?? 0) > 0 && (
 						<SidebarGroupLabel>Recent Chats</SidebarGroupLabel>
 					)}
 					<SidebarContent className="flex-1 flex flex-col">

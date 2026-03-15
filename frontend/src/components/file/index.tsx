@@ -6,6 +6,7 @@ import { InteractiveTodoList } from "../reports/InteractiveTodoList";
 
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 import html2pdf from "html2pdf.js";
 // Removed Mira logo import
 
@@ -28,9 +29,7 @@ export function FileView() {
 
 	const file = useQuery(
 		api.reports.getFileById,
-		fileId && {
-			fileId: String(fileId),
-		},
+		fileId ? { fileId: fileId as Id<"reports"> } : "skip",
 	);
 	const downloadAsPDF = () => {
 		if (file) {
@@ -95,7 +94,7 @@ export function FileView() {
 			) : (
 				<div className="p-6 border rounded-lg">
 					<div className="flex justify-between items-center mb-4">
-						<h1 className="text-xl font-bold">{file.name}</h1>
+						<h1 className="text-xl font-bold">{file.fileName}</h1>
 
 						{/* Only show download button for regular reports, not TODO lists */}
 						{!(file.reportType === "vulnerabilityTodo" && file.todoListData) && (

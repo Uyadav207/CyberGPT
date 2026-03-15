@@ -11,6 +11,7 @@ import {
 import { showSuccessToast } from "../toaster";
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 
 interface FolderGridProps {
 	folders: Folder[];
@@ -30,7 +31,7 @@ export function FolderGrid({
 		e: React.MouseEvent,
 	) => {
 		e.stopPropagation();
-		const responseAfterDelete = await deleteReportFolderById({ folderId });
+		const responseAfterDelete = await deleteReportFolderById({ folderId: folderId as Id<"reportFolders"> });
 		if (!responseAfterDelete) {
 			return;
 		}

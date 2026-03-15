@@ -368,7 +368,7 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
         setProgress(100);
         await new Promise(resolve => setTimeout(resolve, 1000));
 
-        if (result.success && result.todoList) {
+        if (result?.success && result?.todoList) {
           setTodoList(result.todoList);
           setLastSavedOrder(result.todoList.items.map((item: TodoItem) => item.id));
           setLastSavedCompletionStatus(result.todoList.items.map((item: TodoItem) => ({ id: item.id, completed: item.completed })));
@@ -487,7 +487,7 @@ const TodoListButton: React.FC<TodoListButtonProps> = ({ message, chatId, classN
           const { chatId: todoListChatId, messageId: todoListMessageId, ...cleanTodoList } = updatedTodoList as any;
           
           await updateTodoListMutation({
-            chatId,
+            chatId: chatId as Id<"chats">,
             messageId: messageIdToUse,
             todoList: cleanTodoList,
           });

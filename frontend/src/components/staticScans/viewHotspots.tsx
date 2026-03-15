@@ -6,6 +6,7 @@ import { Info, CheckCircle } from "lucide-react";
 import { showSuccessToast, showErrorToast } from "../toaster";
 import { useParams } from "react-router-dom";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 import { useQuery, useMutation } from "convex/react";
 
 interface Hotspot {
@@ -19,9 +20,10 @@ interface Hotspot {
 
 const ViewHotspots: React.FC = () => {
 	const { staticScanId } = useParams<{ staticScanId: string }>();
-	const hotspots = useQuery(api.sastScans.fetchHotspotListByScanId, {
-		staticScanId,
-	});
+	const hotspots = useQuery(
+		api.sastScans.fetchHotspotListByScanId,
+		staticScanId ? { staticScanId: staticScanId as Id<"staticScans"> } : "skip",
+	);
 
 	const deleteHotspotsMutation = useMutation(api.sastScans.deleteHotspots);
 
@@ -68,7 +70,7 @@ const ViewHotspots: React.FC = () => {
 
 			try {
 				const response = await deleteHotspotsMutation({
-					hotspotIds: [key],
+					hotspotIds: [key as Id<"hotspotList">],
 				});
 				if (response.success) {
 					showSuccessToast("Hotspot successfully reviewed!");
