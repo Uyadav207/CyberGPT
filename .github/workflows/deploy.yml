@@ -9,6 +9,7 @@ jobs:
   deploy:
     name: Deploy Backend to EC2
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -22,21 +23,12 @@ jobs:
           script: |
             cd ~/CyberGPT
 
-            echo "Switching to experiment-final branch..."
             git fetch origin
             git checkout experiment-final
             git pull origin experiment-final
 
-            echo "Stopping old containers..."
-            docker compose down
-
-            echo "Cleaning unused images..."
+            docker-compose down
             docker system prune -af
-
-            echo "Rebuilding backend..."
-            docker compose build backend
-
-            echo "Starting backend..."
-            docker compose up -d backend
+            docker-compose up -d --build backend
 
             echo "Deployment completed successfully"
