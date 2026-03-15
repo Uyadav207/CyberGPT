@@ -3,29 +3,40 @@ name: Deploy to EC2 Production
 on:
   push:
     branches:
-      - production  # triggers when code is pushed or merged into production
+      - experiment-final
 
 jobs:
   deploy:
-    name: Deploy on EC2
+    name: Deploy Backend to EC2
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout the code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: SSH and Deploy to EC2
+      - name: Deploy to EC2 via SSH
         uses: appleboy/ssh-action@v1.1.0
         with:
-          host: ec2-54-163-87-216.compute-1.amazonaws.com
-          username: ubuntu
+          host: 51.21.171.45
+          username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd knowledgeGPT
-            git fetch origin production
-            git checkout production
-            git pull origin production
-            docker system prune -af --volumes
+            cd ~/CyberGPT
+
+            echo "Switching to experiment-final branch..."
+            git fetch origin
+            git checkout experiment-final
+            git pull origin experiment-final
+
+            echo "Stopping old containers..."
             docker compose down
-            docker compose build --no-cache backend
+
+            echo "Cleaning unused images..."
+            docker system prune -af
+
+            echo "Rebuilding backend..."
+            docker compose build backend
+
+            echo "Starting backend..."
             docker compose up -d backend
+
+            echo "Deployment completed successfully"
