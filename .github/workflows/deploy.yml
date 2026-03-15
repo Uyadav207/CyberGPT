@@ -29,6 +29,6 @@ jobs:
 
             docker-compose down
             docker system prune -af
-            docker-compose up -d --build backend
+            DOCKER_BUILDKIT=0 docker compose up -d --build
 
             echo "Deployment completed successfully"
